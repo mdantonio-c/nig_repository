@@ -61,6 +61,7 @@ def progress(self, state, uuid):
     self.update_state(state=state)
 
 
+"""
 @CeleryExt.celery_app.task(bind=True, name="import_file")
 def import_file(
     self,
@@ -194,6 +195,7 @@ def import_file(
             log.error("Task error, uuid %s not found" % uuid)
 
         return 1
+"""
 
 
 def parse_file_fastq(self, graph, filename, reimport=False):
@@ -488,6 +490,7 @@ def parse_file_tech(self, graph, filename, reimport=False):
                                 )
 
 
+"""
 def parse_file_vcf(self, graph, vcf_file, reimport=False):
 
     from restapi.services.neo4j.models import ArrayProperty
@@ -782,14 +785,14 @@ def parse_file_vcf(self, graph, vcf_file, reimport=False):
     log.info("Updating probands...")
     # Determine probands in trios, to be excluded for frequency, issue #114
     graph.cypher("MATCH (d:Dataset) SET d.is_proband = false")
-    cypher = """
+    cypher = \"""
 MATCH
 (d:Dataset)-[:IS_DESCRIBED_BY]->(proband:Phenotype),
 (proband)-[:SON]->(father:Phenotype)<-[:IS_DESCRIBED_BY]-(:Dataset),
 (proband)-[:SON]->(mother:Phenotype)<-[:IS_DESCRIBED_BY]-(:Dataset)
 WHERE (father) <> (mother)
 SET d.is_proband = true
-"""
+\"""
     graph.cypher(cypher)
 
     log.info("Caching datasets...")
@@ -1158,3 +1161,4 @@ SET d.is_proband = true
     log.info("Total filtered variants = %s", num_variants)
 
     return num_variants
+"""
