@@ -1,0 +1,37 @@
+---
+project:
+  title: NIG Repository
+  description: Data repository for genomic and phenotypic datasets
+  version: "1.0"
+  rapydo: "1.0"
+
+variables:
+  env:
+    FRONTEND_FRAMEWORK: angular
+    AUTH_SERVICE: neo4j
+
+    ACTIVATE_NEO4J: 1
+    ACTIVATE_CELERY: 1
+    ACTIVATE_RABBIT: 1
+    ACTIVATE_REDIS: 1
+
+    # 6 hours
+    AUTH_JWT_TOKEN_TTL: 21600
+    AUTH_FORCE_FIRST_PASSWORD_CHANGE: 1
+    AUTH_VERIFY_PASSWORD_STRENGTH: 1
+    AUTH_MAX_PASSWORD_VALIDITY: 60
+    AUTH_DISABLE_UNUSED_CREDENTIALS_AFTER: 180
+    AUTH_MAX_LOGIN_ATTEMPTS: 3
+    AUTH_SECOND_FACTOR_AUTHENTICATION: 1
+    AUTH_TOKEN_IP_GRACE_PERIOD: 60
+
+    CELERY_BACKEND: REDIS
+
+tags:
+  study: Manage information at study level
+  dataset: Manage information at dataset level
+  file: Manage files and resource files
+  admin: Operations only allowed for admin users
+  miscellaneous: Endpoints not classified in other specific sections
+  phenotype: Manage phenotypes
+  technicals: Manage set of technical metadata

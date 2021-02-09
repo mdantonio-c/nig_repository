@@ -1,0 +1,5 @@
+version: "3"
+#######################
+# Link services inside API
+
+services:

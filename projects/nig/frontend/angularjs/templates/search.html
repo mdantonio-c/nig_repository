@@ -1,0 +1,567 @@
+
+<div ng-controller='SearchController as ctrl'>
+
+<div class='panel panel-info' style='margin-bottom:0px;'>
+
+<div class='panel-heading'>
+	<h4 class='panel-title'>Search variants</h4>
+</div>
+
+<div ng-if='!ctrl.fields' ng-include="main.templateDir + 'loader.html'"></div>
+
+<form ng-if='ctrl.fields' novalidate ng-submit="ctrl.search()" name="ctrl.form">
+
+	<div class='panel-body'>
+
+        <uib-accordion ng-repeat="(key, value) in ctrl.fields">
+        <div 
+            ng-init='info = ctrl.getSectionTitle(key)'
+            uib-accordion-group class="panel-default" 
+            is-open="ctrl.openFilters[key]"
+            >
+
+            <uib-accordion-heading uib-tooltip='{{info.tooltip}}'>
+                <i ng-if='info.icon'class="glyphicon glyphicon-{{info.icon}}"></i>
+                {{info.title}} filters 
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': ctrl.openFilters[key], 'glyphicon-chevron-right': !ctrl.openFilters[key]}"></i>
+            </uib-accordion-heading>
+
+            <formly-form 
+              layout="column"
+              model="ctrl.model"
+              fields=value
+              form="ctrl.form"
+              >
+            </formly-form>
+        </div>  
+        </uib-accordion>
+
+	</div>
+
+	<div class='panel-footer text-right'>
+	    <button type="submit" class="btn btn-default">
+            Search
+	    </button>
+	</div>
+
+</form>
+</div>
+
+<br>
+
+<div ng-if='ctrl.loading' class='text-center'>
+    <b><i>Loading results...</i></b>
+</div>
+
+<!-- {{ctrl.results}} -->
+<div class='panel panel-default' ng-if='ctrl.results'>
+<!-- PANEL HEADING START -->
+<div class='panel-heading'>
+    <h4 class='panel-title'>
+        <i class='material-icons'>list</i> Search results ({{ctrl.results.length}})
+    </h4>
+</div>
+<!-- PANEL HEADING END -->
+<div class='panel-body'>
+
+    <div>
+        <span 
+            class="label label-default"
+            style='margin-right:2px'
+            ng-repeat="(key, value) in ctrl.query_filters" 
+            ng-if='value && !value.label'
+        >
+            {{key}}: {{value}}
+        </span>
+
+        <span 
+            class="label label-default"
+            style='margin-right:2px'
+            ng-repeat="(key, value) in ctrl.query_filters" 
+            ng-if='value && value.label'
+        >
+            {{key}}: {{value.label}}
+        </span>
+
+    </div>
+
+	<div ng-if='ctrl.results.length == 0'>
+		<i>No result found</i>
+	</div>
+
+<!-- <ul uib-pagination 
+        ng-init="currentPage = 1"
+        total-items="ctrl.results.length"
+        ng-model="currentPage"
+        max-size="5"
+        items-per-page="100"
+        class="pagination-sm"
+        boundary-links="true"
+        boundary-link-numbers="true"
+        previous-text="&laquo;"
+        next-text="&raquo;"
+        rotate="false"
+        ng-change=""
+></ul>
+ -->
+<div class="table-responsive" ng-if='ctrl.results.length>0'>
+    <table 
+        class='table table-hover table-condensed table-borderless'
+        ts-wrapper
+        ts-filter-fields="variant.attributes.chromosome,variant.attributes.variant_type,variant.attributes['dbSNP'],gene.attributes['geneName'],variant.attributes['MainEffect']">
+
+        <thead>
+            <tr>
+                <th ts-criteria="counter" ts-default="ascending">#</th>
+            	<th ts-criteria="['variant.attributes.chromosome','variant.attributes.start | parseInt', variant.attributes.end]">Position</th>
+                <th ts-criteria="variant.attributes['dbSNP']">dbSNP</th>
+            	<th ts-criteria="[variant.attributes.ref,variant.attributes.alt]" colspan=2>Variation</th>
+            	<th ts-criteria="variant.attributes.variant_type">Type</th>
+                <th ts-criteria="gene.attributes['geneName']">Gene Annotations</th>
+                <th ts-criteria="variant.attributes['MainEffect']">Functional Annotations</th>
+                <th ts-criteria="variant.attributes['allele_frequency'] | parseFloat">Frequency</th>
+                <th>N. of samples</th>
+                <th ts-criteria="observed_in | parseInt">Samples with variant</th>
+                <th ts-criteria="sex_distribution.male">Sex</th>
+                <th ts-criteria="affected_distribution['yes'] | parseFloat">Affected</th>
+                <th ts-criteria="hpo_distribution | getLength | parseInt">HPO terms</th>
+                <th>Geo. macroareas</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        <tr ng-repeat="data in ctrl.results" ts-repeat>
+
+            <td> {{data.counter}} </td>
+            <td style='white-space:nowrap;'>
+                <a target='_blank'
+                    ng-mouseover="view_icon=1"
+                    ng-mouseleave="view_icon=0"
+                     href="https://genome-euro.ucsc.edu/cgi-bin/hgTracks?db=hg19&amp;position={{data.variant.attributes.chromosome}}:{{data.variant.attributes.start}}-{{data.variant.attributes.end}}">
+            		{{data.variant.attributes.chromosome}}:{{data.variant.attributes.start}}-{{data.variant.attributes.end}}
+                     <i ng-show='view_icon' class="fa fa-external-link" aria-hidden="true"></i>
+                     <i style='color:#FFF;' ng-show='!view_icon' class="fa fa-external-link" aria-hidden="true"></i>
+                </a>
+        	</td>
+
+            <td>
+                <span ng-if='data.variant.attributes["dbSNP"]'>
+
+                    <a ng-repeat='rs in data.variant.attributes["dbSNP"]' 
+                        target='_blank'
+                        ng-mouseover="view_icon=1"
+                        ng-mouseleave="view_icon=0"
+                        href='https://www.ncbi.nlm.nih.gov/projects/SNP/snp_ref.cgi?rs={{rs}}'>
+                        {{rs}}
+                        <i ng-show='view_icon' class="fa fa-external-link" aria-hidden="true"></i>
+                        <i style='color:#FFF;' ng-show='!view_icon' class="fa fa-external-link" aria-hidden="true"></i>
+                    </a>
+                </span>
+                <span ng-if='!data.variant.attributes["dbSNP"]'>
+                    &nbsp;
+                </span>
+            </td>
+
+            </td>
+        	<td style='white-space:nowrap;'>
+			<span 
+                ng-init="limit=8" 
+                uib-popover='{{data.variant.attributes.Var_nt_pos | arrayTolist}} ({{data.variant.attributes.ref}} -> {{data.variant.attributes.alt}})'
+                popover-title='{{data.variant.attributes.variant_type}} info'
+                popover-trigger="'outsideClick'">
+                <span ng-if='data.variant.attributes.ref.length <= limit'>{{data.variant.attributes.ref}}</span>
+                <span ng-if='data.variant.attributes.ref.length > limit'>{{data.variant.attributes.ref | limitTo:limit}}&hellip;</span>
+                &rarr;
+                <span ng-if='data.variant.attributes.alt.length <= limit'>{{data.variant.attributes.alt}}</span>
+                <span ng-if='data.variant.attributes.alt.length > limit'>{{data.variant.attributes.alt | limitTo:limit}}&hellip;</
+			</span>
+        	</td>
+
+            <td ng-if='data.confirmed && data.confirmed > 0'>
+                <span 
+                    uib-tooltip='This variant is confirmed in one or more samples'
+                    class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+            </td>
+            <td ng-if='!data.confirmed'> <td>
+        		{{data.variant.attributes.variant_type}}
+        	</td>
+
+            <td>
+                <a
+                    ng-if = 'data.gene.attributes["geneName"] != "[None]"'
+                    popover-placement='right'
+                    popover-class='wide_popover'
+                    popover-trigger="'outsideClick'"
+                    uib-popover-template="'gene_annotations.html'">
+                    {{data.gene.attributes["geneName"]}}
+                </a>
+
+                <span ng-if = 'data.gene.attributes["geneName"] == "[None]"'>
+                    -
+                </span>
+
+
+            </td>
+
+            <td>
+                <a
+                    popover-placement='right'
+                    popover-class='wide_popover'
+                    popover-trigger="'outsideClick'"
+                    uib-popover-template="'variant_annotations.html'">
+                    {{data.variant.attributes["MainEffect"] | arrayTolist}}
+                </a>
+            </td>
+
+            <td ng-if='data.variant.attributes["allele_frequency"]'>
+                <uib-progress 
+                    uib-tooltip='Allele frequency: {{data.variant.attributes["allele_frequency"] | number:3}}'
+                    max="1" style='min-width:100px;'>
+                    <uib-bar 
+                        value="data.variant.attributes['allele_frequency']"
+                        type="warning"
+                    >
+                    </uib-bar>
+
+                </uib-progress>
+            </td>
+            <td ng-if='!data.variant.attributes["allele_frequency"]'>
+                N/A
+            </td>
+
+            <td>
+                300
+            </td>
+
+            <td>
+                <span 
+                    uib-tooltip='Observed in {{data.observed_in}}/{{data.total_samples}} samples ({{data.observed_perc | percentage:2}})' 
+                >
+                    {{data.observed_in}}
+                </span>
+            </td>
+
+            <td>
+
+                <uib-progress max="1" style='min-width:100px;'>
+
+                    <uib-bar 
+                        ng-if='data.sex_distribution.male' 
+                        uib-tooltip='Male phenotypes: {{data.sex_distribution.male | percentage:2}}'
+                        value="data.sex_distribution.male" type="info">
+                        <label style='margin-left:2px;'>M</label>
+                    </uib-bar>
+
+                    <uib-bar 
+                        ng-if='data.sex_distribution.female' 
+                        uib-tooltip='Female phenotypes: {{data.sex_distribution.female | percentage:2}}'
+                        value="data.sex_distribution.female" type="danger">
+                        <label style='margin-left:2px;'>F</label>
+                    </uib-bar>
+
+                </uib-progress>
+
+            </td>
+
+            <td>
+
+                <uib-progressbar 
+                    ng-if='data.affected_distribution["yes"]'
+                    max="1"
+                    value='data.affected_distribution["yes"]'
+                    type='warning'
+                    title='percentage of affected phenotypes'
+                    style='min-width:100px;'
+                >
+                    <label style='color:#444;margin-left:2px;'>
+                        {{data.affected_distribution["yes"] | percentage:2}}
+                    </label>
+                </uib-progressbar>
+                <uib-progressbar 
+                    ng-if='!data.affected_distribution["yes"]'
+                    max="1"
+                    value='0'
+                    type='warning'
+                    title='percentage of affected phenotypes'
+                    style='min-width:100px;'
+                >
+                    <label style='color:#444;margin-left:2px;'>
+                        {{'0' | percentage:2}}
+                    </p>
+                </uib-progressbar>
+            </td>
+
+            <td>
+
+                <a
+                    popover-placement='left'
+                    popover-class='wide_popover'
+                    popover-trigger="'outsideClick'"
+                    uib-popover-template="'hpo_distribution.html'">
+                    {{data.hpo_distribution | getLength}}
+                </a>
+
+            </td>
+
+
+            <td>
+
+<uib-progress max="1" style='min-width:100px;'>
+
+    <uib-bar 
+        ng-if='data.geo_distribution["north italy"]' 
+        uib-tooltip='North Italy: {{data.geo_distribution["north italy"] | percentage:2}}'
+        value='data.geo_distribution["north italy"]' type="success">
+        <label style='margin-left:2px;'>N</label>
+    </uib-bar>
+
+    <uib-bar 
+        ng-if='data.geo_distribution["center italy"]' 
+        uib-tooltip='Center Italy: {{data.geo_distribution["center italy"] | percentage:2}}'
+        value='data.geo_distribution["center italy"]' type="info">
+        <label style='margin-left:2px;'>C</label>
+    </uib-bar>
+
+    <uib-bar 
+        ng-if='data.geo_distribution["south italy"]' 
+        uib-tooltip='South Italy: {{data.geo_distribution["south italy"] | percentage:2}}'
+        value='data.geo_distribution["south italy"]' type="warning">
+        <label style='margin-left:2px;'>S</label>
+    </uib-bar>
+
+    <uib-bar 
+        ng-if='data.geo_distribution["sardinia"]' 
+        uib-tooltip='Sardinia: {{data.geo_distribution["sardinia"] | percentage:2}}'
+        value='data.geo_distribution["sardinia"]' type="danger">
+        <label style='margin-left:2px;'>X</label>
+    </uib-bar>
+
+        </uib-progress>
+            </td>
+
+
+<!-- 
+            <td>
+            	<span ng-repeat="(key, value) in data.hpo_distribution">
+                {{key}} ({{value}})
+                </span>
+            </td>
+-->
+<!-- 
+            <td>
+            	{{data.phenotype.attributes.birthday | date:'dd/MM/yyyy'}}
+            </td>
+
+            <td>
+            	{{data.phenotype.attributes.deathday | date:'dd/MM/yyyy'}}
+            </td>
+ -->
+
+        </tr>
+        </tbody>
+    </table>
+
+
+    <script type="text/ng-template" id="gene_annotations.html">
+        <div>
+            <h3>Gene annotations for {{data.gene.attributes["geneName"]}}</h3>
+	    <h4><i>{{data.gene.attributes["Gene_full_name"]}}</i></h4>
+            <hr>
+            <div class="table-responsive">
+            <table class="table table-striped table-hover table-condensed">
+            <tr
+                ng-repeat="(key, value) in data.gene.attributes" 
+                ng-if='
+                    value != "" && value != "[None]"
+                    && key != "geneName"
+                    && key != "Gene_full_name"
+                    '
+            >
+                <th>{{key}}</th>
+                <td>
+                    <hm-read-more
+                        hm-text="{{value | arrayTolist}}"
+                        hm-limit="30"
+                        hm-more-text="read more" 
+                        hm-less-text="read less"
+                        hm-dots-class="hmdots"
+                        hm-link-class="hmlinks">
+                    </hm-read-more>
+                </td>
+            </tr>
+            </table>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/ng-template" id="variant_annotations.html">
+        <div>
+            <h3>Variant annotations</h3>
+            <hr>
+            <div class="table-responsive">
+            <table class="table table-striped table-hover table-condensed">
+
+
+            <tr>
+                <th>Main Effect</th>
+                <td>{{data.variant.attributes["MainEffect"] | arrayTolist}}</td>
+            </tr>
+
+
+            <tr>
+                <th>Impact</th>
+                <td>{{data.variant.attributes["Impact"] | arrayTolist}}</td>
+            </tr>
+
+
+            <tr ng-if='data.variant.attributes["Var_aa_pos"] != "[None]"'>
+                <th>Protein variation</th>
+                <td>{{data.variant.attributes["Var_aa_pos"] | arrayTolist}}</td>
+            </tr>
+
+            <tr ng-if='data.variant.attributes["allele_frequency"]'>
+                <th>Frequency</th>
+                <td>{{data.variant.attributes["allele_frequency"]}}</td>
+            </tr>
+
+	    <tr ng-repeat="(key, value) in data.variant.attributes" ng-if='key.indexOf("dbNSFP_ExAC") == 0 && value != ""'>
+                <th>{{key}}</th>
+		<td>{{value | arrayTolist}}</td>
+            </tr>
+
+
+	    <tr ng-repeat="(key, value) in data.variant.attributes" ng-if='key.indexOf("dbNSFP_ESP6500") == 0 && value != ""'>
+                <th>{{key}}</th>
+		<td>{{value | arrayTolist}}</td>
+            </tr>
+
+
+            <tr>
+                <th>dbSNP GMAF</th>
+                <td>{{data.variant.attributes["dbSNP_GMAF"] | arrayTolist}}</td>
+            </tr>
+
+
+            <tr ng-if='data.variant.attributes["1000g"]'>
+                <th>dbSNP GMAF</th>
+                <td>{{data.variant.attributes["1000g"] | arrayTolist}}</td>
+            </tr>
+
+
+            <tr>
+                <th>CADD_phred</th>
+                <td>{{data.variant.attributes["CADD_phred"] | arrayTolist}}</td>
+            </tr>
+
+
+            <tr ng-if='data.variant.attributes["dbNSFP_MetaSVM_pred"]'>
+                <th>MetaSVM_pred</th>
+                <td>
+			{{data.variant.attributes["dbNSFP_MetaSVM_pred"] | arrayTolist}}
+			(score: {{data.variant.attributes["dbNSFP_MetaSVM_score"] | arrayTolist}})
+		</td>
+            </tr>
+
+
+            <tr ng-if='data.variant.attributes["dbNSFP_MetaLR_pred"]'>
+                <th>MetaLR_pred</th>
+                <td>{{data.variant.attributes["dbNSFP_MetaLR_pred"] | arrayTolist}}</td>
+            </tr>
+
+
+            <tr ng-if='data.variant.attributes["dbNSFP_FATHMM_pred"]'>
+                <th>FATHMM_pre</th>
+                <td>{{data.variant.attributes["dbNSFP_FATHMM_pred"] | arrayTolist}}</td>
+            </tr>
+
+
+
+            <tr
+                ng-repeat="(key, value) in data.variant.attributes" 
+                ng-if='
+                    value != "" && value != "[None]"
+                    && key != "chromosome"
+                    && key != "start"
+                    && key != "end"
+                    && key != "ref"
+                    && key != "alt"
+                    && key != "variant_type"
+                    && key != "allele_count"
+                    && key != "allele_frequency"
+                    && key != "Var_nt_pos"
+                    && key != "Var_aa_pos"
+                    && key != "MainEffect"
+                    && key != "Impact"
+                    && key != "dbNSFP_aapos"
+                    && key != "dbSNP_GMAF"
+                    && key != "CADD_phred"
+                    && key != "dbNSFP_MetaSVM_pred"
+                    && key != "dbNSFP_MetaSVM_score"
+                    && key != "dbNSFP_MetaLR_pred"
+                    && key != "dbNSFP_FATHMM_pred"
+                    && key.indexOf("dbNSFP_ExAC") == -1
+                    && key.indexOf("dbNSFP_ESP6500") == -1
+                    '
+            >
+                <th>{{key}}</th>
+                <td>
+                    <hm-read-more
+                        hm-text="{{value | arrayTolist}}"
+                        hm-limit="30"
+                        hm-more-text="read more" 
+                        hm-less-text="read less"
+                        hm-dots-class="hmdots"
+                        hm-link-class="hmlinks">
+                    </hm-read-more>
+                </td>
+            </tr>
+            </table>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/ng-template" id="hpo_distribution.html">
+        <div style='max-height: 600px;overflow: auto;'>
+            <h3>List of HPO terms</h3>
+            <hr>
+            <div class="table-responsive">
+            <table class="table table-striped table-hover table-condensed">
+            <tr ng-repeat="(key, hpo) in data.hpo_distribution | orderObjectBy:'percentage':'true'">
+                <td>{{hpo.percentage | percentage:2}}</td>
+                <th>{{hpo.hpo_id}}</th>
+                <td uib-tooltip='{{hpo.description}}'>{{hpo.label}}</td>
+<!-- 
+                <td>
+                    <hm-read-more
+                        hm-text="{{hpo.description}}"
+                        hm-limit="120"
+                        hm-more-text="read more" 
+                        hm-less-text="read less"
+                        hm-dots-class="hmdots"
+                        hm-link-class="hmlinks">
+                    </hm-read-more>
+                </td>
+ -->
+            </tr>
+            </table>
+            </div>
+        </div>
+    </script>
+
+</div>
+</div>
+<!-- PANEL BODY +  TABLE END -->
+
+
+<!-- PANEL FOOTER START -->
+<div class="panel-footer">
+<div class='text-right'>
+</div>
+</div>
+<!-- PANEL FOOTER END -->
+
+</div>
+</div>
+<!-- PANEL END -->
+
+</div>

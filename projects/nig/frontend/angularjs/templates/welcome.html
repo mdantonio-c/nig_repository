@@ -1,0 +1,37 @@
+
+<div class='row'>
+
+<div class='col-xs-12 text-center'>
+	<img width=900 src='static/assets/images/header_nig_big-1.png'/>
+</div>
+
+<div class='col-xs-8 col-xs-offset-2 panel panel-default'>
+
+<div class='text-justify panel-body' style='font-size:1.2em;line-height: 200%;padding-left:30px; padding-right:30px;'>
+The <a target='_blank' href='http://www.nig.cineca.it'>NIG (Network for Italian Genomes)</a> fosters genetics and genomics research in broad sense with special reference to Italian population.
+The main aim is the definition of an Italian Reference Genome for the identification of genes responsible for genetic diseases and susceptibility genes for complex diseases in both basic and translational researches, genetic variants responsible for interindividual differences in drug response in the Italian population but also useful for population and forensic purposes and new target for diagnosis and treatment of genetic diseases.
+In collaboration with CINECA, NIG is creating a shared database (NIG Repository) containing data from nucleic acids sequencing of Italian subjects. The NIG Repository will only publish aggregate variant frequencies from a pool of data provided by the submitters.
+
+<br/>
+<div class="table-responsive">
+<h3>Main repository stats</h3>
+<div ng-controller='StatsController as ctrl'>
+<table class='table table-hover table-condensed'>
+	<tr><th>Number of contributors</th><td>{{ctrl.stats.num_users}}</td></tr>
+	<tr><th>Number of studies</th><td>{{ctrl.stats.num_studies}}</td></tr>
+	<tr><th>Number of samples</th><td>{{ctrl.stats.num_datasets}}</td></tr>
+	<tr><th>Number of samples with genetic data</th><td>{{ctrl.stats.num_datasets_with_vcf}}</td></tr>
+	<tr><th>Number of files</th><td>{{ctrl.stats.num_files}}</td></tr>
+</table>
+</div>
+</div
+
+</div>
+</div>
+
+<div class='col-xs-12 text-center'>
+	<img width=130 src='static/assets/images/CINECALOGO2008.jpg'/>
+	<br/><br/>
+</div>
+
+</div>

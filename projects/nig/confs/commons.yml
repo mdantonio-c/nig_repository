@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  neo4j:
+    volumes:
+      - ${VANILLA_DIR}/data/graphdata:/data
+    ports:
+      - 7687:7687
+      - 9090:${NEO4J_WEB_INTERFACE_PORT}
+    # environment:
+    #   NEO4J_dbms_memory_pagecache_size: 512M
+    #   NEO4J_dbms_memory_heap_maxSize: 1024M
+
+  celery:
+    build: ${VANILLA_DIR}/projects/${COMPOSE_PROJECT_NAME}/builds/celery
+    image: nig/celery:${RAPYDO_VERSION}
+
+  backend:
+    volumes:
+      - ${VANILLA_DIR}/data/data:/data

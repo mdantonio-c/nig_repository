@@ -1,0 +1,263 @@
+<div ng-controller="StudyController as datactrl">
+  <div ng-controller="ListsController as listctrl">
+    <div ng-include="main.blueprintTemplateDir+'breadcrumb.html'"></div>
+
+    <div ng-include="main.blueprintTemplateDir+'stage_area.html'"></div>
+
+    <div
+      ng-if="datactrl.loadingStudies"
+      ng-include="main.templateDir + 'loader.html'"
+    ></div>
+
+    <!-- ERROR IRODS ACCOUNT START -->
+    <div class="row" ng-if="!profile.irods_user">
+      <div class="col-xs-12">
+        <br />
+        <div class="panel panel-danger">
+          <div class="panel-heading">
+            <h5 class="panel-title">No iRods Account found for your user</h5>
+          </div>
+
+          <div class="panel-body">
+            [TO BE DONE] Put here instruction on how to update your irods
+            credentials
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ERROR IRODS ACCOUNT END -->
+
+    <!-- PANEL START -->
+    <div class="row" ng-if="!datactrl.loadingStudies && profile.irods_user">
+      <div class="col-xs-12">
+        <div class="panel panel-info">
+          <!-- PANEL HEADING START -->
+          <div class="panel-heading">
+            <div class="row">
+              <div class="col-xs-11">
+                <h4 class="panel-title">
+                  <i class="small valign material-icons">view_list</i>
+
+                  <ng-pluralize
+                    count="datactrl.studyCount"
+                    when="{
+			'0': 'You have access to no study',
+			'one': 'You have access to one study ',
+			'other': 'You have access to ({}) studies'
+		}"
+                  >
+                  </ng-pluralize>
+                </h4>
+              </div>
+
+              <div class="col-xs-1">
+                <a ng-click="datactrl.showNewStudy()">
+                  <h4 class="text-right">
+                    <span
+                      class="glyphicon glyphicon-plus-sign"
+                      aria-hidden="true"
+                      uib-tooltip="Add new study"
+                    ></span>
+                  </h4>
+                </a>
+              </div>
+            </div>
+          </div>
+          <!-- PANEL HEADING END -->
+
+          <!-- PANEL BODY + TABLE START -->
+          <div class="panel-body">
+            <div class="table-responsive">
+              <table
+                ng-show="datactrl.studies"
+                class="table table-hover table-condensed table-borderless"
+                ts-filter-fields="accession,name,description,_ownership[0].name,_ownership[0].surname"
+                ts-wrapper
+              >
+                <thead>
+                  <tr class="active" ng-if="datactrl.studyCount">
+                    <th ts-criteria="accession" ts-default="descending">
+                      Accession
+                    </th>
+                    <th ts-criteria="name" style="width: 30%">
+                      Name and Description
+                    </th>
+                    <th ts-criteria="datasets | parseInt">Datasets</th>
+                    <th ts-criteria="access_type">Access</th>
+                    <th ts-criteria="_ownership[0].name">Owner</th>
+                    <th ts-criteria="created">Created</th>
+                    <th>
+                      <a
+                        href="#"
+                        ng-click="listctrl.selectAll(datactrl.studies)"
+                      >
+                        <i
+                          class="material-icons palette-Grey-500 text"
+                          uib-tooltip="Select all"
+                        >
+                          check_box
+                        </i>
+                      </a>
+                    </th>
+
+                    <th>
+                      <a
+                        href="#"
+                        ng-click="listctrl.deselectAll(datactrl.studies)"
+                      >
+                        <i
+                          class="material-icons palette-Grey-500 text"
+                          uib-tooltip="Deselect all"
+                        >
+                          check_box_outline_blank
+                        </i>
+                      </a>
+                    </th>
+
+                    <th>
+                      <a
+                        href="#"
+                        ng-click="listctrl.invertSelection(datactrl.studies)"
+                      >
+                        <i
+                          class="material-icons palette-Grey-500 text"
+                          uib-tooltip="Invert selection"
+                        >
+                          refresh
+                        </i>
+                      </a>
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr ng-repeat="(key, data) in datactrl.studies" ts-repeat>
+                    <td class="accession">{{data.accession}}</td>
+
+                    <td
+                      ng-class="{focusRow: (key+1 == datactrl.focusPosition)}"
+                    >
+                      <b>
+                        <a
+                          href="#"
+                          ui-sref="logged.study.datasets({s_accession:data.accession})"
+                        >
+                          {{data.name}}
+                        </a>
+                      </b>
+                      <br />
+                      <hm-read-more
+                        hm-text="{{data.description}}"
+                        hm-limit="80"
+                        hm-more-text="read more"
+                        hm-less-text="read less"
+                        hm-dots-class="hmdots"
+                        hm-link-class="hmlinks"
+                      >
+                      </hm-read-more>
+                    </td>
+
+                    <td>
+                      <b>
+                        <a
+                          href="#"
+                          ui-sref="logged.study.datasets({s_accession:data.accession})"
+                        >
+                          {{data.datasets}}
+                        </a>
+                      </b>
+                    </td>
+
+                    <td>
+                      <span
+                        ng-switch
+                        on="data.access_type"
+                        uib-tooltip="This study has {{data.access_type}} access. You can access to this study because {{data.access_verification}}"
+                      >
+                        <i class="material-icons" ng-switch-when="private">
+                          lock
+                        </i>
+
+                        <i class="material-icons" ng-switch-when="restricted">
+                          security
+                        </i>
+
+                        <i class="material-icons" ng-switch-when="public">
+                          public
+                        </i>
+
+                        <i ng-switch-default> {{data.access_type}} </i>
+                      </span>
+                    </td>
+
+                    <td>
+                      {{data._ownership[0].name}} {{data._ownership[0].surname}}
+                    </td>
+
+                    <td>
+                      <span
+                        uib-tooltip="{{data.created | date:'dd/MM/yyyy HH:mm:ss'}}"
+                      >
+                        {{data.created | moment: 'fromNow'}}
+                      </span>
+                    </td>
+
+                    <td
+                      ng-if="!data.readonly"
+                      ng-click="datactrl.updateStudy(data)"
+                    >
+                      <i class="material-icons">edit</i>
+                    </td>
+
+                    <td
+                      ng-if="!data.readonly"
+                      ng-click="datactrl.deleteStudy(data.accession)"
+                    >
+                      <i class="material-icons palette-Red-500 text">delete</i>
+                    </td>
+
+                    <td
+                      ng-if="!data.readonly"
+                      class="center-align"
+                      ng-click="listctrl.selectElement(data)"
+                    >
+                      <i ng-if="!data.isSelected" class="material-icons"
+                        >check_box_outline_blank</i
+                      >
+                      <i ng-if="data.isSelected" class="material-icons"
+                        >check_box</i
+                      >
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <!-- PANEL BODY +  TABLE END -->
+
+          <!-- PANEL FOOTER START -->
+          <div class="panel-footer">
+            <div class="text-right">
+              <button
+                class="btn btn-danger"
+                ng-show="listctrl.selectedElements"
+                ng-click="datactrl.deleteStudies(listctrl)"
+              >
+                Delete selected studies
+              </button>
+
+              <button
+                class="btn btn-success"
+                ng-click="datactrl.showNewStudy()"
+              >
+                Add new study
+              </button>
+            </div>
+          </div>
+          <!-- PANEL FOOTER END -->
+        </div>
+      </div>
+    </div>
+    <!-- PANEL END -->
+  </div>
+</div>

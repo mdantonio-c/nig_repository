@@ -1,0 +1,41 @@
+<md-dialog>
+  <md-dialog-content>
+    <div ng-controller="ShareDataset as d">
+      <md-content
+        class="md-padding"
+        layout="row"
+        layout-wrap
+        layout-align="center start"
+        layout-xs="column"
+      >
+        <div flex="100" layout="column">
+          <h5 class="md-padding green lighten-5">Share dataset this:</h5>
+          <md-card>
+            <md-card-title>
+              <md-card-title-text>
+                <form layout="column" layout-padding ng-submit="d.save()">
+                  <label>Email</label>
+                  <input ng-model="d.email" type="email" />
+                  <button
+                    class="green lighten-2 md-button md-ink-ripple"
+                    type="submit"
+                  >
+                    Share
+                  </button>
+                </form>
+              </md-card-title-text>
+            </md-card-title>
+          </md-card>
+        </div>
+      </md-content>
+    </div>
+  </md-dialog-content>
+
+  <md-dialog-actions layout="row">
+    <span flex></span>
+
+    <md-button ng-click="cancel()" style="margin-right: 20px">
+      Close
+    </md-button>
+  </md-dialog-actions>
+</md-dialog>

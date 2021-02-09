@@ -1,0 +1,24 @@
+<ol class="breadcrumb" style="border-bottom: 2px solid orange">
+  <li>
+    <a href="#" ui-sref="logged.study">
+      <i class="material-icons">home</i>
+    </a>
+  </li>
+
+  <li ng-if="!datactrl.studyInfo.name" class="active">Study list</li>
+
+  <li
+    ng-if="datactrl.studyInfo.name && !datactrl.datasetInfo.name"
+    class="active"
+  >
+    {{datactrl.studyInfo.name}}
+  </li>
+
+  <li ng-if="datactrl.studyInfo.name && datactrl.datasetInfo.name">
+    <a ui-sref="logged.study.datasets"> {{datactrl.studyInfo.name}} </a>
+  </li>
+
+  <li ng-if="datactrl.datasetInfo.name" class="active">
+    {{datactrl.datasetInfo.name}}
+  </li>
+</ol>

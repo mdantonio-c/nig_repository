@@ -1,0 +1,8 @@
+services:
+  backend:
+    ports:
+      - ${BACKEND_PORT}:${FLASK_DEFAULT_PORT}
+
+  frontend:
+    ports:
+      - 80:8080

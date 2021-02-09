@@ -1,0 +1,248 @@
+<div
+  ng-if="datactrl.loadingDatasets"
+  ng-include="main.templateDir + 'loader.html'"
+></div>
+
+<div ng-controller="ListsController as listctrl">
+  <br />
+
+  <div class="panel panel-default" ng-if="!datactrl.loadingPhenotypes">
+    <!-- PANEL HEADING START -->
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <i class="material-icons">folder_open</i> This study contains
+        <ng-pluralize
+          count="datactrl.datasetsCount"
+          when="{
+			'0': 'no dataset',
+			'one': 'one dataset',
+			'other': '{} datasets'
+		}"
+        >
+        </ng-pluralize>
+      </h4>
+    </div>
+    <!-- PANEL HEADING END -->
+
+    <!-- PANEL BODY + TABLE START -->
+    <div class="panel-body">
+      <div class="table-responsive">
+        <table
+          ng-show="datactrl.datasets"
+          class="table table-hover table-condensed table-borderless"
+          ts-wrapper
+        >
+          <thead>
+            <tr>
+              <th ts-criteria="accession" ts-default="descending">Accession</th>
+              <th ts-criteria="name" style="width: 25%">
+                Name and Description
+              </th>
+              <th ts-criteria="nfiles | parseInt">Files</th>
+              <th style="width: 20%">Metadata</th>
+              <th ts-criteria="_ownership[0].name">Owner</th>
+              <th ts-criteria="access_type">Access</th>
+              <th ts-criteria="created">Created<br />Modified</th>
+              <th ng-if="!datactrl.studyInfo.readonly">
+                <a href="#" ng-click="listctrl.selectAll(datactrl.datasets)">
+                  <i
+                    uib-tooltip="Select all"
+                    class="material-icons palette-Grey-500 text"
+                  >
+                    check_box
+                  </i>
+                </a>
+              </th>
+              <th ng-if="!datactrl.studyInfo.readonly">
+                <a href="#" ng-click="listctrl.deselectAll(datactrl.datasets)">
+                  <i
+                    uib-tooltip="Deselect all"
+                    class="material-icons palette-Grey-500 text"
+                  >
+                    check_box_outline_blank
+                  </i>
+                </a>
+              </th>
+              <th ng-if="!datactrl.studyInfo.readonly">
+                <a
+                  href="#"
+                  ng-click="listctrl.invertSelection(datactrl.datasets)"
+                >
+                  <i
+                    uib-tooltip="Invert selection"
+                    class="material-icons palette-Grey-500 text"
+                  >
+                    refresh
+                  </i>
+                </a>
+              </th>
+
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr
+              ng-repeat="(key, data) in datactrl.datasets"
+              ts-repeat
+              ng-class='{"palette-Green-100 bg": (data.isSelected)}'
+            >
+              <td class="accession">{{data.accession}}</td>
+
+              <td
+                class="nofocusRow"
+                ng-class="{focusRow: (key+1 == datactrl.focusPosition)}"
+              >
+                <b
+                  ><a
+                    href="#"
+                    ng-click="$event.stopPropagation();"
+                    ui-sref="logged.study.datasets.files( {s_accession:datactrl.studyInfo.accession, d_accession:data.accession})"
+                  >
+                    {{data.name}}
+                  </a></b
+                >
+                <br />
+                <hm-read-more
+                  hm-text="{{data.description}}"
+                  hm-limit="80"
+                  hm-more-text="read more"
+                  hm-less-text="read less"
+                  hm-dots-class="hmdots"
+                  hm-link-class="hmlinks"
+                >
+                </hm-read-more>
+              </td>
+
+              <td>
+                <a
+                  href="#"
+                  ng-click="$event.stopPropagation();"
+                  ui-sref="logged.study.datasets.files(
+	         			{s_accession:datactrl.studyInfo.accession, d_accession:data.accession})"
+                >
+                  <b> {{data.nfiles}} </b>
+                </a>
+              </td>
+
+              <td
+                ng-if="data._sample[0].id || data._phenotype[0].id || data._technical[0].id"
+              >
+                <div ng-if="data._phenotype[0].id" class="label label-default">
+                  Phenotype: {{data._phenotype[0].name}}
+                  <span
+                    ng-click="$event.stopPropagation(); 	datactrl.deletePhenotypeAssociation(data.accession);"
+                    class="glyphicon glyphicon-remove"
+                  >
+                  </span>
+                </div>
+                <br />
+
+                <div ng-if="data._technical[0].id" class="label label-default">
+                  Technicals: {{data._technical[0].name}}
+                  <span
+                    ng-click="$event.stopPropagation(); 	datactrl.deleteTechnicalsAssociation(data.accession);"
+                    class="glyphicon glyphicon-remove"
+                  >
+                  </span>
+                </div>
+                <br />
+
+                <div ng-if="data._sample[0].id" class="label label-default">
+                  Sample: {{data._sample[0].name}}
+                  <span
+                    ng-click="$event.stopPropagation(); 	datactrl.deleteSampleAssociation(data.accession);"
+                    class="glyphicon glyphicon-remove"
+                  >
+                  </span>
+                </div>
+              </td>
+
+              <td
+                ng-if="!data._sample[0].id && !data._phenotype[0].id && !data._technical[0].id"
+              >
+                <i
+                  uib-tooltip="No metadata associated"
+                  class="material-icons prefix palette-Red-500 text"
+                >
+                  warning
+                </i>
+              </td>
+
+              <td>
+                {{data._ownership[0].name}} {{data._ownership[0].surname}}
+              </td>
+
+              <td>{{data.access_type}}</td>
+
+              <td>
+                <span
+                  uib-tooltip="Created: {{data.created | date:'dd/MM/yyyy HH:mm:ss'}}"
+                >
+                  {{data.created | moment: 'fromNow' }}
+                </span>
+
+                <br />
+
+                <span
+                  uib-tooltip="Last modified: {{data.modified | date:'dd/MM/yyyy HH:mm:ss'}}"
+                >
+                  {{data.modified | moment: 'fromNow' }}
+                </span>
+              </td>
+
+              <td
+                ng-if="!datactrl.studyInfo.readonly"
+                ng-click="listctrl.selectElement(data)"
+              >
+                <i ng-if="!data.isSelected" class="material-icons"
+                  >check_box_outline_blank</i
+                >
+                <i ng-if="data.isSelected" class="material-icons">check_box</i>
+              </td>
+
+              <td
+                ng-if="!datactrl.studyInfo.readonly"
+                ng-click="datactrl.updateDataset(data)"
+              >
+                <i class="material-icons">edit</i>
+              </td>
+
+              <!-- Empty cells, could be used for single delete -->
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- PANEL BODY +  TABLE END -->
+
+    <!-- PANEL FOOTER START -->
+    <div class="panel-footer">
+      <div class="text-right">
+        <div
+          ng-include="main.blueprintTemplateDir+'study.datasets.operations.html'"
+        ></div>
+
+        <button
+          ng-if="listctrl.selectedElements"
+          class="btn btn-danger"
+          ng-click="datactrl.deleteDatasets(listctrl)"
+        >
+          Delete selected datasets
+        </button>
+
+        <button
+          ng-if="!datactrl.studyInfo.readonly"
+          class="btn btn-success"
+          ng-click="datactrl.showNewDataset()"
+        >
+          Add new dataset
+        </button>
+      </div>
+    </div>
+    <!-- PANEL FOOTER END -->
+  </div>
+  <!-- PANEL END -->
+</div>

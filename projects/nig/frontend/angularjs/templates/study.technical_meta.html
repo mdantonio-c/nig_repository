@@ -1,0 +1,87 @@
+<div 
+	ng-if="datactrl.loadingTechnicalMetadata" 
+	ng-include="main.templateDir + 'loader.html'">
+</div>
+		
+<br>
+
+<div class='panel panel-default' ng-if='!datactrl.loadingPhenotypes'>
+<!-- PANEL HEADING START -->
+<div class='panel-heading'>
+	<h4 class='panel-title'>
+		<i class='material-icons'>settings_input_component</i>
+		<ng-pluralize count="datactrl.technicalmeta.length"
+			when="{
+			'0': 'This study contains no technical metadata',
+			'one': 'This study contains one set of technical metadata',
+			'other': 'This study contains {} sets of technical metadata'
+		}">
+		</ng-pluralize>
+	</h4>
+</div>
+<!-- PANEL HEADING END -->
+
+<!-- PANEL BODY + TABLE START -->
+<div class='panel-body'>
+<div class="table-responsive">
+    <table ng-show="datactrl.technicalmeta" class='table table-hover table-condensed table-borderless' ts-wrapper>
+
+		<thead>
+	        <tr>
+	        	<th ts-criteria="accession" ts-default="descending">Accession</th>
+	            <th ts-criteria="name">Name</th>
+	            <th ts-criteria="sequencing_date">Sequencing date</th>
+	            <th ts-criteria="platform">Platform</th>
+	            <th ts-criteria="enrichment_kit">Enrichment kit</th>
+	            <th colspan=2 style='width:1%;'></th>
+	        </tr>
+	    </thead>
+
+		<tbody>
+			<tr ng-repeat="data in datactrl.technicalmeta" ts-repeat>
+				<td class='accession'> 
+					{{data.accession}}
+				</td>
+				<td>{{data.name}}</td>
+				<td>{{data.sequencing_date | date:'dd/MM/yyyy'}}</td>
+				<td>{{data.platform}}</td>
+				<td>
+					{{data.enrichment_kit}}
+					{{data.enrichment_kit_version}}
+				</td>
+
+				<td 
+					ng-if="!datactrl.studyInfo.readonly"
+					ng-click='datactrl.updateTechnicalMetadata(data)'>
+					<i class='material-icons'>edit</i>
+				</td>
+				<td 
+					ng-if="!datactrl.studyInfo.readonly"
+					ng-click='datactrl.deleteTechnicalMetadata(data.accession)'>
+					<i class='material-icons palette-Red-500 text'>delete</i>
+				</td>	
+			</tr>
+		</tbody>
+	</table>
+</div>
+</div>
+<!-- PANEL BODY +  TABLE END -->
+
+
+<!-- PANEL FOOTER START -->
+<div class="panel-footer">
+<div class='text-right'>
+
+	<button 
+		ng-if="!datactrl.studyInfo.readonly"
+		class="btn btn-success" ng-click="datactrl.showNewTechnicalMetadata()">
+		Add technical metadata
+	</button>
+
+</div>
+</div>
+<!-- PANEL FOOTER END -->
+
+</div>
+<!-- PANEL END -->
+</div>

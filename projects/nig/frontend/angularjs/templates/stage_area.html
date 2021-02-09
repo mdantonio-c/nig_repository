@@ -1,0 +1,184 @@
+<div ng-controller="StageController as stagectrl">
+  <div
+    ng-if="stagectrl.loadingStage"
+    ng-include="main.templateDir + 'loader.html'"
+  ></div>
+
+  <br />
+  <div class="panel panel-default" ng-if="!stagectrl.loadingStage">
+    <!-- PANEL HEADING START -->
+    <!-- <md-card-title class='amber lighten-4'> -->
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <i class="material-icons">insert_drive_file</i> Stage area:
+        <ng-pluralize
+          ng-if="stagectrl.stageLoaded"
+          count="stagectrl.unparsedStageCount"
+          when="{
+      '0': 'No resource to be assigned',
+      'one': '1 unassigned resource',
+      'other': '{} unassigned resources'
+    }"
+        >
+        </ng-pluralize>
+
+        <i ng-if="!stagectrl.stageLoaded" ng-click="stagectrl.loadStage()">
+          Click here to load your stage area
+          <span
+            uib-tooltip="To improve performances, stage area is no longer automatically loaded"
+          >
+            <i class="material-icons">info</i>
+          </span>
+        </i>
+        <i
+          ng-if="stagectrl.stageLoaded"
+          ng-click="stagectrl.loadStage()"
+          class="material-icons"
+          uib-tooltip="Reload data from your stage area"
+          >refresh</i
+        >
+      </h4>
+    </div>
+    <!-- PANEL HEADING END -->
+
+    <!-- PANEL BODY + TABLE START -->
+    <div class="panel-body" ng-if="stagectrl.stageCount">
+      <i class="material-icons tiny">info_outline</i>
+
+      <i ng-if="datactrl.dataLevel == 'study'">
+        You have resources ({{stagectrl.unparsedStageCount}}) into your stage
+        area, select a study to start the import procedure
+      </i>
+
+      <i ng-if="datactrl.dataLevel == 'dataset'">
+        You have resources into your stage area, you can import them into
+        existing datasets or create new datasets
+      </i>
+
+      <br />
+      <hr />
+
+      <treecontrol
+        class="tree-classic"
+        tree-model="stagectrl.stageTree"
+        options="stagectrl.treeOptions"
+        order-by="name"
+        reverse-order="false"
+        selected-node="node1"
+      >
+        <b>{{node.name}}</b>
+        <span ng-if="node.content_length">
+          ({{node.content_length | bytes}})
+        </span>
+
+        <span style="float: right">
+          <i
+            class="secondary-content"
+            ng-if="node.schema == 'dataset' && datactrl.dataLevel != 'study'"
+          >
+            <button
+              class="btn"
+              ng-click="stagectrl.importDataset(node, datactrl)"
+            >
+              Import as new dataset
+            </button>
+          </i>
+          <i
+            class="secondary-content"
+            ng-if="node.schema == 'study' && datactrl.dataLevel == 'study'"
+          >
+            <button
+              class="btn"
+              ng-click="stagectrl.importStudy(node, datactrl)"
+            >
+              Import as new study
+            </button>
+          </i>
+
+          <i
+            class="secondary-content palette-Red-500 text"
+            ng-if='node.schema == "empty"'
+          >
+            This folder is empty
+          </i>
+
+          <i
+            class="secondary-content palette-Red-500 text"
+            ng-if='
+                node.object_type == "collection" && 
+                node.schema != "empty" &&
+                node.schema != "dataset" &&
+                (node.schema != "study" || datactrl.dataLevel == "dataset")
+                '
+          >
+            This folder cannot be imported as a dataset. You may open the folder
+            to import its content
+          </i>
+
+          <i
+            class="secondary-content"
+            ng-if="node.object_type == 'dataobject' && datactrl.dataLevel != 'study'"
+          >
+            <!-- <h6 style='margin:0px;'> -->
+            Import this file as:
+            <select
+              class="form-control"
+              ng-change='datactrl.updateDatasetSelection(
+                          node.name, 
+                          stagectrl.assign_stage_files[node.path+"/"+node.name],
+                          stagectrl
+                        )'
+              ng-model='stagectrl.assign_stage_files[node.path+"/"+node.name]'
+              aria-label="assign stage files"
+              style="margin: 0px"
+            >
+              <option ng-value="" disabled selected>Choose your option</option>
+
+              <option ng-value="-2">
+                <i>Import as resource into this study</i>
+              </option>
+
+              <option
+                ng-repeat="opt in datactrl.datasets"
+                ng-value="opt.accession"
+              >
+                Assign to: {{ opt.name }}
+              </option>
+
+              <option ng-value="-1">+ <i>Create new dataset</i></option>
+            </select>
+            <!-- </h6> -->
+          </i>
+        </span>
+
+        <br />
+        <span style="padding-left: 20px" uib-tooltip="{{node.last_modified}}">
+          <span ng-if="node.last_modified">
+            <i>Modified: {{node.last_modified | moment: 'fromNow' }}</i>
+          </span>
+        </span>
+
+        <hr />
+      </treecontrol>
+    </div>
+    <!-- PANEL BODY +  TABLE END -->
+
+    <!-- PANEL FOOTER START -->
+    <div
+      class="panel-footer"
+      ng-if="datactrl.dataLevel == 'dataset' && stagectrl.stageCount"
+    >
+      <div class="text-right">
+        <button
+          class="btn btn-warning"
+          ng-click="stagectrl.assignFiles(datactrl.list, datactrl)"
+        >
+          Import selected files
+        </button>
+      </div>
+    </div>
+
+    <!-- PANEL FOOTER END -->
+  </div>
+  <!-- PANEL END -->
+</div>

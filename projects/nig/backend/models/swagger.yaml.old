@@ -1,0 +1,391 @@
+# no definition specified
+
+FormDataParameters:
+
+  Study:
+    - name: name
+      in: formData
+      type: string
+      required: true
+      description: Short study name
+      custom:
+        label: Study name
+
+    - name: description
+      in: formData
+      type: string
+      required: true
+      description: Extensive study description
+      custom:
+        htmltype: textarea
+        label: Description
+
+  ##############################################
+  Dataset:
+    - name: name
+      in: formData
+      type: string
+      required: true
+      description: Short dataset name
+      custom:
+        label: Dataset name
+
+    - name: description
+      in: formData
+      type: string
+      required: true
+      description: Extensive dataset description
+      custom:
+        htmltype: textarea
+        label: Description
+
+  ##############################################
+  Phenotype:
+    - name: name
+      in: formData
+      type: string
+      required: true
+      # description: Identification code
+      custom:
+        label: Identification code
+
+    - name: sex
+      in: formData
+      type: string
+      required: true
+      # description: Sex
+      # default: male
+      enum:
+        - male: male
+        - female: female
+      custom:
+        htmltype: select
+        label: Sex
+
+    - name: birthday
+      in: formData
+      type: string
+      format: date
+      required: false
+      # description: Date of birth
+      custom:
+        label: Date of birth
+
+    - name: deathday
+      in: formData
+      type: string
+      format: date
+      required: false
+      # description: Date of death
+      custom:
+        label: Date of death
+
+    - name: birthplace
+      in: formData
+      type: string
+      required: false
+      # description: City of birth
+      custom:
+        autocomplete: true
+        islink: true
+        label: City of birth
+        model_key: _birth_place
+        select_label: city
+        select_id: id
+
+    - name: HPO
+      in: formData
+      type: string
+      required: false
+      # description: HPO terms
+      custom:
+        autocomplete: true
+        multiple: true
+        islink: true
+        label: HPO terms
+        model_key: _hpo
+        select_label: label
+        select_id: hpo_id
+
+    - name: identified_genes
+      in: formData
+      type: string
+      required: false
+      custom:
+        label: Identified mutations
+        multiple: true
+        section: true
+
+    - name: genename
+      in: formData
+      type: string
+      required: false
+      custom:
+        size: 8
+        row: one
+        label: Gene symbol
+        section_key: identified_genes
+
+    - name: genome
+      in: formData
+      type: string
+      required: false
+      custom:
+        size: 4
+        row: one
+        label: Reference genome
+        section_key: identified_genes
+
+    - name: chromosome
+      in: formData
+      type: string
+      required: false
+      custom:
+        htmltype: select
+        size: 4
+        row: two
+        label: Chr
+        section_key: identified_genes
+      enum:
+        - chr1: chr1
+        - chr2: chr2
+        - chr3: chr3
+        - chr4: chr4
+        - chr5: chr5
+        - chr6: chr6
+        - chr7: chr7
+        - chr8: chr8
+        - chr9: chr9
+        - chr10: chr10
+        - chr11: chr11
+        - chr12: chr12
+        - chr13: chr13
+        - chr14: chr14
+        - chr15: chr15
+        - chr16: chr16
+        - chr17: chr17
+        - chr18: chr18
+        - chr19: chr19
+        - chr20: chr20
+        - chr21: chr21
+        - chr22: chr22
+        - chrX: chrX
+        - chrY: chrY
+        - chrM: chrM
+
+    - name: start
+      in: formData
+      type: number
+      required: false
+      custom:
+        size: 4
+        row: two
+        label: Start
+        section_key: identified_genes
+
+    - name: end
+      in: formData
+      type: number
+      required: false
+      custom:
+        size: 4
+        row: two
+        label: End
+        section_key: identified_genes
+
+    - name: reference
+      in: formData
+      type: string
+      required: false
+      custom:
+        size: 4
+        row: three
+        label: Reference
+        section_key: identified_genes
+
+    - name: alteration
+      in: formData
+      type: string
+      required: false
+      custom:
+        size: 4
+        row: three
+        label: Alternate
+        section_key: identified_genes
+
+    - name: zygosity
+      in: formData
+      type: string
+      required: false
+      custom:
+        size: 4
+        row: three
+        htmltype: radio
+        label: Zygosity
+        section_key: identified_genes
+      enum:
+        - homozygous: homozygous
+        - heterozygous: heterozygous
+
+
+    #   custom:
+    #     multiple: true
+    #     label: Identified mutations
+
+    #         "sections":
+    #         [
+    #             [
+    #                 {
+    #                     "key": "genename",
+    #                     "size": "8",
+    #                     "type": "text",
+    #                     "required": "true",
+    #                     "label": "Gene symbol",
+    #                     "description": ""
+    #                 },
+    #                 {
+    #                     "key": "genome",
+    #                     "size": "4",
+    #                     "type": "text",
+    #                     "required": "true",
+    #                     "label": "Reference genome",
+    #                 }
+    #             ],
+    #             [
+    #                 {
+    #                     "key": "chromosome",
+    #                     "size": "4",
+    #                     "type": "select",
+    #                     "required": "true",
+    #                     "label": "Chr",
+    #                     "options":
+    #                     [
+    #                         {"id": "chr1", "value": "chr1"},
+    #                         {"id": "chr2", "value": "chr2"},
+    #                         {"id": "chr3", "value": "chr3"},
+    #                         {"id": "chr4", "value": "chr4"},
+    #                         {"id": "chr5", "value": "chr5"},
+    #                         {"id": "chr6", "value": "chr6"},
+    #                         {"id": "chr7", "value": "chr7"},
+    #                         {"id": "chr8", "value": "chr8"},
+    #                         {"id": "chr9", "value": "chr9"},
+    #                         {"id": "chr10", "value": "chr10"},
+    #                         {"id": "chr11", "value": "chr11"},
+    #                         {"id": "chr12", "value": "chr12"},
+    #                         {"id": "chr13", "value": "chr13"},
+    #                         {"id": "chr14", "value": "chr14"},
+    #                         {"id": "chr15", "value": "chr15"},
+    #                         {"id": "chr16", "value": "chr16"},
+    #                         {"id": "chr17", "value": "chr17"},
+    #                         {"id": "chr18", "value": "chr18"},
+    #                         {"id": "chr19", "value": "chr19"},
+    #                         {"id": "chr20", "value": "chr20"},
+    #                         {"id": "chr21", "value": "chr21"},
+    #                         {"id": "chr22", "value": "chr22"},
+    #                         {"id": "chrX", "value": "chrX"},
+    #                         {"id": "chrY", "value": "chrY"},
+    #                         {"id": "chrM", "value": "chrM"}
+    #                     ],
+    #                     "description": ""
+    #                 },
+    #                 {
+    #                     "key": "start",
+    #                     "size": "4",
+    #                     "type": "int",
+    #                     "required": "true",
+    #                     "label": "Start"
+    #                 },
+    #                 {
+    #                     "key": "end",
+    #                     "size": "4",
+    #                     "type": "int",
+    #                     "required": "true",
+    #                     "label": "End"
+    #                 }
+    #             ],
+    #             [
+    #                 {
+    #                     "key": "reference",
+    #                     "size": "4",
+    #                     "type": "text",
+    #                     "required": "true",
+    #                     "label": "Reference"
+    #                 },
+    #                 {
+    #                     "key": "alteration",
+    #                     "size": "4",
+    #                     "type": "text",
+    #                     "required": "true",
+    #                     "label": "Alternate"
+    #                 },
+    #                 {
+    #                     "key": "zygosity",
+    #                     "size": "4",
+    #                     "type": "radio",
+    #                     "required": "true",
+    #                     "label": "Zygosity",
+    #                     "options":
+    #                     [
+    #                         {"name": "homozygous", "value": "homozygous"},
+    #                         {"name": "heterozygous", "value": "heterozygous"},
+    #                     ]
+
+  ##############################################
+  Technical:
+    - name: name
+      in: formData
+      type: string
+      required: true
+      description: Short name for this technical metadata set
+      custom:
+        label: Set name
+
+    - name: sequencing_date
+      in: formData
+      type: string
+      format: date
+      required: true
+      # description: Date of sequencing
+      custom:
+        label: Date of sequencing
+
+    - name: platform
+      in: formData
+      type: string
+      required: true
+      # description: Platform
+      # default: Illumina
+      enum:
+        - Illumina: Illumina
+        - Ion: Ion
+        - Pacific Biosciences: Pacific Biosciences
+        - Roche 454: Roche 454
+        - SOLiD: SOLiD
+        - SNP-array: SNP-array
+        - Other: Other
+      custom:
+        htmltype: select
+        label: Platform
+
+    - name: enrichment_kit
+      in: formData
+      type: string
+      required: true
+      # description: Enrichment Kit
+      custom:
+        autocomplete: true
+        test_with: Illumina - trusight
+        label: Enrichment Kit
+
+  ##############################################
+
+IdentifiedMutations:
+  required:
+    - firstName
+  properties:
+    firstName:
+      type: string
+    lastName:
+      type: string
+    username:
+      type: string

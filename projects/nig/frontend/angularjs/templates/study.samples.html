@@ -1,0 +1,84 @@
+<div 
+	ng-if="datactrl.loadingSamples" 
+	ng-include="main.templateDir + 'loader.html'">
+</div>
+		
+<br>
+		
+<div class='panel panel-default' ng-if='!datactrl.loadingSamples'>
+<!-- PANEL HEADING START -->
+<div class='panel-heading'>
+	<h4 class='panel-title'>
+		<i class='material-icons'>group_work</i>
+		<ng-pluralize count="datactrl.samples.length"
+			when="{
+			'0': 'This study contains no sample',
+			'one': 'This study contains one sample',
+			'other': 'This study contains {} samples'
+		}">
+		</ng-pluralize>
+	</h4>
+</div>
+<!-- PANEL HEADING END -->
+
+<!-- PANEL BODY + TABLE START -->
+<div class='panel-body'>
+<div class="table-responsive">
+    <table ng-show="datactrl.samples" class='table table-hover table-condensed table-borderless' ts-wrapper>
+
+		<thead>
+	        <tr>
+	            <th ts-criteria="accession" ts-default="descending">Accession</th>
+	            <th ts-criteria="name">Name</th>
+	            <th ts-criteria="_organism[0].scientific_name">Organism</th>
+	            <th ts-criteria="tissue">Tissue</th>
+	            <th ts-criteria="cell">Cell</th>
+	            <th colspan=2 style='width:1%;'></th>
+	        </tr>
+	    </thead>
+
+		<tbody>
+			<tr ng-repeat="data in datactrl.samples" ts-repeat>
+				<td class='accession'> 
+					{{data.accession}}
+				</td>
+				<td>{{data.name}}</td>
+				<td>{{data._organism[0].scientific_name}}</td>
+				<td>{{data.tissue}}</td>
+				<td>{{data.cell}}</td>
+
+				<td 
+					ng-if="!datactrl.studyInfo.readonly"
+					ng-click='datactrl.updateSample(data)'>
+					<i class='material-icons'>edit</i>
+				</td>
+				<td 
+					ng-if="!datactrl.studyInfo.readonly"
+					ng-click='datactrl.deleteSample(data.accession)'>
+					<i class='material-icons palette-Red-500 text'>delete</i>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+</div>
+</div>
+<!-- PANEL BODY +  TABLE END -->
+
+
+<!-- PANEL FOOTER START -->
+<div class="panel-footer">
+<div class='text-right'>
+
+	<button 
+		ng-if="!datactrl.studyInfo.readonly"
+		class="btn btn-success" ng-click="datactrl.showNewSample()">
+		Add sample
+	</button>
+
+</div>
+</div>
+<!-- PANEL FOOTER END -->
+
+</div>
+<!-- PANEL END -->
+</div>
