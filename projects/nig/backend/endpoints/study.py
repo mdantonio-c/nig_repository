@@ -1,11 +1,13 @@
 import os
 import shutil
+from typing import Any, Optional
 
-from nig.endpoints import GROUP_DIR, STUDY_NOT_FOUND, NIGEndpoint
+from nig.endpoints import STUDY_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import BadRequest, Conflict, DatabaseDuplicatedEntry, NotFound
+from restapi.exceptions import Conflict, DatabaseDuplicatedEntry, NotFound
 from restapi.models import Schema, fields
+from restapi.rest.definition import Response
 from restapi.utilities.logs import log
 
 
@@ -51,7 +53,7 @@ class Study(NIGEndpoint):
         },
     )
     @decorators.marshal_with(StudyOutput(many=True), code=200)
-    def get(self, uuid=None):
+    def get(self, uuid: Optional[str] = None) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -94,7 +96,7 @@ class Study(NIGEndpoint):
         },
     )
     @decorators.graph_transactions
-    def post(self, **kwargs):
+    def post(self, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -127,7 +129,7 @@ class Study(NIGEndpoint):
         },
     )
     @decorators.graph_transactions
-    def put(self, uuid, **kwargs):
+    def put(self, uuid: str, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -154,7 +156,7 @@ class Study(NIGEndpoint):
         },
     )
     @decorators.graph_transactions
-    def delete(self, uuid):
+    def delete(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
