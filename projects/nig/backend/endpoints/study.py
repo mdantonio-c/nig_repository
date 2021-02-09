@@ -1,19 +1,22 @@
-import shutil
 import os
-from nig.endpoints import GROUP_DIR,STUDY_NOT_FOUND, NIGEndpoint
+import shutil
+
+from nig.endpoints import GROUP_DIR, STUDY_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import BadRequest, NotFound, DatabaseDuplicatedEntry,Conflict
+from restapi.exceptions import BadRequest, Conflict, DatabaseDuplicatedEntry, NotFound
 from restapi.models import Schema, fields
 from restapi.utilities.logs import log
 
 
 # Output schema
-class Study(Schema):
+class StudyOutput(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
     description = fields.Str(required=True)
-    datasets = fields.Int() # for now only the number of related datasets, can be useful also a list of datasets metadata?
+    datasets = (
+        fields.Int()
+    )  # for now only the number of related datasets, can be useful also a list of datasets metadata?
     # the motivation of access can be useful??
 
 
@@ -21,9 +24,11 @@ class StudyInputSchema(Schema):
     name = fields.Str(required=True)
     description = fields.Str(required=True)
 
+
 class StudyPutSchema(Schema):
     name = fields.Str(required=False)
     description = fields.Str(required=False)
+
 
 class Study(NIGEndpoint):
 
@@ -45,7 +50,7 @@ class Study(NIGEndpoint):
             200: "List of studies successfully retrieved",
         },
     )
-    @decorators.marshal_with(Study(many=True), code=200)
+    @decorators.marshal_with(StudyOutput(many=True), code=200)
     def get(self, uuid=None):
 
         graph = neo4j.get_instance()
@@ -63,8 +68,13 @@ class Study(NIGEndpoint):
             if not access:
                 continue
 
-            study = {"uuid":t.uuid,"name":t.name,"description":t.description,"datasets":len(t.datasets)}
-            #study["attributes"]["access_verification"] = motivation --> it's still useful?
+            study = {
+                "uuid": t.uuid,
+                "name": t.name,
+                "description": t.description,
+                "datasets": len(t.datasets),
+            }
+            # study["attributes"]["access_verification"] = motivation --> it's still useful?
 
             data.append(study)
 
