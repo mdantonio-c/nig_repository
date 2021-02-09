@@ -8,6 +8,15 @@ from restapi.models import Schema, fields
 from restapi.utilities.logs import log
 
 
+# Output schema
+class Study(Schema):
+    uuid = fields.Str(required=True)
+    name = fields.Str(required=True)
+    description = fields.Str(required=True)
+    datasets = fields.Int() # for now only the number of related datasets, can be useful also a list of datasets metadata?
+    # the motivation of access can be useful??
+
+
 class StudyInputSchema(Schema):
     name = fields.Str(required=True)
     description = fields.Str(required=True)
@@ -36,13 +45,10 @@ class Study(NIGEndpoint):
             200: "List of studies successfully retrieved",
         },
     )
+    @decorators.marshal_with(Study(many=True), code=200)
     def get(self, uuid=None):
 
         graph = neo4j.get_instance()
-
-        # collections = self.user_icom.list(
-        #   path=self.getPath(), recursive=False)
-
 
         nodeset = graph.Study.nodes.order_by()
         if uuid is not None:
@@ -57,9 +63,8 @@ class Study(NIGEndpoint):
             if not access:
                 continue
 
-            study = {"uuid":study.uuid}
-            study["attributes"]["datasets"] = len(t.datasets)
-            study["attributes"]["access_verification"] = motivation
+            study = {"uuid":t.uuid,"name":t.name,"description":t.description,"datasets":len(t.datasets)}
+            #study["attributes"]["access_verification"] = motivation --> it's still useful?
 
             data.append(study)
 
@@ -83,10 +88,6 @@ class Study(NIGEndpoint):
 
         graph = neo4j.get_instance()
 
-        # Deprecated
-        # schema = self.get_endpoint_custom_definition()
-        #
-        # properties = self.read_properties(schema, v)
         current_user = self.get_user()
         log.debug(current_user)
 
@@ -124,10 +125,11 @@ class Study(NIGEndpoint):
         self.verifyStudyAccess(study)
 
         try:
-            self.update_properties(study, **kwargs)
+            for field, value in kwargs.items():
+                setattr(study, field, value)
         except DatabaseDuplicatedEntry as exc:
             raise Conflict(str(exc))
-        #study.save()
+        study.save()
 
         return self.empty_response()
 
