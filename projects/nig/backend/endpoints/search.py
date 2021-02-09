@@ -1,3 +1,5 @@
+from typing import Dict, List
+
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
@@ -575,7 +577,7 @@ class Search(NIGEndpoint):
 
         query_result = graph.cypher(cypher)
         counter = 0
-        phenocache = {}
+        phenocache: Dict[str, List[str]] = {}
         hpo_cache = {}
 
         AFFECTED_LABEL = "yes"
