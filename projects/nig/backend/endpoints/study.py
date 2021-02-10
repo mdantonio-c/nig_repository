@@ -99,7 +99,6 @@ class Study(NIGEndpoint):
         graph = neo4j.get_instance()
 
         current_user = self.get_user()
-        log.debug(current_user)
 
         try:
             study = graph.Study(**kwargs).save()
@@ -108,7 +107,7 @@ class Study(NIGEndpoint):
 
         study.ownership.connect(current_user)
 
-        path = self.getPath(study=study.uuid)
+        path = self.getPath(study=study)
 
         os.makedirs(path, exist_ok=True)
 
@@ -160,7 +159,7 @@ class Study(NIGEndpoint):
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study)
 
-        path = self.getPath(study=study.uuid)
+        path = self.getPath(study=study)
 
         for d in study.datasets.all():
             for f in d.files.all():
