@@ -81,9 +81,6 @@ class Study(NIGEndpoint):
 
             data.append(study)
 
-        if uuid is not None and len(data) < 1:
-            raise NotFound(STUDY_NOT_FOUND)
-
         return self.response(data)
 
     @decorators.auth.require()
