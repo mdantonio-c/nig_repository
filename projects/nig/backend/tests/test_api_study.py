@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any, Dict
 
 from nig.endpoints import GROUP_DIR
 from restapi.connectors import neo4j
@@ -22,7 +23,7 @@ class TestApp(BaseTests):
         # create a user for the default group
         graph = neo4j.get_instance()
         default_group = graph.Group.nodes.get_or_none(shortname="Default")
-        data = {}
+        data: Dict[str, Any] = {}
         data["roles"] = ["normal_user"]
         data["roles"] = json.dumps(data["roles"])
         data["group"] = default_group.uuid
