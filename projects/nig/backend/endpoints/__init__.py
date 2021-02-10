@@ -36,14 +36,13 @@ class NIGEndpoint(EndpointResource):
     #
     #     return path
 
-
-    def getPath(self,study=None, dataset=None, file=None):
+    def getPath(self, study=None, dataset=None, file=None):
         current_user = self.get_user()
         group = current_user.belongs_to.single()
         if not group:
             raise NotFound("User group not found")
         if study:
-            path = os.path.join(GROUP_DIR,group.uuid,study)
+            path = os.path.join(GROUP_DIR, group.uuid, study)
 
         return path
 
@@ -102,7 +101,7 @@ class NIGEndpoint(EndpointResource):
             return True, "you are the owner"
 
         # An admin has always access
-        if self.auth.verify_admin():
+        if self.verify_admin():
             return True, "you are an admin"
 
         # A member of the some group of the owner, has always access
@@ -141,7 +140,7 @@ class NIGEndpoint(EndpointResource):
             return True
 
         # An admin has always access
-        if self.auth.verify_admin():
+        if self.verify_admin():
             return True, "you are an admin", True
 
         # A member of the some group of the owner, has always access

@@ -67,6 +67,7 @@ class Study(NIGEndpoint):
         for t in nodeset.all():
 
             access, motivation = self.verifyStudyAccess(t, read=True, raiseError=False)
+            # log.debug("access {} to study {} for {}",access,t.name,motivation)
             if not access:
                 continue
 
@@ -137,11 +138,10 @@ class Study(NIGEndpoint):
         self.verifyStudyAccess(study)
 
         try:
-            for field, value in kwargs.items():
-                setattr(study, field, value)
+            self.auth.db.update_properties(study, kwargs)
+            study.save()
         except DatabaseDuplicatedEntry as exc:
             raise Conflict(str(exc))
-        study.save()
 
         return self.empty_response()
 
