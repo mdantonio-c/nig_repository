@@ -33,7 +33,7 @@ class TestApp(BaseTests):
             client, data.get("email"), data.get("password")
         )
         # create a second user for the default group
-        data: Dict[str, Any] = {}
+        data = {}
         data["roles"] = ["normal_user"]
         data["roles"] = json.dumps(data["roles"])
         data["group"] = default_group.uuid
@@ -43,7 +43,7 @@ class TestApp(BaseTests):
         )
 
         # create a user for the other group
-        data: Dict[str, Any] = {}
+        data = {}
         data["roles"] = ["normal_user"]
         data["roles"] = json.dumps(data["roles"])
         data["group"] = new_group_uuid
