@@ -42,8 +42,10 @@ class NIGEndpoint(EndpointResource):
         if not group:
             raise NotFound("User group not found")
         if study:
-            path = os.path.join(GROUP_DIR, group.uuid, study)
-
+            path = os.path.join(GROUP_DIR, group.uuid, study.uuid)
+        if dataset:
+            study = dataset.parent_study.single()
+            path = os.path.join(GROUP_DIR, group.uuid, study.uuid, dataset.uuid)
         return path
 
     @staticmethod

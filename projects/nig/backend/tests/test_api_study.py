@@ -85,10 +85,6 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/study/{study1_uuid}", headers=admin_headers)
         assert r.status_code == 200
 
-        # random uuid
-        random_uuid = fake.pystr()
-        r = client.get(f"{API_URI}/study/{random_uuid}", headers=first_user_header)
-        assert r.status_code == 404
         # study owner
         r = client.get(f"{API_URI}/study/{study1_uuid}", headers=first_user_header)
         assert r.status_code == 200
@@ -98,6 +94,7 @@ class TestApp(BaseTests):
         # study own by an other group
         r = client.get(f"{API_URI}/study/{study1_uuid}", headers=other_user_header)
         assert r.status_code == 404
+        no_authorized_message = self.get_content(r)
 
         # test study modification
         # modify a study you do not own
@@ -133,6 +130,11 @@ class TestApp(BaseTests):
         # delete a study own by your group
         r = client.delete(f"{API_URI}/study/{study1_uuid}", headers=second_user_header)
         assert r.status_code == 204
+        # check study deletion
+        r = client.get(f"{API_URI}/study/{study1_uuid}", headers=first_user_header)
+        assert r.status_code == 404
+        no_existent_message = self.get_content(r)
+        assert no_existent_message == no_authorized_message
 
         # delete all the elements used by the test
         # first user

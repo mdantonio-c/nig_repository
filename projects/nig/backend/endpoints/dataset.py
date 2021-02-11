@@ -1,3 +1,7 @@
+import os
+import shutil
+from typing import Any, Optional
+
 from nig.endpoints import (
     DATASET_NOT_FOUND,
     PHENOTYPE_NOT_FOUND,
@@ -7,22 +11,42 @@ from nig.endpoints import (
 )
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import BadRequest, NotFound
-
-# from restapi.utilities.logs import log
+from restapi.exceptions import BadRequest, Conflict, NotFound
+from restapi.models import Schema, fields
+from restapi.rest.definition import Response
+from restapi.utilities.logs import log
 
 
 class Dataset(NIGEndpoint):
+
+    # Output schema
+    class DatasetOutput(Schema):
+        uuid = fields.Str(required=True)
+        name = fields.Str(required=True)
+        description = fields.Str(required=False)
+        nfiles = fields.Int()
+        # for now only the number of related files, can be useful also a list of some files metadata?
+        # virtual files?
+
+    # input schema
+    class DatasetInputSchema(Schema):
+        name = fields.Str(required=True)
+        description = fields.Str(required=False)
+
+    class DatasetPutSchema(Schema):
+        name = fields.Str(required=False)
+        description = fields.Str(required=False)
+        phenotype_uuid = fields.Str(required=False)
+        technical_uuid = fields.Str(required=False)
 
     labels = ["dataset"]
 
     @decorators.auth.require()
     @decorators.endpoint(
         path="/study/<study_uuid>/datasets",
-        summary="Obtain information on a single dataset",
+        summary="Obtain the list of datasets in a study",
         responses={
-            200: "Dataset information successfully retrieved",
-            404: "This dataset cannot be found or you are not authorized to access",
+            200: "Dataset list successfully retrieved",
         },
     )
     @decorators.endpoint(
@@ -33,13 +57,15 @@ class Dataset(NIGEndpoint):
             404: "This dataset cannot be found or you are not authorized to access",
         },
     )
-    def get(self, study_uuid=None, dataset_uuid=None):
+    @decorators.marshal_with(DatasetOutput(many=True), code=200)
+    def get(
+        self, study_uuid: Optional[str] = None, dataset_uuid: Optional[str] = None
+    ) -> Response:
 
         graph = neo4j.get_instance()
 
         dataset = None
         study = None
-        acl = None
 
         if study_uuid is not None:
             study = graph.Study.nodes.get_or_none(uuid=study_uuid)
@@ -51,16 +77,6 @@ class Dataset(NIGEndpoint):
 
             study = self.getSingleLinkedNode(dataset.parent_study)
             self.verifyStudyAccess(study, error_type="Dataset", read=True)
-
-            path = self.getPath(study=study.uuid, dataset=dataset.uuid)
-            acl = self.user_icom.get_permissions(path)
-
-        if study is None:
-            raise NotFound(STUDY_NOT_FOUND)
-
-        path = self.getPath(study=study.uuid)
-
-        # collections = self.user_icom.list(path=path, recursive=False)
 
         if dataset_uuid is not None:
             nodeset = graph.Dataset.nodes.filter(uuid=dataset_uuid)
@@ -76,19 +92,14 @@ class Dataset(NIGEndpoint):
             if not t.parent_study.is_connected(study):
                 continue
 
-            dataset = self.getJsonResponse(t, max_relationship_depth=2)
+            dataset_el = {
+                "uuid": t.uuid,
+                "name": t.name,
+                "description": t.description,
+                "nfiles": len(t.files),
+            }
 
-            dataset["attributes"]["nfiles"] = len(t.files)
-            # dataset['attributes']['nvariants'] = self.getLinkedVariants(t)
-
-            if acl is not None:
-                dataset["attributes"]["acl"] = acl["ACL"]
-                dataset["attributes"]["acl_inheritance"] = acl["inheritance"]
-
-            data.append(dataset)
-
-        if dataset_uuid is not None and len(data) < 1:
-            raise NotFound(DATASET_NOT_FOUND)
+            data.append(dataset_el)
 
         return self.response(data)
 
@@ -100,38 +111,32 @@ class Dataset(NIGEndpoint):
         responses={
             200: "The uuid of the new dataset",
             404: "This study cannot be found or you are not authorized to access",
-            403: "You are not authorized to perform actions on this study",
         },
     )
     @decorators.graph_transactions
-    def post(self, uuid):
+    @decorators.use_kwargs(DatasetInputSchema)
+    def post(self, uuid: str, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
-        v = self.get_input()
-        if len(v) == 0:
-            raise BadRequest("Empty input")
-
-        schema = self.get_endpoint_custom_definition()
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study)
 
-        properties = self.read_properties(schema, v)
+        current_user = self.get_user()
 
-        current_user = self.get_current_user()
-
-        properties["unique_name"] = self.createUniqueIndex(
-            study.uuid, properties["name"]
-        )
-        dataset = graph.Dataset(**properties).save()
+        dataset = graph.Dataset(**kwargs).save()
 
         dataset.ownership.connect(current_user)
         dataset.parent_study.connect(study)
 
-        path = self.getPath(study=study.uuid, dataset=dataset.uuid)
+        path = self.getPath(dataset=dataset)
 
-        # to be implemented
-        self.mkdir(path)
+        try:
+            os.makedirs(path, exist_ok=False)
+        except FileExistsError as exc:
+            # just in case..it's almost impossible the same uuid was already used for an other study
+            dataset.delete()
+            raise Conflict(str(exc))
 
         return self.response(dataset.uuid)
 
@@ -143,15 +148,20 @@ class Dataset(NIGEndpoint):
         responses={
             200: "Dataset successfully modified",
             404: "This dataset cannot be found or you are not authorized to access",
-            403: "You are not authorized to perform actions on this dataset",
         },
     )
+    @decorators.use_kwargs(DatasetPutSchema)
     @decorators.graph_transactions
-    def put(self, uuid):
+    def put(
+        self,
+        uuid: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        phenotype_uuid: Optional[str] = None,
+        technical_uuid: Optional[str] = None,
+    ) -> Response:
 
         graph = neo4j.get_instance()
-        v = self.get_input()
-        schema = self.get_endpoint_custom_definition()
 
         dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
         self.verifyDatasetAccess(dataset)
@@ -159,48 +169,37 @@ class Dataset(NIGEndpoint):
         study = self.getSingleLinkedNode(dataset.parent_study)
         self.verifyStudyAccess(study, error_type="Dataset")
 
-        self.update_properties(dataset, schema, v)
-        dataset.unique_name = self.createUniqueIndex(study.uuid, dataset.name)
+        if phenotype_uuid:
+            if previous := dataset.phenotype.single():
+                dataset.phenotype.disconnect(previous)
 
-        dataset.save()
-
-        if "phenotype" in v:
-
-            phenotype_id = v["phenotype"]
-
-            if str(phenotype_id) == "-1":
-                for p in dataset.phenotype.all():
-                    dataset.phenotype.disconnect(p)
-            else:
-
-                phenotype = graph.Phenotype.nodes.get_or_none(uuid=phenotype_id)
+            if phenotype_uuid != "-1":
+                phenotype = graph.Phenotype.nodes.get_or_none(uuid=phenotype_uuid)
 
                 if phenotype is None:
                     raise NotFound(PHENOTYPE_NOT_FOUND)
 
-                for p in dataset.phenotype.all():
-                    dataset.phenotype.disconnect(p)
-
                 dataset.phenotype.connect(phenotype)
 
-        if "technical" in v:
+        if technical_uuid:
+            if previous := dataset.technical.single():
+                dataset.technical.disconnect(previous)
 
-            technical_id = v["technical"]
-
-            if str(technical_id) == "-1":
-                for p in dataset.technical.all():
-                    dataset.technical.disconnect(p)
-            else:
-
-                technical = graph.TechnicalMetadata.nodes.get_or_none(uuid=technical_id)
+            if technical_uuid != "-1":
+                technical = graph.TechnicalMetadata.nodes.get_or_none(
+                    uuid=technical_uuid
+                )
 
                 if technical is None:
                     raise NotFound(TECHMETA_NOT_FOUND)
 
-                for p in dataset.technical.all():
-                    dataset.technical.disconnect(p)
-
                 dataset.technical.connect(technical)
+        if name:
+            dataset.name = name
+        if description:
+            dataset.description = description
+
+        dataset.save()
 
         return self.empty_response()
 
@@ -215,7 +214,7 @@ class Dataset(NIGEndpoint):
         },
     )
     @decorators.graph_transactions
-    def delete(self, uuid):
+    def delete(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -225,13 +224,14 @@ class Dataset(NIGEndpoint):
 
         study = self.getSingleLinkedNode(dataset.parent_study)
         self.verifyStudyAccess(study, error_type="Dataset")
-        path = self.getPath(study=study.uuid, dataset=dataset.uuid)
+        path = self.getPath(dataset=dataset)
 
         for f in dataset.files.all():
             f.delete()
 
         dataset.delete()
 
-        self.admin_icom.remove(path, recursive=True)
+        # remove the dataset folder
+        shutil.rmtree(path)
 
         return self.empty_response()

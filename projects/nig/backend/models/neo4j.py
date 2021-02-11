@@ -45,7 +45,7 @@ class Study(TimestampedNode):
 
 class Dataset(TimestampedNode):
     name = StringProperty(required=True)
-    unique_name = StringProperty(required=True, unique_index=True)
+    # unique_name = StringProperty(required=True, unique_index=True)
     description = StringProperty()
     is_proband = BooleanProperty()
 
