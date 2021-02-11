@@ -2,19 +2,14 @@ import os
 import shutil
 from typing import Any, Optional
 
-from nig.endpoints import (
-    DATASET_NOT_FOUND,
-    PHENOTYPE_NOT_FOUND,
-    STUDY_NOT_FOUND,
-    TECHMETA_NOT_FOUND,
-    NIGEndpoint,
-)
+from nig.endpoints import PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import BadRequest, Conflict, NotFound
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
-from restapi.utilities.logs import log
+
+# from restapi.utilities.logs import log
 
 
 class Dataset(NIGEndpoint):
@@ -64,39 +59,36 @@ class Dataset(NIGEndpoint):
 
         graph = neo4j.get_instance()
 
-        dataset = None
-        study = None
-
-        if study_uuid is not None:
+        if study_uuid:
             study = graph.Study.nodes.get_or_none(uuid=study_uuid)
             self.verifyStudyAccess(study, read=True)
+            nodeset = study.datasets
 
-        elif dataset_uuid is not None:
+        elif dataset_uuid:
             dataset = graph.Dataset.nodes.get_or_none(uuid=dataset_uuid)
             self.verifyDatasetAccess(dataset, read=True)
 
             study = self.getSingleLinkedNode(dataset.parent_study)
             self.verifyStudyAccess(study, error_type="Dataset", read=True)
 
-        if dataset_uuid is not None:
             nodeset = graph.Dataset.nodes.filter(uuid=dataset_uuid)
-        else:
-            nodeset = study.datasets
+        else:  # pragma: no cover
+            raise BadRequest("Missing study or dataset ID")
 
         data = []
-        for t in nodeset.all():
+        for dataset in nodeset.all():
 
-            if not self.verifyDatasetAccess(t, read=True, raiseError=False):
+            if not self.verifyDatasetAccess(dataset, read=True, raiseError=False):
                 continue
 
-            if not t.parent_study.is_connected(study):
+            if not dataset.parent_study.is_connected(study):
                 continue
 
             dataset_el = {
-                "uuid": t.uuid,
-                "name": t.name,
-                "description": t.description,
-                "nfiles": len(t.files),
+                "uuid": dataset.uuid,
+                "name": dataset.name,
+                "description": dataset.description,
+                "nfiles": len(dataset.files),
             }
 
             data.append(dataset_el)
@@ -104,7 +96,6 @@ class Dataset(NIGEndpoint):
         return self.response(data)
 
     @decorators.auth.require()
-    # {'custom_parameters': ['Dataset']}
     @decorators.endpoint(
         path="/study/<uuid>/datasets",
         summary="Create a new dataset in a study",
@@ -133,15 +124,14 @@ class Dataset(NIGEndpoint):
 
         try:
             os.makedirs(path, exist_ok=False)
-        except FileExistsError as exc:
-            # just in case..it's almost impossible the same uuid was already used for an other study
+        # Almost impossible to have the same uuid was already used for an other study
+        except FileExistsError as exc:  # pragma: no cover
             dataset.delete()
             raise Conflict(str(exc))
 
         return self.response(dataset.uuid)
 
     @decorators.auth.require()
-    # {'custom_parameters': ['Dataset']}
     @decorators.endpoint(
         path="/dataset/<uuid>",
         summary="Modify a dataset",

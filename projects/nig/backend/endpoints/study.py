@@ -2,13 +2,14 @@ import os
 import shutil
 from typing import Any, Optional
 
-from nig.endpoints import STUDY_NOT_FOUND, NIGEndpoint
+from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import Conflict, DatabaseDuplicatedEntry, NotFound
+from restapi.exceptions import Conflict, DatabaseDuplicatedEntry
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
-from restapi.utilities.logs import log
+
+# from restapi.utilities.logs import log
 
 
 # Output schema
@@ -84,7 +85,6 @@ class Study(NIGEndpoint):
         return self.response(data)
 
     @decorators.auth.require()
-    # {'custom_parameters': ['Study']}
     @decorators.use_kwargs(StudyInputSchema)
     @decorators.endpoint(
         path="/study",
@@ -114,7 +114,6 @@ class Study(NIGEndpoint):
         return self.response(study.uuid)
 
     @decorators.auth.require()
-    # {'custom_parameters': ['Study']}
     @decorators.use_kwargs(StudyPutSchema)
     @decorators.endpoint(
         path="/study/<uuid>",
