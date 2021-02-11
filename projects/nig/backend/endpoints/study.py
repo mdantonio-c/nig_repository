@@ -105,7 +105,7 @@ class Study(NIGEndpoint):
 
         try:
             os.makedirs(path, exist_ok=False)
-        except FileExistsError as exc:
+        except FileExistsError as exc:  # pragma: no cover
             # Almost impossible the have same uuid was already used for an other study
             study.delete()
             raise Conflict(str(exc))
