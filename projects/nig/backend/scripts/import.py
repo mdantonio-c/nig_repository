@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Optional
 
 import neomodel
 from neomodel import (  # StructuredRel,
@@ -16,7 +17,6 @@ from neomodel import (  # StructuredRel,
     db,
 )
 from restapi.utilities.logs import log
-from tying import Optional
 
 """
 docker run -t -d \
