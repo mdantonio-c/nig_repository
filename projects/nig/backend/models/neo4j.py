@@ -26,7 +26,7 @@ class UserCustom(IdentifiedNode):
 
 
 class Study(TimestampedNode):
-    name = StringProperty(required=True, unique_index=True)
+    name = StringProperty(required=True)
     description = StringProperty(required=True)
 
     ownership = RelationshipTo(

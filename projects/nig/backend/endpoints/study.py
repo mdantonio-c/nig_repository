@@ -5,7 +5,7 @@ from typing import Any, Optional
 from nig.endpoints import STUDY_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import Conflict, DatabaseDuplicatedEntry, NotFound
+from restapi.exceptions import Conflict, NotFound
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
 from restapi.utilities.logs import log
@@ -100,16 +100,18 @@ class Study(NIGEndpoint):
 
         current_user = self.get_user()
 
-        try:
-            study = graph.Study(**kwargs).save()
-        except DatabaseDuplicatedEntry as exc:
-            raise Conflict(str(exc))
+        study = graph.Study(**kwargs).save()
 
         study.ownership.connect(current_user)
 
         path = self.getPath(study=study)
 
-        os.makedirs(path, exist_ok=True)
+        try:
+            os.makedirs(path, exist_ok=False)
+        except FileExistsError as exc:
+            # just in case..it's almost impossible the same uuid was already used for an other study
+            study.delete()
+            raise Conflict(str(exc))
 
         return self.response(study.uuid)
 
@@ -133,11 +135,8 @@ class Study(NIGEndpoint):
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study)
 
-        try:
-            self.auth.db.update_properties(study, kwargs)
-            study.save()
-        except DatabaseDuplicatedEntry as exc:
-            raise Conflict(str(exc))
+        self.auth.db.update_properties(study, kwargs)
+        study.save()
 
         return self.empty_response()
 
