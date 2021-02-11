@@ -19,23 +19,6 @@ RESOURCE_NOT_FOUND = "This resource cannot be found or you are not authorized to
 
 
 class NIGEndpoint(EndpointResource):
-    def __init__(self, user="mdantoni"):
-        super().__init__()
-
-    # def getPath(self, study=None, dataset=None, file=None):
-    #     path = self.user_icom.get_user_home(user="data")
-    #
-    #     if study is not None:
-    #         path = os.path.join(path, study)
-    #
-    #     if dataset is not None:
-    #         path = os.path.join(path, dataset)
-    #
-    #     if file is not None:
-    #         path = os.path.join(path, file)
-    #
-    #     return path
-
     def getPath(self, study=None, dataset=None, file=None):
         current_user = self.get_user()
         group = current_user.belongs_to.single()
