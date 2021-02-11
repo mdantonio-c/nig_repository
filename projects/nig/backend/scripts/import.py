@@ -16,6 +16,7 @@ from neomodel import (  # StructuredRel,
     db,
 )
 from restapi.utilities.logs import log
+from tying import Optional
 
 """
 docker run -t -d \
@@ -178,6 +179,8 @@ db.set_connection(uri)
 
 create_genes = True
 # create_genes = False
+
+gene: Optional[Gene]
 
 genes = {}
 if create_genes:

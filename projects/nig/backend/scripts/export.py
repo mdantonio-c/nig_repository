@@ -1,5 +1,6 @@
 import json
 import time
+from typing import Any, Dict
 
 from neo4j.exceptions import AddressError
 from neomodel import (  # StructuredRel,
@@ -178,7 +179,7 @@ variant_counter = 0
 # variant_counter = 465
 
 if export_genes:
-    genes = {}
+    genes: Dict[str, Any] = {}
     log.debug("Reading genes")
     res = cypher("MATCH (g:Gene) return g")
     for r in res:
@@ -202,7 +203,7 @@ if export_genes:
 
 limit = 10000
 while True:
-    variants = {}
+    variants: Dict[str, Any] = {}
     set_connection()
     skip = variant_counter * limit
     log.debug("Reading variants from {} to {}".format(skip + 1, skip + limit))

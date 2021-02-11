@@ -39,7 +39,7 @@ for i in range(0, 5):
             description=fake.pystr(),
             birthday=datetime.fromtimestamp(fake.unix_time(), pytz.utc),
             sex=random.choice(("M", "F")),
-            birth_place=fake.city(),
+            # birth_place=fake.city(),
             unique_name=fake.pystr(),
         ).save()
 
