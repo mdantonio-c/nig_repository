@@ -70,10 +70,6 @@ class TestApp(BaseTests):
         dir_path = os.path.join(GROUP_DIR, new_group_uuid, study2_uuid)
         assert os.path.isdir(dir_path)
 
-        # test uniqueness of study fields
-        r = client.post(f"{API_URI}/study", headers=first_user_header, data=study2)
-        assert r.status_code == 409
-
         # test study access
         # test study list response
         r = client.get(f"{API_URI}/study", headers=first_user_header)
@@ -111,13 +107,6 @@ class TestApp(BaseTests):
             data={"description": fake.pystr()},
         )
         assert r.status_code == 204
-        # modify a study using a non unique field
-        r = client.put(
-            f"{API_URI}/study/{study1_uuid}",
-            headers=first_user_header,
-            data={"name": random_name2},
-        )
-        assert r.status_code == 409
 
         # delete a study
         # delete a study you do not own
