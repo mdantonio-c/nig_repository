@@ -9,3 +9,12 @@ export interface MyType {
   optional?: Date;
 }
 **/
+export interface Study {
+  uuid: string;
+  name: string;
+  description: string;
+  /** Number of the contained datasets */
+  datasets: number;
+}
+
+export interface Studies extends Array<Study> {}

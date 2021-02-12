@@ -4,27 +4,25 @@ import { RouterModule, Routes } from "@angular/router";
 import { SharedModule } from "@rapydo/shared.module";
 import { AuthGuard } from "@rapydo/app.auth.guard";
 
-// import { MyComponent } from "./components/mycomponent";
+import { StudiesComponent } from "./components/studies/studies.component";
 
 const routes: Routes = [
   {
+    path: "app/studies",
+    component: StudiesComponent,
+    canActivate: [AuthGuard],
+    runGuardsAndResolvers: "always",
+  },
+  {
     path: "",
-    redirectTo: "/app/profile",
+    redirectTo: "/app/studies",
     pathMatch: "full",
   },
   {
     path: "app",
-    redirectTo: "/app/profile",
+    redirectTo: "/app/studies",
     pathMatch: "full",
   },
-  /*
-  {
-    path: "app/myroute",
-    component: MyComponent,
-    canActivate: [AuthGuard],
-    runGuardsAndResolvers: "always",
-  },
-*/
 
   /* AngularJS routes */
   /*
@@ -139,7 +137,7 @@ const routes: Routes = [
 @NgModule({
   imports: [SharedModule, RouterModule.forChild(routes)],
   declarations: [
-    // MyComponent
+    StudiesComponent,
   ],
 
   providers: [],
