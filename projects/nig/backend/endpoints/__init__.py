@@ -102,8 +102,8 @@ class NIGEndpoint(EndpointResource):
         if owner == current_user:
             return True, "you are the owner"
 
-        # An admin has always access
-        if self.verify_admin():
+        # An admin has always access for readonly
+        if read and self.verify_admin():
             return True, "you are an admin"
 
         # A member of the some group of the owner, has always access
