@@ -1,9 +1,9 @@
 import json
 import os
+import shutil
 from typing import Any, Dict
 
 from nig.endpoints import GROUP_DIR
-from restapi.connectors import neo4j
 from restapi.tests import API_URI, BaseTests
 
 
@@ -19,14 +19,19 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         new_group_uuid = self.get_content(r)
+        # create a second new group
+        default_group = {"shortname": fake.pystr(), "fullname": fake.pystr()}
+        r = client.post(
+            f"{API_URI}/admin/groups", headers=admin_headers, data=default_group
+        )
+        assert r.status_code == 200
+        default_group_uuid = self.get_content(r)
 
         # create a user for the default group
-        graph = neo4j.get_instance()
-        default_group = graph.Group.nodes.get_or_none(shortname="Default")
         data: Dict[str, Any] = {}
         data["roles"] = ["normal_user"]
         data["roles"] = json.dumps(data["roles"])
-        data["group"] = default_group.uuid
+        data["group"] = default_group_uuid
         first_user_uuid, data = self.create_user(client, data)
 
         first_user_header, _ = self.do_login(
@@ -36,7 +41,7 @@ class TestApp(BaseTests):
         data = {}
         data["roles"] = ["normal_user"]
         data["roles"] = json.dumps(data["roles"])
-        data["group"] = default_group.uuid
+        data["group"] = default_group_uuid
         second_user_uuid, data = self.create_user(client, data)
         second_user_header, _ = self.do_login(
             client, data.get("email"), data.get("password")
@@ -52,7 +57,7 @@ class TestApp(BaseTests):
             client, data.get("email"), data.get("password")
         )
 
-        # create a new study for default group
+        # create a new study for "default" group
         random_name = fake.pystr()
         study1 = {"name": random_name, "description": fake.pystr()}
         r = client.post(f"{API_URI}/study", headers=first_user_header, data=study1)
@@ -113,9 +118,26 @@ class TestApp(BaseTests):
         r = client.delete(f"{API_URI}/study/{study1_uuid}", headers=other_user_header)
         assert r.status_code == 404
         # delete a study you own
+        # create a new dataset to test if it's deleted with the study
+        dataset = {"name": fake.pystr(), "description": fake.pystr()}
+        r = client.post(
+            f"{API_URI}/study/{study2_uuid}/datasets",
+            headers=other_user_header,
+            data=dataset,
+        )
+        assert r.status_code == 200
+        dataset_uuid = self.get_content(r)
+        dataset_path = os.path.join(dir_path, dataset_uuid)
+        assert os.path.isdir(dir_path)
+        # delete the study
         r = client.delete(f"{API_URI}/study/{study2_uuid}", headers=other_user_header)
         assert r.status_code == 204
         assert not os.path.isdir(dir_path)
+        assert not os.path.isdir(dataset_path)
+        # check the dataset was deleted
+        r = client.get(f"{API_URI}/dataset/{dataset_uuid}", headers=other_user_header)
+        assert r.status_code == 404
+
         # delete a study own by your group
         r = client.delete(f"{API_URI}/study/{study1_uuid}", headers=second_user_header)
         assert r.status_code == 204
@@ -141,8 +163,18 @@ class TestApp(BaseTests):
             f"{API_URI}/admin/users/{other_user_uuid}", headers=admin_headers
         )
         assert r.status_code == 204
+        group_dir_path = os.path.join(GROUP_DIR, new_group_uuid)
+        shutil.rmtree(group_dir_path)
         # new group
         r = client.delete(
             f"{API_URI}/admin/groups/{new_group_uuid}", headers=admin_headers
+        )
+        assert r.status_code == 204
+        # "default" group directory
+        group_dir_path = os.path.join(GROUP_DIR, default_group_uuid)
+        shutil.rmtree(group_dir_path)
+        # "default" group
+        r = client.delete(
+            f"{API_URI}/admin/groups/{default_group_uuid}", headers=admin_headers
         )
         assert r.status_code == 204
