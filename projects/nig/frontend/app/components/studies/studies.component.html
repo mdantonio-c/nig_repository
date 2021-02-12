@@ -16,7 +16,6 @@
         </div>
 
         <div class="card-block">
-        	<ngx-spinner [fullScreen]="false"></ngx-spinner>
           <div class="table-responsive">
             <div class="container-fluid">
               <div class="row">
@@ -35,68 +34,71 @@
                 </div>
               </div>
             </div>
-					  <ngx-datatable
-					    #studiesTable
-					    class="bootstrap expandable"
-					    [rows]="data"
-					    [columns]="columns"
-					    [columnMode]="ColumnMode.flex"
-					    [headerHeight]="40"
-					    [footerHeight]="40"
-					    [externalPaging]="true"
-					    [count]="paging.dataLength"
-					    [limit]="paging.itemsPerPage"
-					    [offset]="paging.page"
-					    [rowHeight]="'auto'"
-					  >
-					  	<!-- Column Templates -->
-					    <!-- Name -->
-					    <ngx-datatable-column
-					      prop="name"
-					      [flexGrow]="2"
-					    >
-					      <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
-					        <span>{{ value }}</span>
+            <div class="table-wrapper" #tableWrapper>
+              <ngx-spinner [fullScreen]="false"></ngx-spinner>
+						  <ngx-datatable
+						    #studiesTable
+						    class="bootstrap expandable"
+						    [rows]="data"
+						    [columns]="columns"
+						    [columnMode]="ColumnMode.flex"
+						    [headerHeight]="40"
+						    [footerHeight]="40"
+						    [externalPaging]="true"
+						    [count]="paging.dataLength"
+						    [limit]="paging.itemsPerPage"
+						    [offset]="paging.page"
+						    [rowHeight]="'auto'"
+						  >
+						  	<!-- Column Templates -->
+						    <!-- Name -->
+						    <ngx-datatable-column
+						      prop="name"
+						      [flexGrow]="2"
+						    >
+						      <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
+						        <span>{{ value }}</span>
+						      </ng-template>
+						  	</ngx-datatable-column>
+						  	<!-- Description -->
+						  	<ngx-datatable-column
+						      prop="description"
+						      [flexGrow]="2"
+						    >
+						      <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
+						        <span>{{ value }}</span>
+						      </ng-template>
+						  	</ngx-datatable-column>
+						  	<!-- Controls -->
+						    <ngx-datatable-column
+						      width="60"
+						      headerClass="px-0"
+						      [resizeable]="false"
+						      [sortable]="false"
+						      [draggable]="false"
+						      [canAutoResize]="false"
+						    >
+						    <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
+					        <div class="btn-toolbar justify-content-end" role="toolbar">
+					          <div class="btn-group mr-1" role="group">
+					            <button
+					              class="btn p-0 mr-1"
+					              (click)="update(row)"
+					            >
+					              <i class="fa fa-edit"></i>
+					            </button>
+					            <button
+					              class="btn p-0"
+					              (click)="delete(row.uuid)"
+					            >
+					              <i class="fa fa-trash red"></i>
+					            </button>
+					          </div>
+					        </div>
 					      </ng-template>
-					  	</ngx-datatable-column>
-					  	<!-- Description -->
-					  	<ngx-datatable-column
-					      prop="description"
-					      [flexGrow]="2"
-					    >
-					      <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
-					        <span>{{ value }}</span>
-					      </ng-template>
-					  	</ngx-datatable-column>
-					  	<!-- Controls -->
-					    <ngx-datatable-column
-					      width="60"
-					      headerClass="px-0"
-					      [resizeable]="false"
-					      [sortable]="false"
-					      [draggable]="false"
-					      [canAutoResize]="false"
-					    >
-					    <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
-				        <div class="btn-toolbar justify-content-end" role="toolbar">
-				          <div class="btn-group mr-1" role="group">
-				            <button
-				              class="btn p-0 mr-1"
-				              (click)="update(row)"
-				            >
-				              <i class="fa fa-edit"></i>
-				            </button>
-				            <button
-				              class="btn p-0"
-				              (click)="delete(row.uuid)"
-				            >
-				              <i class="fa fa-trash red"></i>
-				            </button>
-				          </div>
-				        </div>
-				      </ng-template>
-					  	</ngx-datatable-column>
-					  </ngx-datatable>
+						  	</ngx-datatable-column>
+						  </ngx-datatable>
+						</div>
 					</div>
 				</div>
 			</div>
