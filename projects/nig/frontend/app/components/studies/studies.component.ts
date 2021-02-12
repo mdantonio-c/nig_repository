@@ -19,4 +19,16 @@ export class StudiesComponent extends BasePaginationComponent<Study> {
 	    this.list();
 	}
 
+	filter(data_filter) {
+    return this.unfiltered_data.filter((d) => {
+      if (d.name.toLowerCase().indexOf(data_filter) !== -1) {
+        return true;
+      }
+      if (d.description.toLowerCase().indexOf(data_filter) !== -1) {
+        return true;
+      }
+      return false;
+    });
+  }
+
 }
