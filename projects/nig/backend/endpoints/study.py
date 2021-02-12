@@ -2,13 +2,14 @@ import os
 import shutil
 from typing import Any, Optional
 
-from nig.endpoints import STUDY_NOT_FOUND, NIGEndpoint
+from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import Conflict, NotFound
+from restapi.exceptions import Conflict
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
-from restapi.utilities.logs import log
+
+# from restapi.utilities.logs import log
 
 
 # Output schema
@@ -16,10 +17,8 @@ class StudyOutput(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
     description = fields.Str(required=True)
-    datasets = (
-        fields.Int()
-    )  # for now only the number of related datasets, can be useful also a list of datasets metadata?
-    # the motivation of access can be useful??
+    # Number of related datasets
+    datasets = fields.Int()
 
 
 class StudyInputSchema(Schema):
@@ -77,14 +76,12 @@ class Study(NIGEndpoint):
                 "description": t.description,
                 "datasets": len(t.datasets),
             }
-            # study["attributes"]["access_verification"] = motivation --> it's still useful?
 
             data.append(study)
 
         return self.response(data)
 
     @decorators.auth.require()
-    # {'custom_parameters': ['Study']}
     @decorators.use_kwargs(StudyInputSchema)
     @decorators.endpoint(
         path="/study",
@@ -108,15 +105,14 @@ class Study(NIGEndpoint):
 
         try:
             os.makedirs(path, exist_ok=False)
-        except FileExistsError as exc:
-            # just in case..it's almost impossible the same uuid was already used for an other study
+        except FileExistsError as exc:  # pragma: no cover
+            # Almost impossible the have same uuid was already used for an other study
             study.delete()
             raise Conflict(str(exc))
 
         return self.response(study.uuid)
 
     @decorators.auth.require()
-    # {'custom_parameters': ['Study']}
     @decorators.use_kwargs(StudyPutSchema)
     @decorators.endpoint(
         path="/study/<uuid>",

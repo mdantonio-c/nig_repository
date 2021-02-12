@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Optional
 
 import neomodel
 from neomodel import (  # StructuredRel,
@@ -179,6 +180,8 @@ db.set_connection(uri)
 create_genes = True
 # create_genes = False
 
+gene: Optional[Gene]
+
 genes = {}
 if create_genes:
     genes_file = os.path.join(file_root, "export.genes.json")
@@ -203,7 +206,7 @@ else:
     res = cypher("MATCH (g:Gene) return g")
     for r in res:
         gene = Gene.inflate(r[0])
-        genes[gene.geneName] = gene
+        genes[gene.geneName] = gene  # type: ignore
 
 variants_counter = 0
 counter = 0
@@ -259,7 +262,7 @@ while True:
                     attributes = {"geneName": geneName}
                     gene = Gene(**attributes)
                     gene.save()
-                genes[geneName] = gene
+                genes[geneName] = gene  # type: ignore
 
             if gene is not None:
                 variant.gene.connect(gene)

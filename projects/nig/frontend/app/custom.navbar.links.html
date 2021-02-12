@@ -10,4 +10,14 @@
       >*Profile*</a
     >
   </li>
---></ul>
+-->
+  <li class="nav-item" *ngIf="user">
+    <a
+      class="nav-link"
+      routerLink="/app/studies"
+      routerLinkActive="active"
+      (click)="collapse()"
+      >Studies</a
+    >
+  </li>
+</ul>

@@ -1,0 +1,47 @@
+<!-- <h3>Studies</h3> -->
+<ngx-spinner [fullScreen]="false"></ngx-spinner>
+<!-- no data -->
+<div class="row" *ngIf="!loading && !data?.length">
+  <div class="col">
+    <div class="no-results">
+      <h2>No Data</h2>
+    </div>
+  </div>
+</div>
+<!-- load requests in the table -->
+<div class="table-responsive" *ngIf="data?.length" #tableWrapper>
+  <ngx-datatable
+    #studiesTable
+    class="bootstrap expandable mx-5"
+    [rows]="data"
+    [columns]="columns"
+    [columnMode]="ColumnMode.flex"
+    [headerHeight]="40"
+    [footerHeight]="40"
+    [externalPaging]="true"
+    [count]="paging.dataLength"
+    [limit]="paging.itemsPerPage"
+    [offset]="paging.page"
+    [rowHeight]="'auto'"
+  >
+  	<!-- Column Templates -->
+    <!-- Name -->
+    <ngx-datatable-column
+      prop="name"
+      [flexGrow]="2"
+    >
+      <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
+        <span>{{ value }}</span>
+      </ng-template>
+  	</ngx-datatable-column>
+  	<!-- Description -->
+  	<ngx-datatable-column
+      prop="description"
+      [flexGrow]="2"
+    >
+      <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
+        <span>{{ value }}</span>
+      </ng-template>
+  	</ngx-datatable-column>
+  </ngx-datatable>
+</div>
