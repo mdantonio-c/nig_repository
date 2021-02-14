@@ -8,11 +8,11 @@ from restapi.tests import API_URI, BaseTests
 
 
 class TestApp(BaseTests):
-    def test_api_study(self, client, fake):
+    def test_api_study(self, client, faker):
         admin_headers, _ = self.do_login(client, None, None)
         # create a new group
-        new_group_name = fake.pystr()
-        new_group_fullname = fake.pystr()
+        new_group_name = faker.pystr()
+        new_group_fullname = faker.pystr()
         new_group = {"shortname": new_group_name, "fullname": new_group_fullname}
         r = client.post(
             f"{API_URI}/admin/groups", headers=admin_headers, data=new_group
@@ -53,15 +53,15 @@ class TestApp(BaseTests):
         )
 
         # create a new study for default group
-        random_name = fake.pystr()
-        study1 = {"name": random_name, "description": fake.pystr()}
+        random_name = faker.pystr()
+        study1 = {"name": random_name, "description": faker.pystr()}
         r = client.post(f"{API_URI}/study", headers=first_user_header, data=study1)
         assert r.status_code == 200
         study1_uuid = self.get_content(r)
 
         # create a new study for the other group
-        random_name2 = fake.pystr()
-        study2 = {"name": random_name2, "description": fake.pystr()}
+        random_name2 = faker.pystr()
+        study2 = {"name": random_name2, "description": faker.pystr()}
         r = client.post(f"{API_URI}/study", headers=other_user_header, data=study2)
         assert r.status_code == 200
         study2_uuid = self.get_content(r)
@@ -97,14 +97,14 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/study/{study1_uuid}",
             headers=other_user_header,
-            data={"description": fake.pystr()},
+            data={"description": faker.pystr()},
         )
         assert r.status_code == 404
         # modify a study you own
         r = client.put(
             f"{API_URI}/study/{study1_uuid}",
             headers=first_user_header,
-            data={"description": fake.pystr()},
+            data={"description": faker.pystr()},
         )
         assert r.status_code == 204
 
