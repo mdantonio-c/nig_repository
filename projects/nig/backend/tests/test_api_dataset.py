@@ -8,11 +8,11 @@ from restapi.tests import API_URI, BaseTests
 
 
 class TestApp(BaseTests):
-    def test_api_dataset(self, client, fake):
+    def test_api_dataset(self, client, faker):
         admin_headers, _ = self.do_login(client, None, None)
         # create a new group
-        new_group_name = fake.pystr()
-        new_group_fullname = fake.pystr()
+        new_group_name = faker.pystr()
+        new_group_fullname = faker.pystr()
         new_group = {"shortname": new_group_name, "fullname": new_group_fullname}
         r = client.post(
             f"{API_URI}/admin/groups", headers=admin_headers, data=new_group
@@ -20,7 +20,7 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         new_group_uuid = self.get_content(r)
         # create a second new group
-        default_group = {"shortname": fake.pystr(), "fullname": fake.pystr()}
+        default_group = {"shortname": faker.pystr(), "fullname": faker.pystr()}
         r = client.post(
             f"{API_URI}/admin/groups", headers=admin_headers, data=default_group
         )
@@ -58,21 +58,21 @@ class TestApp(BaseTests):
         )
 
         # create a new study for default group
-        random_name = fake.pystr()
-        study1 = {"name": random_name, "description": fake.pystr()}
+        random_name = faker.pystr()
+        study1 = {"name": random_name, "description": faker.pystr()}
         r = client.post(f"{API_URI}/study", headers=default_user1_header, data=study1)
         assert r.status_code == 200
         study1_uuid = self.get_content(r)
 
         # create a new study for the other group
-        random_name2 = fake.pystr()
-        study2 = {"name": random_name2, "description": fake.pystr()}
+        random_name2 = faker.pystr()
+        study2 = {"name": random_name2, "description": faker.pystr()}
         r = client.post(f"{API_URI}/study", headers=other_user_header, data=study2)
         assert r.status_code == 200
         study2_uuid = self.get_content(r)
 
         # create a new dataset
-        dataset1 = {"name": fake.pystr(), "description": fake.pystr()}
+        dataset1 = {"name": faker.pystr(), "description": faker.pystr()}
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
             headers=default_user1_header,
@@ -95,7 +95,7 @@ class TestApp(BaseTests):
         assert r.status_code == 404
 
         # create a new dataset as admin not belonging to study group
-        dataset2 = {"name": fake.pystr(), "description": fake.pystr()}
+        dataset2 = {"name": faker.pystr(), "description": faker.pystr()}
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
             headers=admin_headers,
@@ -164,21 +164,21 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=other_user_header,
-            data={"description": fake.pystr()},
+            data={"description": faker.pystr()},
         )
         assert r.status_code == 404
         # modify a dataset you own
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=default_user1_header,
-            data={"description": fake.pystr()},
+            data={"description": faker.pystr()},
         )
         assert r.status_code == 204
         # modify a dataset of your group
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=default_user2_header,
-            data={"name": fake.pystr()},
+            data={"name": faker.pystr()},
         )
         assert r.status_code == 204
 
@@ -186,7 +186,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=admin_headers,
-            data={"description": fake.pystr()},
+            data={"description": faker.pystr()},
         )
         assert r.status_code == 404
 
