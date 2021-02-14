@@ -65,7 +65,7 @@ class Study(NIGEndpoint):
         data = []
         for t in nodeset.all():
 
-            access, motivation = self.verifyStudyAccess(t, read=True, raiseError=False)
+            access = self.verifyStudyAccess(t, read=True, raiseError=False)
             # log.debug("access {} to study {} for {}",access,t.name,motivation)
             if not access:
                 continue

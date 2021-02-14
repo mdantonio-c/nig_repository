@@ -72,32 +72,32 @@ class NIGEndpoint(EndpointResource):
             if raiseError:
                 raise NotFound(not_found)
             else:
-                return False, "error, null study"
+                return False
 
         owner = study.ownership.single()
 
         if owner is None:
             log.warning("Study with null owner: %s" % study.uuid)
-            return False, "error, null owner"
+            return False
 
         current_user = self.get_user()
         # The owner has always access
         if owner == current_user:
-            return True, "you are the owner"
+            return True
 
-        # An admin has always access
-        if self.verify_admin():
-            return True, "you are an admin"
+        # An admin has always access for readonly
+        if read and self.verify_admin():
+            return True
 
         # A member of the some group of the owner, has always access
         for group in owner.belongs_to.all():
             if group.members.is_connected(current_user):
-                return True, "you share a group with the owner"
+                return True
 
         if raiseError:
             raise NotFound(not_found)
         else:
-            return False, "you have no access"
+            return False
 
     def verifyDatasetAccess(
         self, dataset, error_type="Dataset", read=False, raiseError=True
@@ -126,7 +126,7 @@ class NIGEndpoint(EndpointResource):
 
         # An admin has always access
         if self.verify_admin():
-            return True, "you are an admin", True
+            return True
 
         # A member of the some group of the owner, has always access
         for group in owner.belongs_to.all():
