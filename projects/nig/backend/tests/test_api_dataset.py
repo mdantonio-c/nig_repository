@@ -115,7 +115,7 @@ class TestApp(BaseTests):
         # same group of the owner
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B2_headers)
         assert r.status_code == 200
-        # dataset own by an other group
+        # dataset owned by an other group
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
         no_authorized_message = self.get_content(r)
