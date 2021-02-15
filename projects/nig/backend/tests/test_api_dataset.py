@@ -1,7 +1,8 @@
+import json
 import os
 import shutil
 
-from nig.endpoints import GROUP_DIR
+from nig.endpoints import GROUP_DIR, PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND
 from restapi.tests import API_URI, BaseTests
 
 
@@ -9,9 +10,14 @@ class TestApp(BaseTests):
     def test_api_dataset(self, client, faker):
         admin_headers, _ = self.do_login(client, None, None)
 
+        role_list = ["normal_user"]
+        role = json.dumps(role_list)
+
         # create a group with one user
         uuid_group_A, _ = self.create_group(client)
-        user_A1_uuid, data = self.create_user(client, {"group": uuid_group_A})
+        user_A1_uuid, data = self.create_user(
+            client, {"group": uuid_group_A, "roles": role}
+        )
         user_A1_headers, _ = self.do_login(
             client, data.get("email"), data.get("password")
         )
@@ -19,13 +25,17 @@ class TestApp(BaseTests):
         # create a second group with two users
         uuid_group_B, _ = self.create_group(client)
 
-        user_B1_uuid, data = self.create_user(client, {"group": uuid_group_B})
+        user_B1_uuid, data = self.create_user(
+            client, {"group": uuid_group_B, "roles": role}
+        )
         user_B1_headers, _ = self.do_login(
             client, data.get("email"), data.get("password")
         )
 
         # create a second user for the group 2
-        user_B2_uuid, data = self.create_user(client, {"group": uuid_group_B})
+        user_B2_uuid, data = self.create_user(
+            client, {"group": uuid_group_B, "roles": role}
+        )
         user_B2_headers, _ = self.do_login(
             client, data.get("email"), data.get("password")
         )
@@ -125,6 +135,15 @@ class TestApp(BaseTests):
         assert r.status_code == 200
 
         # test dataset modification
+        # create a technical
+        r = client.post(
+            f"{API_URI}/study/{study1_uuid}/technicals",
+            headers=user_B1_headers,
+            data={"name": faker.pystr()},
+        )
+        assert r.status_code == 200
+        technical_uuid = self.get_content(r)
+
         # modify a dataset you do not own
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
@@ -139,13 +158,41 @@ class TestApp(BaseTests):
             data={"description": faker.pystr()},
         )
         assert r.status_code == 204
-        # modify a dataset of your group
+        # modify a dataset of your group assigning a technical
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_B2_headers,
-            data={"name": faker.pystr()},
+            data={"technical_uuid": technical_uuid},
         )
         assert r.status_code == 204
+        # check technical was correctly assigned
+        r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B2_headers)
+        assert r.status_code == 200
+        response = self.get_content(r)
+        assert "technicals" in response[0]
+        assert response[0]["technicals"]["uuid"] == technical_uuid
+        # modify a dataset of your group removing a technical
+        r = client.put(
+            f"{API_URI}/dataset/{dataset1_uuid}",
+            headers=user_B2_headers,
+            data={"technical_uuid": "-1"},
+        )
+        assert r.status_code == 204
+        # check technical was correctly removed
+        r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B2_headers)
+        assert r.status_code == 200
+        response = self.get_content(r)
+        assert "technicals" not in response[0]
+
+        # check assign a technical that does not exists
+        r = client.put(
+            f"{API_URI}/dataset/{dataset1_uuid}",
+            headers=user_B2_headers,
+            data={"technical_uuid": faker.pystr()},
+        )
+        assert r.status_code == 404
+        error_msg = self.get_content(r)
+        assert error_msg == TECHMETA_NOT_FOUND
 
         # admin modify a dataset of a group he don't belongs
         r = client.put(

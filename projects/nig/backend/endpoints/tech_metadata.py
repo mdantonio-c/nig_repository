@@ -124,8 +124,6 @@ class TechnicalMetadata(NIGEndpoint):
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study)
 
-        log.debug(type(kwargs["sequencing_date"]))
-
         # kit = properties.get("enrichment_kit", None)
         # if kit is not None and "value" in kit:
         #     properties["enrichment_kit"] = kit["value"]
