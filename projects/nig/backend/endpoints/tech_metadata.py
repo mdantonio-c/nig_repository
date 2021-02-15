@@ -1,35 +1,51 @@
+from typing import Any, Optional
+
+import pytz
 from nig.endpoints import TECHMETA_NOT_FOUND, NIGEndpoint
-from nig.time import date_from_string
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import BadRequest, NotFound
+from restapi.models import Schema, fields, validate
+from restapi.rest.definition import Response
+from restapi.utilities.logs import log
+
+PLATFORMS = [
+    "Illumina",
+    "Ion",
+    "Pacific Biosciences",
+    "Roche 454",
+    "SOLiD",
+    "SNP-array",
+    "Other",
+]
+
+
+class TechmetaInputSchema(Schema):
+    name = fields.Str(required=True)
+    sequencing_date = fields.DateTime("%d/%m/%Y")
+    platform = fields.Str(validate=validate.OneOf(PLATFORMS))
+    enrichment_kit = fields.Str()
+
+
+class TechmetaPutSchema(Schema):
+    name = fields.Str(required=False)
+    sequencing_date = fields.DateTime("%d/%m/%Y")
+    platform = fields.Str(validate=validate.OneOf(PLATFORMS))
+    enrichment_kit = fields.Str()
+
+
+class TechmetaOutputSchema(Schema):
+    uuid = fields.Str(required=True)
+    name = fields.Str(required=True)
+    sequencing_date = fields.DateTime("%d/%m/%Y")
+    platform = fields.Str()
+    enrichment_kit = fields.Str()
 
 
 class TechnicalMetadata(NIGEndpoint):
 
     # schema_expose = True
     labels = ["technicals"]
-
-    def validate_input(self, properties, schema):
-
-        if "name" in properties:
-            if properties["name"] == "":
-                raise BadRequest("Name cannot be empty")
-
-        if "platform" in properties:
-            s = properties["platform"]
-            allowed = [
-                "Illumina",
-                "Ion",
-                "Pacific Biosciences",
-                "Roche 454",
-                "SOLiD",
-                "SNP-array",
-                "Other",
-            ]
-
-            if s not in allowed:
-                raise BadRequest("Not allowed value for key platform")
 
     @decorators.auth.require()
     @decorators.endpoint(
@@ -48,7 +64,10 @@ class TechnicalMetadata(NIGEndpoint):
             404: "This set of technical metadata cannot be found or you are not authorized to access",
         },
     )
-    def get(self, study_uuid=None, technical_uuid=None):
+    @decorators.marshal_with(TechmetaOutputSchema(many=True), code=200)
+    def get(
+        self, study_uuid: Optional[str] = None, technical_uuid: Optional[str] = None
+    ) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -56,7 +75,7 @@ class TechnicalMetadata(NIGEndpoint):
             techmeta = graph.TechnicalMetadata.nodes.get_or_none(uuid=technical_uuid)
             if techmeta is None:
                 raise NotFound(TECHMETA_NOT_FOUND)
-            study = self.getSingleLinkedNode(techmeta.defined_in)
+            study = techmeta.defined_in.single()
             self.verifyStudyAccess(study, error_type="Technical Metadata", read=True)
             nodeset = graph.TechnicalMetadata.nodes.filter(uuid=technical_uuid)
 
@@ -68,9 +87,14 @@ class TechnicalMetadata(NIGEndpoint):
         data = []
         for t in nodeset.all():
 
-            techmeta = self.getJsonResponse(t)
-
-            data.append(techmeta)
+            techmeta_el = {
+                "uuid": t.uuid,
+                "name": t.name,
+                "sequencing_date": t.sequencing_date,
+                "platform": t.platform,
+                "enrichment_kit": t.enrichment_kit,
+            }
+            data.append(techmeta_el)
 
         return self.response(data)
 
@@ -82,40 +106,35 @@ class TechnicalMetadata(NIGEndpoint):
         responses={
             200: "The uuid of the new set of technical metadata",
             404: "This study cannot be found or you are not authorized to access",
-            403: "You are not authorized to perform actions on this study",
         },
     )
     @decorators.graph_transactions
-    def post(self, uuid):
+    @decorators.use_kwargs(TechmetaInputSchema)
+    def post(self, uuid: str, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
 
-        v = self.get_input()
-        if len(v) == 0:
-            raise BadRequest("Empty input")
-
-        schema = self.get_endpoint_custom_definition()
-        self.validate_input(v, schema)
+        # parse date
+        seq_date_to_parse = kwargs.get("sequencing_date", None)
+        if seq_date_to_parse:
+            if seq_date_to_parse.tzinfo is None:
+                parsed_date = pytz.utc.localize(seq_date_to_parse)
+                kwargs["sequencing_date"] = parsed_date
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study)
-        properties = self.read_properties(schema, v)
 
-        if "sequencing_date" in properties:
-            properties["sequencing_date"] = date_from_string(
-                properties["sequencing_date"]
-            )
+        log.debug(type(kwargs["sequencing_date"]))
 
-        kit = properties.get("enrichment_kit", None)
-        if kit is not None and "value" in kit:
-            properties["enrichment_kit"] = kit["value"]
+        # kit = properties.get("enrichment_kit", None)
+        # if kit is not None and "value" in kit:
+        #     properties["enrichment_kit"] = kit["value"]
 
-        properties["unique_name"] = self.createUniqueIndex(
-            study.uuid, properties["name"]
-        )
-        techmeta = graph.TechnicalMetadata(**properties).save()
+        techmeta = graph.TechnicalMetadata(**kwargs).save()
 
         techmeta.defined_in.connect(study)
+
+        self.log_event(self.events.create, techmeta, kwargs)
 
         return self.response(techmeta.uuid)
 
@@ -127,34 +146,35 @@ class TechnicalMetadata(NIGEndpoint):
         responses={
             200: "Technical metadata successfully modified",
             404: "This set of technical metadata cannot be found or you are not authorized to access",
-            403: "You are not authorized to perform actions on this set of technical metadata",
         },
     )
     @decorators.graph_transactions
-    def put(self, uuid):
+    @decorators.use_kwargs(TechmetaPutSchema)
+    def put(self, uuid: str, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
-
-        v = self.get_input()
-        schema = self.get_endpoint_custom_definition()
-        self.validate_input(v, schema)
 
         techmeta = graph.TechnicalMetadata.nodes.get_or_none(uuid=uuid)
         if techmeta is None:
             raise NotFound(TECHMETA_NOT_FOUND)
-        study = self.getSingleLinkedNode(techmeta.defined_in)
+        study = techmeta.defined_in.single()
         self.verifyStudyAccess(study, error_type="Technical Metadata")
-        if "sequencing_date" in v:
-            v["sequencing_date"] = date_from_string(v["sequencing_date"])
-        kit = v.get("enrichment_kit", None)
-        if kit is not None and "value" in kit:
-            v["enrichment_kit"] = kit["value"]
 
-        v["unique_name"] = self.createUniqueIndex(study.uuid, v["name"])
-        self.update_properties(techmeta, schema, v)
-        techmeta.unique_name = self.createUniqueIndex(study.uuid, techmeta.name)
+        # kit = v.get("enrichment_kit", None)
+        # if kit is not None and "value" in kit:
+        #     v["enrichment_kit"] = kit["value"]
 
+        # parse date
+        seq_date_to_parse = kwargs.get("sequencing_date", None)
+        if seq_date_to_parse:
+            if seq_date_to_parse.tzinfo is None:
+                parsed_date = pytz.utc.localize(seq_date_to_parse)
+                kwargs["sequencing_date"] = parsed_date
+
+        self.auth.db.update_properties(techmeta, kwargs)
         techmeta.save()
+
+        self.log_event(self.events.modify, techmeta, kwargs)
 
         return self.empty_response()
 
@@ -165,20 +185,21 @@ class TechnicalMetadata(NIGEndpoint):
         responses={
             200: "Technical metadata successfully deleted",
             404: "This set of technical metadata cannot be found or you are not authorized to access",
-            403: "You are not authorized to perform actions on this set of technical metadata",
         },
     )
     @decorators.graph_transactions
-    def delete(self, uuid):
+    def delete(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
         techmeta = graph.TechnicalMetadata.nodes.get_or_none(uuid=uuid)
         if techmeta is None:
             raise NotFound(TECHMETA_NOT_FOUND)
-        study = self.getSingleLinkedNode(techmeta.defined_in)
+        study = techmeta.defined_in.single()
         self.verifyStudyAccess(study, error_type="Technical Metadata")
 
         techmeta.delete()
+
+        self.log_event(self.events.delete, techmeta)
 
         return self.empty_response()

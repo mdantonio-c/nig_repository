@@ -12,27 +12,36 @@ from restapi.rest.definition import Response
 # from restapi.utilities.logs import log
 
 
+class Technicals(Schema):
+    uuid = fields.Str(required=True)
+    name = fields.Str(required=True)
+
+
+# Output schema
+class DatasetOutput(Schema):
+    uuid = fields.Str(required=True)
+    name = fields.Str(required=True)
+    description = fields.Str(required=False)
+    technicals = fields.Nested(Technicals)
+    nfiles = fields.Int()
+    # for now only the number of related files, can be useful also a list of some files metadata?
+    # virtual files?
+
+
+# input schema
+class DatasetInputSchema(Schema):
+    name = fields.Str(required=True)
+    description = fields.Str(required=False)
+
+
+class DatasetPutSchema(Schema):
+    name = fields.Str(required=False)
+    description = fields.Str(required=False)
+    phenotype_uuid = fields.Str(required=False)
+    technical_uuid = fields.Str(required=False)
+
+
 class Dataset(NIGEndpoint):
-
-    # Output schema
-    class DatasetOutput(Schema):
-        uuid = fields.Str(required=True)
-        name = fields.Str(required=True)
-        description = fields.Str(required=False)
-        nfiles = fields.Int()
-        # for now only the number of related files, can be useful also a list of some files metadata?
-        # virtual files?
-
-    # input schema
-    class DatasetInputSchema(Schema):
-        name = fields.Str(required=True)
-        description = fields.Str(required=False)
-
-    class DatasetPutSchema(Schema):
-        name = fields.Str(required=False)
-        description = fields.Str(required=False)
-        phenotype_uuid = fields.Str(required=False)
-        technical_uuid = fields.Str(required=False)
 
     labels = ["dataset"]
 
@@ -68,7 +77,7 @@ class Dataset(NIGEndpoint):
             dataset = graph.Dataset.nodes.get_or_none(uuid=dataset_uuid)
             self.verifyDatasetAccess(dataset, read=True)
 
-            study = self.getSingleLinkedNode(dataset.parent_study)
+            study = dataset.parent_study.single()
             self.verifyStudyAccess(study, error_type="Dataset", read=True)
 
             nodeset = graph.Dataset.nodes.filter(uuid=dataset_uuid)
@@ -90,6 +99,12 @@ class Dataset(NIGEndpoint):
                 "description": dataset.description,
                 "nfiles": len(dataset.files),
             }
+            technical = dataset.technical.single()
+            if technical:
+                dataset_el["technicals"] = {
+                    "uuid": technical.uuid,
+                    "name": technical.name,
+                }
 
             data.append(dataset_el)
 
@@ -156,7 +171,7 @@ class Dataset(NIGEndpoint):
         dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
         self.verifyDatasetAccess(dataset)
 
-        study = self.getSingleLinkedNode(dataset.parent_study)
+        study = dataset.parent_study.single()
         self.verifyStudyAccess(study, error_type="Dataset")
 
         if phenotype_uuid:
@@ -212,7 +227,7 @@ class Dataset(NIGEndpoint):
         dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
         self.verifyDatasetAccess(dataset)
 
-        study = self.getSingleLinkedNode(dataset.parent_study)
+        study = dataset.parent_study.single()
         self.verifyStudyAccess(study, error_type="Dataset")
         path = self.getPath(dataset=dataset)
 
