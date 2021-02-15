@@ -1,7 +1,5 @@
-import json
 import os
 import shutil
-from typing import Any, Dict
 
 from nig.endpoints import GROUP_DIR
 from restapi.tests import API_URI, BaseTests
@@ -10,64 +8,37 @@ from restapi.tests import API_URI, BaseTests
 class TestApp(BaseTests):
     def test_api_dataset(self, client, faker):
         admin_headers, _ = self.do_login(client, None, None)
-        # create a new group
-        new_group_name = faker.pystr()
-        new_group_fullname = faker.pystr()
-        new_group = {"shortname": new_group_name, "fullname": new_group_fullname}
-        r = client.post(
-            f"{API_URI}/admin/groups", headers=admin_headers, data=new_group
-        )
-        assert r.status_code == 200
-        new_group_uuid = self.get_content(r)
-        # create a second new group
-        default_group = {"shortname": faker.pystr(), "fullname": faker.pystr()}
-        r = client.post(
-            f"{API_URI}/admin/groups", headers=admin_headers, data=default_group
-        )
-        assert r.status_code == 200
-        default_group_uuid = self.get_content(r)
 
-        # create a user for the "default" group
-        data: Dict[str, Any] = {}
-        data["roles"] = ["normal_user"]
-        data["roles"] = json.dumps(data["roles"])
-        data["group"] = default_group_uuid
-        default_user1_uuid, data = self.create_user(client, data)
-
-        default_user1_header, _ = self.do_login(
-            client, data.get("email"), data.get("password")
-        )
-        # create a second user for the default group
-        data = {}
-        data["roles"] = ["normal_user"]
-        data["roles"] = json.dumps(data["roles"])
-        data["group"] = default_group_uuid
-        default_user2_uuid, data = self.create_user(client, data)
-        default_user2_header, _ = self.do_login(
+        # create a group with one user
+        uuid_group_A, _ = self.create_group(client)
+        user_A1_uuid, data = self.create_user(client, {"group": uuid_group_A})
+        user_A1_headers, _ = self.do_login(
             client, data.get("email"), data.get("password")
         )
 
-        # create a user for the other group
-        data = {}
-        data["roles"] = ["normal_user"]
-        data["roles"] = json.dumps(data["roles"])
-        data["group"] = new_group_uuid
-        other_user_uuid, data = self.create_user(client, data)
-        other_user_header, _ = self.do_login(
+        # create a second group with two users
+        uuid_group_B, _ = self.create_group(client)
+
+        user_B1_uuid, data = self.create_user(client, {"group": uuid_group_B})
+        user_B1_headers, _ = self.do_login(
             client, data.get("email"), data.get("password")
         )
 
-        # create a new study for default group
-        random_name = faker.pystr()
-        study1 = {"name": random_name, "description": faker.pystr()}
-        r = client.post(f"{API_URI}/study", headers=default_user1_header, data=study1)
+        # create a second user for the group 2
+        user_B2_uuid, data = self.create_user(client, {"group": uuid_group_B})
+        user_B2_headers, _ = self.do_login(
+            client, data.get("email"), data.get("password")
+        )
+
+        # create a study in group B
+        study1 = {"name": faker.pystr(), "description": faker.pystr()}
+        r = client.post(f"{API_URI}/study", headers=user_B1_headers, data=study1)
         assert r.status_code == 200
         study1_uuid = self.get_content(r)
 
-        # create a new study for the other group
-        random_name2 = faker.pystr()
-        study2 = {"name": random_name2, "description": faker.pystr()}
-        r = client.post(f"{API_URI}/study", headers=other_user_header, data=study2)
+        # create a study in group A
+        study2 = {"name": faker.pystr(), "description": faker.pystr()}
+        r = client.post(f"{API_URI}/study", headers=user_A1_headers, data=study2)
         assert r.status_code == 200
         study2_uuid = self.get_content(r)
 
@@ -75,21 +46,19 @@ class TestApp(BaseTests):
         dataset1 = {"name": faker.pystr(), "description": faker.pystr()}
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
-            headers=default_user1_header,
+            headers=user_B1_headers,
             data=dataset1,
         )
         assert r.status_code == 200
         dataset1_uuid = self.get_content(r)
         # check the directory exists
-        dir_path = os.path.join(
-            GROUP_DIR, default_group_uuid, study1_uuid, dataset1_uuid
-        )
+        dir_path = os.path.join(GROUP_DIR, uuid_group_B, study1_uuid, dataset1_uuid)
         assert os.path.isdir(dir_path)
 
         # create a new dataset in a study of an other group
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/datasets",
-            headers=default_user1_header,
+            headers=user_B1_headers,
             data=dataset1,
         )
         assert r.status_code == 404
@@ -105,7 +74,7 @@ class TestApp(BaseTests):
 
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
-            headers=default_user1_header,
+            headers=user_B1_headers,
             data=dataset2,
         )
         assert r.status_code == 200
@@ -114,7 +83,7 @@ class TestApp(BaseTests):
         # test dataset access
         # test dataset list response
         r = client.get(
-            f"{API_URI}/study/{study1_uuid}/datasets", headers=default_user1_header
+            f"{API_URI}/study/{study1_uuid}/datasets", headers=user_B1_headers
         )
         assert r.status_code == 200
         response = self.get_content(r)
@@ -122,7 +91,7 @@ class TestApp(BaseTests):
 
         # test dataset list response for a study you don't have access
         r = client.get(
-            f"{API_URI}/study/{study2_uuid}/datasets", headers=default_user1_header
+            f"{API_URI}/study/{study2_uuid}/datasets", headers=user_B1_headers
         )
         assert r.status_code == 404
 
@@ -134,24 +103,20 @@ class TestApp(BaseTests):
 
         # test empty list of datasets in a study
         r = client.get(
-            f"{API_URI}/study/{study2_uuid}/datasets", headers=other_user_header
+            f"{API_URI}/study/{study2_uuid}/datasets", headers=user_A1_headers
         )
         assert r.status_code == 200
         response = self.get_content(r)
         assert not response
 
         # dataset owner
-        r = client.get(
-            f"{API_URI}/dataset/{dataset1_uuid}", headers=default_user1_header
-        )
+        r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
         # same group of the owner
-        r = client.get(
-            f"{API_URI}/dataset/{dataset1_uuid}", headers=default_user2_header
-        )
+        r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B2_headers)
         assert r.status_code == 200
         # dataset own by an other group
-        r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=other_user_header)
+        r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
         no_authorized_message = self.get_content(r)
 
@@ -163,21 +128,21 @@ class TestApp(BaseTests):
         # modify a dataset you do not own
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
-            headers=other_user_header,
+            headers=user_A1_headers,
             data={"description": faker.pystr()},
         )
         assert r.status_code == 404
         # modify a dataset you own
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
-            headers=default_user1_header,
+            headers=user_B1_headers,
             data={"description": faker.pystr()},
         )
         assert r.status_code == 204
         # modify a dataset of your group
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
-            headers=default_user2_header,
+            headers=user_B2_headers,
             data={"name": faker.pystr()},
         )
         assert r.status_code == 204
@@ -192,69 +157,59 @@ class TestApp(BaseTests):
 
         # delete a dataset
         # delete a dataset you do not own
-        r = client.delete(
-            f"{API_URI}/dataset/{dataset1_uuid}", headers=other_user_header
-        )
+        r = client.delete(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
         # admin delete a dataset of a group he don't belong
         r = client.delete(f"{API_URI}/dataset/{dataset1_uuid}", headers=admin_headers)
         assert r.status_code == 404
         # delete a dataset you own
-        r = client.delete(
-            f"{API_URI}/dataset/{dataset1_uuid}", headers=default_user1_header
-        )
+        r = client.delete(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B1_headers)
         assert r.status_code == 204
         assert not os.path.isdir(dir_path)
         # delete a study own by your group
-        r = client.delete(
-            f"{API_URI}/dataset/{dataset2_uuid}", headers=default_user2_header
-        )
+        r = client.delete(f"{API_URI}/dataset/{dataset2_uuid}", headers=user_B2_headers)
         assert r.status_code == 204
         # check dataset deletion
-        r = client.get(
-            f"{API_URI}/dataset/{dataset1_uuid}", headers=default_user1_header
-        )
+        r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B1_headers)
         assert r.status_code == 404
         no_existent_message = self.get_content(r)
         assert no_existent_message == no_authorized_message
 
         # delete all the elements used by the test
         # first study
-        r = client.delete(
-            f"{API_URI}/study/{study1_uuid}", headers=default_user1_header
-        )
+        r = client.delete(f"{API_URI}/study/{study1_uuid}", headers=user_B1_headers)
         assert r.status_code == 204
         # second study
-        r = client.delete(f"{API_URI}/study/{study2_uuid}", headers=other_user_header)
+        r = client.delete(f"{API_URI}/study/{study2_uuid}", headers=user_A1_headers)
         assert r.status_code == 204
         # first user
         r = client.delete(
-            f"{API_URI}/admin/users/{default_user1_uuid}", headers=admin_headers
+            f"{API_URI}/admin/users/{user_B1_uuid}", headers=admin_headers
         )
         assert r.status_code == 204
         # second user
         r = client.delete(
-            f"{API_URI}/admin/users/{default_user2_uuid}", headers=admin_headers
+            f"{API_URI}/admin/users/{user_B2_uuid}", headers=admin_headers
         )
         assert r.status_code == 204
         # other user
         r = client.delete(
-            f"{API_URI}/admin/users/{other_user_uuid}", headers=admin_headers
+            f"{API_URI}/admin/users/{user_A1_uuid}", headers=admin_headers
         )
         assert r.status_code == 204
 
         # new group directory
-        group_dir_path = os.path.join(GROUP_DIR, new_group_uuid)
+        group_dir_path = os.path.join(GROUP_DIR, uuid_group_A)
         shutil.rmtree(group_dir_path)
         r = client.delete(
-            f"{API_URI}/admin/groups/{new_group_uuid}", headers=admin_headers
+            f"{API_URI}/admin/groups/{uuid_group_A}", headers=admin_headers
         )
         assert r.status_code == 204
         # "default" group directory
-        group_dir_path = os.path.join(GROUP_DIR, default_group_uuid)
+        group_dir_path = os.path.join(GROUP_DIR, uuid_group_B)
         shutil.rmtree(group_dir_path)
         # "default" group
         r = client.delete(
-            f"{API_URI}/admin/groups/{default_group_uuid}", headers=admin_headers
+            f"{API_URI}/admin/groups/{uuid_group_B}", headers=admin_headers
         )
         assert r.status_code == 204
