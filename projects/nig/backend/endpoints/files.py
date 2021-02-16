@@ -75,8 +75,8 @@ class Files(NIGEndpoint):
             else:
                 if file.task_id is None:
                     task = None
-                else:
-                    task = celery.AsyncResult(file.task_id)
+                # else:
+                #     task = celery.AsyncResult(file.task_id)
                 if task is not None and str(task) != "None":
                     row["attributes"]["status"] = task.status
                 elif file.status is None:
