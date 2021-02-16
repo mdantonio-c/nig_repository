@@ -13,5 +13,11 @@ export class DataService {
   constructor(private api: ApiService, private http: HttpClient) {}
 
   // STUDIES
-  // getStudies(): Observable<Study[]> { }
+  getStudies(): Observable<Study[]> {
+  	return this.api.get<Study[]>('study');
+  }
+
+  getStudy(uuid: string): Observable<Study> {
+  	return this.api.get<Study>(`study/${uuid}`);
+  }
 }

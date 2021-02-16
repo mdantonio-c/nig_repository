@@ -57,7 +57,12 @@
 						      [flexGrow]="2"
 						    >
 						      <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
-						        <span>{{ value }}</span>
+						        <a [routerLink]="[row.uuid]" [state]="{
+						        uuid: row.uuid,
+						        name: row.name,
+						        description: row.description,
+						        datasets: row.datasets
+						      }">{{ value }}</a>
 						      </ng-template>
 						  	</ngx-datatable-column>
 						  	<!-- Description -->
