@@ -59,7 +59,7 @@ class Files(NIGEndpoint):
         irods_data = self.user_icom.list(path=path, detailed=True)
 
         data = []
-        task = None
+        # task = None
         for file in dataset.files.all():
             if file.name not in irods_data:
                 continue
@@ -72,17 +72,20 @@ class Files(NIGEndpoint):
             # row['attributes']['size'] = file.size
             if file.status == "completed" or file.status == "SUCCESS":
                 row["attributes"]["status"] = file.status
-            else:
-                if file.task_id is None:
-                    task = None
-                # else:
-                #     task = celery.AsyncResult(file.task_id)
-                if task is not None and str(task) != "None":
-                    row["attributes"]["status"] = task.status
-                elif file.status is None:
-                    row["attributes"]["status"] = "SUCCESS"
-                else:
-                    row["attributes"]["status"] = file.status
+
+            # To be re-evaluated
+            # else:
+            #     if file.task_id is None:
+            #         task = None
+            #     else:
+            #         task = celery.AsyncResult(file.task_id)
+            #     if task is not None and str(task) != "None":
+            #         row["attributes"]["status"] = task.status
+            #     elif file.status is None:
+            #         row["attributes"]["status"] = "SUCCESS"
+            #     else:
+            #         row["attributes"]["status"] = file.status
+
             if file.metadata:
                 row["attributes"]["metadata"] = file.metadata
             data.append(row)
