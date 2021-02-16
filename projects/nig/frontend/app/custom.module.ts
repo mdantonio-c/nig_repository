@@ -5,11 +5,18 @@ import { SharedModule } from "@rapydo/shared.module";
 import { AuthGuard } from "@rapydo/app.auth.guard";
 
 import { StudiesComponent } from "./components/studies/studies.component";
+import { StudyComponent } from "./components/study/study.component";
 
 const routes: Routes = [
   {
     path: "app/studies",
     component: StudiesComponent,
+    canActivate: [AuthGuard],
+    runGuardsAndResolvers: "always",
+  },
+  {
+    path: "app/studies/:study_uuid",
+    component: StudyComponent,
     canActivate: [AuthGuard],
     runGuardsAndResolvers: "always",
   },
@@ -138,6 +145,7 @@ const routes: Routes = [
   imports: [SharedModule, RouterModule.forChild(routes)],
   declarations: [
     StudiesComponent,
+    StudyComponent
   ],
 
   providers: [],

@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 
@@ -9,9 +10,14 @@ class TestApp(BaseTests):
     def test_api_study(self, client, faker):
         admin_headers, _ = self.do_login(client, None, None)
 
+        role_list = ["normal_user"]
+        role = json.dumps(role_list)
+
         # Create a group with one user
         uuid_group_A, _ = self.create_group(client)
-        user_A1_uuid, data = self.create_user(client, {"group": uuid_group_A})
+        user_A1_uuid, data = self.create_user(
+            client, {"group": uuid_group_A, "roles": role}
+        )
 
         user_A1_headers, _ = self.do_login(
             client, data.get("email"), data.get("password")
@@ -20,12 +26,16 @@ class TestApp(BaseTests):
         # Create a group with two users
         uuid_group_B, _ = self.create_group(client)
 
-        user_B1_uuid, data = self.create_user(client, {"group": uuid_group_B})
+        user_B1_uuid, data = self.create_user(
+            client, {"group": uuid_group_B, "roles": role}
+        )
         user_B1_headers, _ = self.do_login(
             client, data.get("email"), data.get("password")
         )
 
-        user_B2_uuid, data = self.create_user(client, {"group": uuid_group_B})
+        user_B2_uuid, data = self.create_user(
+            client, {"group": uuid_group_B, "roles": role}
+        )
         user_B2_headers, _ = self.do_login(
             client, data.get("email"), data.get("password")
         )
@@ -102,6 +112,15 @@ class TestApp(BaseTests):
         dataset_uuid = self.get_content(r)
         dataset_path = os.path.join(dir_path, dataset_uuid)
         assert os.path.isdir(dir_path)
+        # create a new technical to test if it's deleted with the study
+        techmeta = {"name": faker.pystr()}
+        r = client.post(
+            f"{API_URI}/study/{study2_uuid}/technicals",
+            headers=user_A1_headers,
+            data=techmeta,
+        )
+        assert r.status_code == 200
+        techmeta_uuid = self.get_content(r)
         # delete the study
         r = client.delete(f"{API_URI}/study/{study2_uuid}", headers=user_A1_headers)
         assert r.status_code == 204
@@ -109,6 +128,9 @@ class TestApp(BaseTests):
         assert not os.path.isdir(dataset_path)
         # check the dataset was deleted
         r = client.get(f"{API_URI}/dataset/{dataset_uuid}", headers=user_A1_headers)
+        assert r.status_code == 404
+        # check the technical was deleted
+        r = client.get(f"{API_URI}/technical/{techmeta_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
 
         # delete a study own by your group

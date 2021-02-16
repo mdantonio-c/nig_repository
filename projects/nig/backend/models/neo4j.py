@@ -163,7 +163,6 @@ class TechnicalMetadata(TimestampedNode):
     sequencing_date = DateTimeProperty()
     platform = StringProperty()
     enrichment_kit = StringProperty()
-    unique_name = StringProperty(required=True, unique_index=True)
 
     defined_in = RelationshipTo("Study", "DEFINED_IN", cardinality=ZeroOrMore)
     describe = RelationshipFrom("Dataset", "IS_DESCRIBED_BY", cardinality=ZeroOrOne)
