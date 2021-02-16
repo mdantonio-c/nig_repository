@@ -70,14 +70,17 @@ class Study(NIGEndpoint):
             if not access:
                 continue
 
-            study = {
+            study_el = {
                 "uuid": t.uuid,
                 "name": t.name,
                 "description": t.description,
                 "datasets": len(t.datasets),
             }
 
-            data.append(study)
+            data.append(study_el)
+
+        if uuid is not None:
+            self.log_event(self.events.access, study)
 
         return self.response(data)
 
@@ -110,6 +113,8 @@ class Study(NIGEndpoint):
             study.delete()
             raise Conflict(str(exc))
 
+        self.log_event(self.events.create, study, kwargs)
+
         return self.response(study.uuid)
 
     @decorators.auth.require()
@@ -133,6 +138,8 @@ class Study(NIGEndpoint):
 
         self.auth.db.update_properties(study, kwargs)
         study.save()
+
+        self.log_event(self.events.modify, study, kwargs)
 
         return self.empty_response()
 
@@ -176,5 +183,7 @@ class Study(NIGEndpoint):
 
         # remove the study folder
         shutil.rmtree(path)
+
+        self.log_event(self.events.delete, study)
 
         return self.empty_response()

@@ -107,7 +107,8 @@ class Dataset(NIGEndpoint):
                 }
 
             data.append(dataset_el)
-
+        if dataset_uuid:
+            self.log_event(self.events.access, dataset)
         return self.response(data)
 
     @decorators.auth.require()
@@ -144,6 +145,8 @@ class Dataset(NIGEndpoint):
             dataset.delete()
             raise Conflict(str(exc))
 
+        self.log_event(self.events.create, dataset, kwargs)
+
         return self.response(dataset.uuid)
 
     @decorators.auth.require()
@@ -174,7 +177,9 @@ class Dataset(NIGEndpoint):
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, error_type="Dataset")
 
+        kwargs = {}
         if phenotype_uuid:
+            kwargs["phenotype_uuid"] = phenotype_uuid
             if previous := dataset.phenotype.single():
                 dataset.phenotype.disconnect(previous)
 
@@ -187,6 +192,7 @@ class Dataset(NIGEndpoint):
                 dataset.phenotype.connect(phenotype)
 
         if technical_uuid:
+            kwargs["technical_uuid"] = technical_uuid
             if previous := dataset.technical.single():
                 dataset.technical.disconnect(previous)
 
@@ -200,11 +206,15 @@ class Dataset(NIGEndpoint):
 
                 dataset.technical.connect(technical)
         if name:
+            kwargs["name"] = name
             dataset.name = name
         if description:
+            kwargs["description"] = description
             dataset.description = description
 
         dataset.save()
+
+        self.log_event(self.events.modify, dataset, kwargs)
 
         return self.empty_response()
 
@@ -238,5 +248,7 @@ class Dataset(NIGEndpoint):
 
         # remove the dataset folder
         shutil.rmtree(path)
+
+        self.log_event(self.events.delete, dataset)
 
         return self.empty_response()

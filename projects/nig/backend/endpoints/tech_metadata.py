@@ -96,6 +96,9 @@ class TechnicalMetadata(NIGEndpoint):
             }
             data.append(techmeta_el)
 
+        if technical_uuid is not None:
+            self.log_event(self.events.access, techmeta)
+
         return self.response(data)
 
     @decorators.auth.require()
