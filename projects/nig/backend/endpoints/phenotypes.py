@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import pytz
 from nig.endpoints import PHENOTYPE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import BadRequest, NotFound
+from restapi.exceptions import NotFound
 from restapi.models import ISO8601UTC, Schema, fields, validate
 from restapi.rest.definition import Response
 
@@ -173,7 +173,7 @@ class Phenotypes(NIGEndpoint):
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study)
 
-        kwargs = {}
+        kwargs: Dict[str, Optional[Any]] = {}
         if birthday:
             birthday = self.check_timezone(birthday)
             kwargs["birthday"] = birthday
@@ -235,7 +235,7 @@ class Phenotypes(NIGEndpoint):
             raise NotFound(PHENOTYPE_NOT_FOUND)
         study = phenotype.defined_in.single()
         self.verifyStudyAccess(study, error_type="Phenotype")
-        kwargs = {}
+        kwargs: Dict[str, Optional[Any]] = {}
         if birthday:
             birthday = self.check_timezone(birthday)
             phenotype.birthday = birthday
