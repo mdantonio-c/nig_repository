@@ -141,7 +141,6 @@ class VirtualFile(IdentifiedNode):
 
 class Phenotype(TimestampedNode):
     name = StringProperty(required=True, is_restricted=True)
-    unique_name = StringProperty(required=True, unique_index=True)
     birthday = DateTimeProperty()
     deathday = DateTimeProperty()
     sex = StringProperty(required=True)

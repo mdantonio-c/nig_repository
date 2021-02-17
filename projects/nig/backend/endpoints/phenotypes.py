@@ -1,12 +1,50 @@
+from datetime import datetime
+from typing import List, Optional
+
+import pytz
 from nig.endpoints import PHENOTYPE_NOT_FOUND, NIGEndpoint
-from nig.time import date_from_string
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import BadRequest, NotFound
+from restapi.models import ISO8601UTC, Schema, fields, validate
+from restapi.rest.definition import Response
 
 # from restapi.connectors import celery
 
 # from restapi.utilities.logs import log
+SEX = ["male", "female"]
+
+
+class Hpo(Schema):
+    uuid = fields.Str(required=True)
+    label = fields.Str(required=True)
+
+
+class PhenotypeOutputSchema(Schema):
+    uuid = fields.Str(required=True)
+    name = fields.Str(required=True)
+    birthday = fields.DateTime(format=ISO8601UTC)
+    deathday = fields.DateTime(format=ISO8601UTC)
+    sex = fields.Str(required=True, validate=validate.OneOf(SEX))
+    hpo = fields.List(fields.Nested(Hpo), required=False)
+
+
+class PhenotypeInputSchema(Schema):
+    name = fields.Str(required=True)
+    birthday = fields.DateTime(format=ISO8601UTC)
+    deathday = fields.DateTime(format=ISO8601UTC)
+    sex = fields.Str(required=True, validate=validate.OneOf(SEX))
+    birth_place_uuids = fields.List(fields.Str())
+    hpo_uuids = fields.List(fields.Str())
+
+
+class PhenotypePutSchema(Schema):
+    name = fields.Str(required=False)
+    birthday = fields.DateTime(format=ISO8601UTC)
+    deathday = fields.DateTime(format=ISO8601UTC)
+    sex = fields.Str(required=False, validate=validate.OneOf(SEX))
+    birth_place_uuids = fields.List(fields.Str())
+    hpo_uuids = fields.List(fields.Str())
 
 
 class Phenotypes(NIGEndpoint):
@@ -14,58 +52,41 @@ class Phenotypes(NIGEndpoint):
     # schema_expose = True
     labels = ["phenotype"]
 
-    def link_hpo(self, graph, phenotype, properties):
-        ids = self.parseAutocomplete(properties, "HPO", id_key="hpo_id", split_char=",")
-
-        if ids is None:
-            return
-
+    def link_hpo(self, graph, phenotype, hpo_uuids):
         for p in phenotype.hpo.all():
             phenotype.hpo.disconnect(p)
-
-        for id in ids:
-            try:
-                hpo = graph.HPO.nodes.get(hpo_id=id)
+        connected_hpo = []
+        for uuid in hpo_uuids:
+            hpo = graph.HPO.nodes.get_or_none(uuid=uuid)
+            if hpo:
                 phenotype.hpo.connect(hpo)
-            except graph.HPO.DoesNotExist:
-                pass
+                connected_hpo.append(uuid)
+        return connected_hpo
 
-    def link_geodata(self, graph, phenotype, properties):
-        ids = self.parseAutocomplete(properties, "birthplace", id_key="id")
-
-        if ids is None:
-            return
-
+    def link_geodata(self, graph, phenotype, geodata_uuids):
         for p in phenotype.birth_place.all():
             phenotype.birth_place.disconnect(p)
 
-        for id in ids:
-            try:
-                geo = graph.GeoData.nodes.get(uuid=id)
+        connected_geo = []
+        for uuid in geodata_uuids:
+            geo = graph.GeoData.nodes.get_or_none(uuid=uuid)
+            if geo:
                 phenotype.birth_place.connect(geo)
-            except graph.GeoData.DoesNotExist:
-                pass
+                connected_geo.append(uuid)
+        return connected_geo
 
-    def validate_input(self, properties, schema):
-
-        if "name" in properties:
-            if properties["name"] == "":
-                raise BadRequest("Name cannot be empty")
-
-        if "sex" in properties:
-            s = properties["sex"]
-            allowed = ["male", "female"]
-
-            if s not in allowed:
-                raise BadRequest("Allowed values for sex are: male, female")
+    def check_timezone(self, date):
+        if date.tzinfo is None:
+            date = pytz.utc.localize(date)
+        return date
 
     @decorators.auth.require()
     @decorators.endpoint(
         path="/study/<study_uuid>/phenotypes",
-        summary="Obtain information on a single phenotype",
+        summary="Obtain the list of phenotypes in a study",
         responses={
             200: "Phenotype information successfully retrieved",
-            404: "This phenotype cannot be found or you are not authorized to access",
+            404: "This study cannot be found or you are not authorized to access",
         },
     )
     @decorators.endpoint(
@@ -76,7 +97,10 @@ class Phenotypes(NIGEndpoint):
             404: "This phenotype cannot be found or you are not authorized to access",
         },
     )
-    def get(self, study_uuid=None, phenotype_uuid=None):
+    @decorators.marshal_with(PhenotypeOutputSchema(many=True), code=200)
+    def get(
+        self, study_uuid: Optional[str] = None, phenotype_uuid: Optional[str] = None
+    ) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -84,7 +108,7 @@ class Phenotypes(NIGEndpoint):
             phenotype = graph.Phenotype.nodes.get_or_none(uuid=phenotype_uuid)
             if phenotype is None:
                 raise NotFound(PHENOTYPE_NOT_FOUND)
-            study = self.getSingleLinkedNode(phenotype.defined_in)
+            study = phenotype.defined_in.single()
             self.verifyStudyAccess(study, error_type="Phenotype", read=True)
             nodeset = graph.Phenotype.nodes.filter(uuid=phenotype_uuid)
 
@@ -96,21 +120,28 @@ class Phenotypes(NIGEndpoint):
         data = []
         for t in nodeset.all():
 
-            phenotype = self.getJsonResponse(t)
-
-            if "relationships" in phenotype and "hpo" in phenotype["relationships"]:
-                for h in phenotype["relationships"]["hpo"]:
-                    h["attributes"]["public"] = ""
-                    hh = graph.HPO.nodes.get_or_none(hpo_id=h["attributes"]["hpo_id"])
+            phenotype_el = {
+                "uuid": t.uuid,
+                "name": t.name,
+                "birthday": t.birthday,
+                "deathday": t.deathday,
+                "sex": t.sex,
+            }
+            hpo_nodeset = t.hpo.all()
+            phenotype_el["hpo"] = []
+            if hpo_nodeset:
+                for h in hpo_nodeset:
+                    hh = graph.HPO.nodes.get_or_none(uuid=h.uuid)
                     for hhh in hh.generalized_parent.all():
                         if hhh.hide_node:
                             continue
-                        h["attributes"]["public"] += "{} ({}); ".format(
-                            hhh.hpo_id,
-                            hhh.label,
-                        )
+                        hpo_el = {"uuid": hhh.uuid, "label": hhh.label}
+                        phenotype_el["hpo"].append(hpo_el)
 
-            data.append(phenotype)
+            data.append(phenotype_el)
+
+        if phenotype_uuid is not None:
+            self.log_event(self.events.access, phenotype)
 
         return self.response(data)
 
@@ -122,46 +153,55 @@ class Phenotypes(NIGEndpoint):
         responses={
             200: "The uuid of the new phenotype",
             404: "This study cannot be found or you are not authorized to access",
-            403: "You are not authorized to perform actions on this study",
         },
     )
     @decorators.graph_transactions
-    def post(self, uuid):
+    @decorators.use_kwargs(PhenotypeInputSchema)
+    def post(
+        self,
+        uuid: str,
+        name: str,
+        sex: str,
+        birthday: Optional[datetime] = None,
+        deathday: Optional[datetime] = None,
+        birth_place_uuids: Optional[List[str]] = [],
+        hpo_uuids: Optional[List[str]] = [],
+    ) -> Response:
 
         graph = neo4j.get_instance()
 
-        v = self.get_input()
-        if len(v) == 0:
-            raise BadRequest("Empty input")
-
-        schema = self.get_endpoint_custom_definition()
-        self.validate_input(v, schema)
-
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study)
-        properties = self.read_properties(schema, v)
 
-        properties["unique_name"] = self.createUniqueIndex(
-            study.uuid, properties["name"]
-        )
+        kwargs = {}
+        if birthday:
+            birthday = self.check_timezone(birthday)
+            kwargs["birthday"] = birthday
 
-        if "birthday" in properties:
-            properties["birthday"] = date_from_string(properties["birthday"])
+        if deathday:
+            deathday = self.check_timezone(deathday)
+            kwargs["deathday"] = deathday
 
-        if "deathday" in properties:
-            properties["deathday"] = date_from_string(properties["deathday"])
+        if name:
+            kwargs["name"] = name
+        if sex:
+            kwargs["sex"] = sex
 
-        phenotype = graph.Phenotype(**properties).save()
+        phenotype = graph.Phenotype(**kwargs).save()
 
         phenotype.defined_in.connect(study)
-
-        self.link_geodata(graph, phenotype, v)
-        self.link_hpo(graph, phenotype, v)
+        if birth_place_uuids:
+            connected_geodata = self.link_geodata(graph, phenotype, birth_place_uuids)
+            kwargs["birth_place"] = connected_geodata
+        if hpo_uuids:
+            connected_hpo = self.link_hpo(graph, phenotype, hpo_uuids)
+            kwargs["hpo"] = connected_hpo
 
         # c = celery.get_instance()
         # c.celery_app.send_task(
         #     "link_variants", args=[phenotype.uuid], countdown=5
         # )
+        self.log_event(self.events.create, phenotype, kwargs)
 
         return self.response(phenotype.uuid)
 
@@ -173,46 +213,60 @@ class Phenotypes(NIGEndpoint):
         responses={
             200: "Phenotype successfully modified",
             404: "This phenotype cannot be found or you are not authorized to access",
-            403: "You are not authorized to perform actions on this phenotype",
         },
     )
     @decorators.graph_transactions
-    def put(self, uuid):
+    @decorators.use_kwargs(PhenotypePutSchema)
+    def put(
+        self,
+        uuid: str,
+        name: Optional[str] = None,
+        sex: Optional[str] = None,
+        birthday: Optional[datetime] = None,
+        deathday: Optional[datetime] = None,
+        birth_place_uuids: Optional[List[str]] = [],
+        hpo_uuids: Optional[List[str]] = [],
+    ) -> Response:
 
         graph = neo4j.get_instance()
-
-        v = self.get_input()
-        schema = self.get_endpoint_custom_definition()
-        self.validate_input(v, schema)
 
         phenotype = graph.Phenotype.nodes.get_or_none(uuid=uuid)
         if phenotype is None:
             raise NotFound(PHENOTYPE_NOT_FOUND)
-        study = self.getSingleLinkedNode(phenotype.defined_in)
+        study = phenotype.defined_in.single()
         self.verifyStudyAccess(study, error_type="Phenotype")
-        if "birthday" in v:
-            if v["birthday"] == "":
-                v["birthday"] = None
-            else:
-                v["birthday"] = date_from_string(v["birthday"])
+        kwargs = {}
+        if birthday:
+            birthday = self.check_timezone(birthday)
+            phenotype.birthday = birthday
+            kwargs["birthday"] = birthday
 
-        if "deathday" in v:
-            if v["deathday"] == "":
-                v["deathday"] = None
-            else:
-                v["deathday"] = date_from_string(v["deathday"])
+        if deathday:
+            deathday = self.check_timezone(deathday)
+            phenotype.deathday = deathday
+            kwargs["deathday"] = deathday
 
-        self.update_properties(phenotype, schema, v)
-        phenotype.unique_name = self.createUniqueIndex(study.uuid, phenotype.name)
+        if name:
+            phenotype.name = name
+            kwargs["name"] = name
+        if sex:
+            phenotype.sex = sex
+            kwargs["sex"] = sex
 
         phenotype.save()
-        self.link_geodata(graph, phenotype, v)
-        self.link_hpo(graph, phenotype, v)
+        if birth_place_uuids:
+            connected_geodata = self.link_geodata(graph, phenotype, birth_place_uuids)
+            kwargs["birth_place"] = connected_geodata
+        if hpo_uuids:
+            connected_hpo = self.link_hpo(graph, phenotype, hpo_uuids)
+            kwargs["hpo"] = connected_hpo
 
         # c = celery.get_instance()
         # c.celery_app.send_task(
         #     "link_variants", args=[phenotype.uuid], countdown=5
         # )
+
+        self.log_event(self.events.modify, study, kwargs)
 
         return self.empty_response()
 
@@ -223,20 +277,21 @@ class Phenotypes(NIGEndpoint):
         responses={
             200: "Phenotype successfully deleted",
             404: "This phenotype cannot be found or you are not authorized to access",
-            403: "You are not authorized to perform actions on this phenotype",
         },
     )
     @decorators.graph_transactions
-    def delete(self, uuid):
+    def delete(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
         phenotype = graph.Phenotype.nodes.get_or_none(uuid=uuid)
         if phenotype is None:
             raise NotFound(PHENOTYPE_NOT_FOUND)
-        study = self.getSingleLinkedNode(phenotype.defined_in)
+        study = phenotype.defined_in.single()
         self.verifyStudyAccess(study, error_type="Phenotype")
 
         phenotype.delete()
+
+        self.log_event(self.events.delete, phenotype)
 
         return self.empty_response()

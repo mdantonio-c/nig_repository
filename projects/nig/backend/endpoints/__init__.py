@@ -32,14 +32,6 @@ class NIGEndpoint(EndpointResource):
         return path
 
     @staticmethod
-    def getSingleLinkedNode(relation):
-
-        log.warning(
-            "Deprecated use of getSingleLinkedNode, use relation.single() instead"
-        )
-        return relation.single()
-
-    @staticmethod
     def createUniqueIndex(*var):
 
         separator = "#_#"
