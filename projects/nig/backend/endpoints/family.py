@@ -1,7 +1,13 @@
+from typing import Optional
+
 from nig.endpoints import PHENOTYPE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import BadRequest, NotFound
+from restapi.models import Schema, fields, validate
+from restapi.rest.definition import Response
+
+RELATIONSHIP = ["father", "mother"]
 
 
 class Family(NIGEndpoint):

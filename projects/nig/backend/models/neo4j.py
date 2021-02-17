@@ -330,14 +330,13 @@ class GeoData(IdentifiedNode):
 
 class HPO(StructuredNode):
 
-    hpo_id = StringProperty(required=True, unique_index=True)
     label = StringProperty(required=True)
     description = StringProperty(required=True)
     synonyms = StringProperty()
     translation = StringProperty()
 
     is_cluster_node = IntegerProperty()
-    hide_node = IntegerProperty()
+    hide_node = BooleanProperty(default=False)
 
     phenotypes = RelationshipFrom("Phenotype", "DESCRIBED_BY", cardinality=ZeroOrMore)
 
