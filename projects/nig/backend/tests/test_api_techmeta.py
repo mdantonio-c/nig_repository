@@ -55,7 +55,7 @@ class TestApp(BaseTests):
         # create a new techmeta
         techmeta1 = {
             "name": faker.pystr(),
-            "sequencing_date": "15/02/2021",
+            "sequencing_date": f"{faker.iso8601()}.000Z",
             "platform": "Other",
         }
         r = client.post(
@@ -77,7 +77,7 @@ class TestApp(BaseTests):
         # create a new technical as admin not belonging to study group
         techmeta2 = {
             "name": faker.pystr(),
-            "sequencing_date": "15/02/2021",
+            "sequencing_date": f"{faker.iso8601()}.000Z",
             "platform": "Other",
         }
         r = client.post(

@@ -5,7 +5,7 @@ from nig.endpoints import TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import BadRequest, NotFound
-from restapi.models import Schema, fields, validate
+from restapi.models import ISO8601UTC, Schema, fields, validate
 from restapi.rest.definition import Response
 from restapi.utilities.logs import log
 
@@ -22,14 +22,14 @@ PLATFORMS = [
 
 class TechmetaInputSchema(Schema):
     name = fields.Str(required=True)
-    sequencing_date = fields.DateTime("%d/%m/%Y")
+    sequencing_date = fields.DateTime(format=ISO8601UTC)
     platform = fields.Str(validate=validate.OneOf(PLATFORMS))
     enrichment_kit = fields.Str()
 
 
 class TechmetaPutSchema(Schema):
     name = fields.Str(required=False)
-    sequencing_date = fields.DateTime("%d/%m/%Y")
+    sequencing_date = fields.DateTime(format=ISO8601UTC)
     platform = fields.Str(validate=validate.OneOf(PLATFORMS))
     enrichment_kit = fields.Str()
 
@@ -37,12 +37,16 @@ class TechmetaPutSchema(Schema):
 class TechmetaOutputSchema(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
-    sequencing_date = fields.DateTime("%d/%m/%Y")
+    sequencing_date = fields.DateTime(format=ISO8601UTC)
     platform = fields.Str()
     enrichment_kit = fields.Str()
 
 
 class TechnicalMetadata(NIGEndpoint):
+    def check_timezone(self, date):
+        if date.tzinfo is None:
+            date = pytz.utc.localize(date)
+        return date
 
     # schema_expose = True
     labels = ["technicals"]
@@ -118,11 +122,8 @@ class TechnicalMetadata(NIGEndpoint):
         graph = neo4j.get_instance()
 
         # parse date
-        seq_date_to_parse = kwargs.get("sequencing_date", None)
-        if seq_date_to_parse:
-            if seq_date_to_parse.tzinfo is None:
-                parsed_date = pytz.utc.localize(seq_date_to_parse)
-                kwargs["sequencing_date"] = parsed_date
+        if "sequencing_date" in kwargs:
+            kwargs["sequencing_date"] = self.check_timezone(kwargs["sequencing_date"])
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study)
@@ -166,11 +167,8 @@ class TechnicalMetadata(NIGEndpoint):
         #     v["enrichment_kit"] = kit["value"]
 
         # parse date
-        seq_date_to_parse = kwargs.get("sequencing_date", None)
-        if seq_date_to_parse:
-            if seq_date_to_parse.tzinfo is None:
-                parsed_date = pytz.utc.localize(seq_date_to_parse)
-                kwargs["sequencing_date"] = parsed_date
+        if "sequencing_date" in kwargs:
+            kwargs["sequencing_date"] = self.check_timezone(kwargs["sequencing_date"])
 
         self.auth.db.update_properties(techmeta, kwargs)
         techmeta.save()
