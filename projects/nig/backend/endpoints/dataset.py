@@ -17,12 +17,18 @@ class Technicals(Schema):
     name = fields.Str(required=True)
 
 
+class Phenotypes(Schema):
+    uuid = fields.Str(required=True)
+    name = fields.Str(required=True)
+
+
 # Output schema
 class DatasetOutput(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
     description = fields.Str(required=False)
     technicals = fields.Nested(Technicals)
+    phenotypes = fields.Nested(Phenotypes)
     nfiles = fields.Int()
     # for now only the number of related files, can be useful also a list of some files metadata?
     # virtual files?
@@ -104,6 +110,12 @@ class Dataset(NIGEndpoint):
                 dataset_el["technicals"] = {
                     "uuid": technical.uuid,
                     "name": technical.name,
+                }
+            phenotype = dataset.phenotype.single()
+            if phenotype:
+                dataset_el["phenotypes"] = {
+                    "uuid": phenotype.uuid,
+                    "name": phenotype.name,
                 }
 
             data.append(dataset_el)

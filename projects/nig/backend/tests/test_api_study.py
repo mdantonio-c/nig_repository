@@ -1,44 +1,26 @@
-import json
 import os
-import shutil
 
 from nig.endpoints import GROUP_DIR
+from nig.tests.setup_tests import create_test_env, delete_test_env
 from restapi.tests import API_URI, BaseTests
 
 
 class TestApp(BaseTests):
     def test_api_study(self, client, faker):
-        admin_headers, _ = self.do_login(client, None, None)
-
-        role_list = ["normal_user"]
-        role = json.dumps(role_list)
-
-        # Create a group with one user
-        uuid_group_A, _ = self.create_group(client)
-        user_A1_uuid, data = self.create_user(
-            client, {"group": uuid_group_A, "roles": role}
-        )
-
-        user_A1_headers, _ = self.do_login(
-            client, data.get("email"), data.get("password")
-        )
-
-        # Create a group with two users
-        uuid_group_B, _ = self.create_group(client)
-
-        user_B1_uuid, data = self.create_user(
-            client, {"group": uuid_group_B, "roles": role}
-        )
-        user_B1_headers, _ = self.do_login(
-            client, data.get("email"), data.get("password")
-        )
-
-        user_B2_uuid, data = self.create_user(
-            client, {"group": uuid_group_B, "roles": role}
-        )
-        user_B2_headers, _ = self.do_login(
-            client, data.get("email"), data.get("password")
-        )
+        # setup the test env
+        (
+            admin_headers,
+            uuid_group_A,
+            user_A1_uuid,
+            user_A1_headers,
+            uuid_group_B,
+            user_B1_uuid,
+            user_B1_headers,
+            user_B2_uuid,
+            user_B2_headers,
+            study1_uuid,
+            study2_uuid,
+        ) = create_test_env(client, faker, study=False)
 
         # create a new study for the group B
         random_name = faker.pystr()
@@ -121,6 +103,15 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         techmeta_uuid = self.get_content(r)
+        # create a new phenotype to test if it's deleted with the study
+        phenotype = {"name": faker.pystr(), "sex": "male"}
+        r = client.post(
+            f"{API_URI}/study/{study2_uuid}/phenotypes",
+            headers=user_A1_headers,
+            data=phenotype,
+        )
+        assert r.status_code == 200
+        phenotype_uuid = self.get_content(r)
         # delete the study
         r = client.delete(f"{API_URI}/study/{study2_uuid}", headers=user_A1_headers)
         assert r.status_code == 204
@@ -131,6 +122,9 @@ class TestApp(BaseTests):
         assert r.status_code == 404
         # check the technical was deleted
         r = client.get(f"{API_URI}/technical/{techmeta_uuid}", headers=user_A1_headers)
+        assert r.status_code == 404
+        # check the phenotype was deleted
+        r = client.get(f"{API_URI}/phenotype/{phenotype_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
 
         # delete a study own by your group
@@ -143,33 +137,14 @@ class TestApp(BaseTests):
         assert no_existent_message == no_authorized_message
 
         # delete all the elements used by the test
-        # first user
-        r = client.delete(
-            f"{API_URI}/admin/users/{user_B1_uuid}", headers=admin_headers
+        delete_test_env(
+            client,
+            admin_headers,
+            user_A1_headers,
+            user_B1_headers,
+            user_B1_uuid,
+            user_B2_uuid,
+            user_A1_uuid,
+            uuid_group_A,
+            uuid_group_B,
         )
-        assert r.status_code == 204
-        # second user
-        r = client.delete(
-            f"{API_URI}/admin/users/{user_B2_uuid}", headers=admin_headers
-        )
-        assert r.status_code == 204
-        # other user
-        r = client.delete(
-            f"{API_URI}/admin/users/{user_A1_uuid}", headers=admin_headers
-        )
-        assert r.status_code == 204
-        group_dir_path = os.path.join(GROUP_DIR, uuid_group_A)
-        shutil.rmtree(group_dir_path)
-        # new group
-        r = client.delete(
-            f"{API_URI}/admin/groups/{uuid_group_A}", headers=admin_headers
-        )
-        assert r.status_code == 204
-        # "default" group directory
-        group_dir_path = os.path.join(GROUP_DIR, uuid_group_B)
-        shutil.rmtree(group_dir_path)
-        # "default" group
-        r = client.delete(
-            f"{API_URI}/admin/groups/{uuid_group_B}", headers=admin_headers
-        )
-        assert r.status_code == 204
