@@ -20,6 +20,13 @@ class Hpo(Schema):
     label = fields.Str(required=True)
 
 
+class GeoData(Schema):
+    country = fields.Str(required=True)
+    region = fields.Str(required=True)
+    province = fields.Str(required=True)
+    city = fields.Str(required=True)
+
+
 class PhenotypeOutputSchema(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
@@ -27,6 +34,7 @@ class PhenotypeOutputSchema(Schema):
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
     hpo = fields.List(fields.Nested(Hpo), required=False)
+    birth_place = fields.Nested(GeoData, required=False)
 
 
 class PhenotypeInputSchema(Schema):
@@ -34,7 +42,7 @@ class PhenotypeInputSchema(Schema):
     birthday = fields.DateTime(format=ISO8601UTC)
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
-    birth_place_uuids = fields.List(fields.Str())
+    birth_place_uuid = fields.Str()
     hpo_uuids = fields.List(fields.Str())
 
 
@@ -53,6 +61,7 @@ class Phenotypes(NIGEndpoint):
     labels = ["phenotype"]
 
     def link_hpo(self, graph, phenotype, hpo_uuids):
+        # if the hpo list is empty it means "disconnect all phenotypes"
         for p in phenotype.hpo.all():
             phenotype.hpo.disconnect(p)
         connected_hpo = []
@@ -63,17 +72,16 @@ class Phenotypes(NIGEndpoint):
                 connected_hpo.append(uuid)
         return connected_hpo
 
-    def link_geodata(self, graph, phenotype, geodata_uuids):
-        for p in phenotype.birth_place.all():
-            phenotype.birth_place.disconnect(p)
+    def link_geodata(self, graph, phenotype, geodata_uuid):
+        if previous := phenotype.birth_place.single():
+            phenotype.birth_place.disconnect(previous)
 
-        connected_geo = []
-        for uuid in geodata_uuids:
-            geo = graph.GeoData.nodes.get_or_none(uuid=uuid)
-            if geo:
-                phenotype.birth_place.connect(geo)
-                connected_geo.append(uuid)
-        return connected_geo
+        if geodata_uuid != "-1":
+            geodata = graph.GeoData.nodes.get_or_none(uuid=geodata_uuid)
+            if geodata is None:
+                raise NotFound("This birth place cannot be found")
+
+            phenotype.birth_place.connect(geodata)
 
     def check_timezone(self, date):
         if date.tzinfo is None:
@@ -137,6 +145,14 @@ class Phenotypes(NIGEndpoint):
                             continue
                         hpo_el = {"uuid": hhh.uuid, "label": hhh.label}
                         phenotype_el["hpo"].append(hpo_el)
+            birth_place = t.birth_place.single()
+            if birth_place:
+                phenotype_el["birth_place"] = {
+                    "country": birth_place.country,
+                    "region": birth_place.region,
+                    "province": birth_place.province,
+                    "city": birth_place.city,
+                }
 
             data.append(phenotype_el)
 
@@ -164,7 +180,7 @@ class Phenotypes(NIGEndpoint):
         sex: str,
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
-        birth_place_uuids: Optional[List[str]] = [],
+        birth_place_uuid: Optional[str] = None,
         hpo_uuids: Optional[List[str]] = [],
     ) -> Response:
 
@@ -190,9 +206,9 @@ class Phenotypes(NIGEndpoint):
         phenotype = graph.Phenotype(**kwargs).save()
 
         phenotype.defined_in.connect(study)
-        if birth_place_uuids:
-            connected_geodata = self.link_geodata(graph, phenotype, birth_place_uuids)
-            kwargs["birth_place"] = connected_geodata
+        if birth_place_uuid:
+            self.link_geodata(graph, phenotype, birth_place_uuid)
+            kwargs["birth_place"] = birth_place_uuid
         if hpo_uuids:
             connected_hpo = self.link_hpo(graph, phenotype, hpo_uuids)
             kwargs["hpo"] = connected_hpo
@@ -224,7 +240,7 @@ class Phenotypes(NIGEndpoint):
         sex: Optional[str] = None,
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
-        birth_place_uuids: Optional[List[str]] = [],
+        birth_place_uuid: Optional[str] = [],
         hpo_uuids: Optional[List[str]] = [],
     ) -> Response:
 
@@ -254,9 +270,9 @@ class Phenotypes(NIGEndpoint):
             kwargs["sex"] = sex
 
         phenotype.save()
-        if birth_place_uuids:
-            connected_geodata = self.link_geodata(graph, phenotype, birth_place_uuids)
-            kwargs["birth_place"] = connected_geodata
+        if birth_place_uuid:
+            self.link_geodata(graph, phenotype, birth_place_uuid)
+            kwargs["birth_place"] = birth_place_uuid
         if hpo_uuids:
             connected_hpo = self.link_hpo(graph, phenotype, hpo_uuids)
             kwargs["hpo"] = connected_hpo
