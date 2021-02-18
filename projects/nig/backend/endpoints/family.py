@@ -62,7 +62,7 @@ class Family(NIGEndpoint):
         self.log_event(
             self.events.modify,
             phenotype1,
-            f"set relationship {relationship} with {phenotype2.uuid}",
+            {"relationship": relationship, "target": phenotype2.uuid},
         )
         return self.empty_response()
 
@@ -128,6 +128,6 @@ class Family(NIGEndpoint):
         self.log_event(
             self.events.modify,
             phenotype1,
-            f"delete relationship {relationship} with {phenotype2.uuid}",
+            {"relationship": "removed", "target": phenotype2.uuid},
         )
         return self.empty_response()

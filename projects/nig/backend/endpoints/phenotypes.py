@@ -162,7 +162,6 @@ class Phenotypes(NIGEndpoint):
         return self.response(data)
 
     @decorators.auth.require()
-    # {'custom_parameters': ['Phenotype']}
     @decorators.endpoint(
         path="/study/<uuid>/phenotypes",
         summary="Create a new phenotype in a study",
@@ -181,7 +180,7 @@ class Phenotypes(NIGEndpoint):
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
         birth_place_uuid: Optional[str] = None,
-        hpo_uuids: Optional[List[str]] = [],
+        hpo_uuids: Optional[List[str]] = None,
     ) -> Response:
 
         graph = neo4j.get_instance()
@@ -222,7 +221,6 @@ class Phenotypes(NIGEndpoint):
         return self.response(phenotype.uuid)
 
     @decorators.auth.require()
-    # {'custom_parameters': ['Phenotype']}
     @decorators.endpoint(
         path="/phenotype/<uuid>",
         summary="Modify a phenotype",
@@ -240,8 +238,8 @@ class Phenotypes(NIGEndpoint):
         sex: Optional[str] = None,
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
-        birth_place_uuid: Optional[str] = [],
-        hpo_uuids: Optional[List[str]] = [],
+        birth_place_uuid: Optional[str] = None,
+        hpo_uuids: Optional[List[str]] = None,
     ) -> Response:
 
         graph = neo4j.get_instance()
