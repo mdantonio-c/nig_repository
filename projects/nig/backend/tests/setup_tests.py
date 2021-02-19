@@ -1,21 +1,18 @@
-import json
 import os
 import shutil
 
 from nig.endpoints import GROUP_DIR
+from restapi.services.authentication import Role
 from restapi.tests import API_URI, BaseTests
 
 
 def create_test_env(client, faker, study=False):
     admin_headers, _ = BaseTests.do_login(client, None, None)
 
-    role_list = ["normal_user"]
-    role = json.dumps(role_list)
-
     # create a group with one user
     uuid_group_A, _ = BaseTests.create_group(client)
     user_A1_uuid, data = BaseTests.create_user(
-        client, {"group": uuid_group_A, "roles": role}
+        client, data={"group": uuid_group_A}, roles=[Role.USER]
     )
     user_A1_headers, _ = BaseTests.do_login(
         client, data.get("email"), data.get("password")
@@ -25,7 +22,7 @@ def create_test_env(client, faker, study=False):
     uuid_group_B, _ = BaseTests.create_group(client)
 
     user_B1_uuid, data = BaseTests.create_user(
-        client, {"group": uuid_group_B, "roles": role}
+        client, data={"group": uuid_group_B}, roles=[Role.USER]
     )
     user_B1_headers, _ = BaseTests.do_login(
         client, data.get("email"), data.get("password")
@@ -33,7 +30,7 @@ def create_test_env(client, faker, study=False):
 
     # create a second user for the group 2
     user_B2_uuid, data = BaseTests.create_user(
-        client, {"group": uuid_group_B, "roles": role}
+        client, data={"group": uuid_group_B}, roles=[Role.USER]
     )
     user_B2_headers, _ = BaseTests.do_login(
         client, data.get("email"), data.get("password")
