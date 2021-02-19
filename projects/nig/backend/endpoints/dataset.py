@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Union
 
 from nig.endpoints import PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
@@ -11,10 +11,10 @@ from restapi.models import (
     Neo4jRelationshipToSingle,
     Schema,
     fields,
+    validate,
 )
 from restapi.rest.definition import Response
-
-# from restapi.utilities.logs import log
+from restapi.utilities.logs import log
 
 
 class TechnicalMetadata(Schema):
@@ -39,17 +39,76 @@ class DatasetOutput(Schema):
     # virtual files?
 
 
+def getInputSchema(request, is_post):
+    graph = neo4j.get_instance()
+    # as defined in Marshmallow.schema.from_dict
+    attributes: Dict[str, Union[fields.Field, type]] = {}
+
+    attributes["name"] = fields.Str(required=is_post)
+    attributes["description"] = fields.Str(required=is_post)
+    if request:
+        if is_post:
+            study_uuid = request.view_args["uuid"]
+            study = graph.Study.nodes.get_or_none(uuid=study_uuid)
+        else:
+            dataset_uuid = request.view_args["uuid"]
+            dataset = graph.Dataset.nodes.get_or_none(uuid=dataset_uuid)
+            study = dataset.parent_study.single()
+
+        phenotype_keys = []
+        phenotype_labels = []
+
+        for p in study.phenotypes.all():
+            phenotype_keys.append(p.uuid)
+            phenotype_labels.append(p.name)
+
+        if len(phenotype_keys) == 1:
+            default_phenotype = phenotype_keys[0]
+        else:
+            default_phenotype = None
+
+        attributes["phenotype"] = fields.Str(
+            required=False,
+            default=default_phenotype,
+            validate=validate.OneOf(choices=phenotype_keys, labels=phenotype_labels),
+        )
+
+        techmeta_keys = []
+        techmeta_labels = []
+
+        for t in study.technicals.all():
+            techmeta_keys.append(t.uuid)
+            techmeta_labels.append(t.name)
+
+        if len(techmeta_keys) == 1:
+            default_techmeta = techmeta_keys[0]
+        else:
+            default_techmeta = None
+
+        attributes["technical"] = fields.Str(
+            required=False,
+            default=default_techmeta,
+            validate=validate.OneOf(choices=techmeta_keys, labels=techmeta_labels),
+        )
+
+    return Schema.from_dict(attributes, name="DatasetDefinition")
+
+
 # input schema
 class DatasetInputSchema(Schema):
     name = fields.Str(required=True)
     description = fields.Str(required=False)
 
 
-class DatasetPutSchema(Schema):
-    name = fields.Str(required=False)
-    description = fields.Str(required=False)
-    phenotype_uuid = fields.Str(required=False)
-    technical_uuid = fields.Str(required=False)
+# class DatasetPutSchema(Schema):
+# name = fields.Str(required=False)
+# description = fields.Str(required=False)
+# phenotype_uuid = fields.Str(required=False)
+# technical_uuid = fields.Str(required=False)
+
+
+def getPUTInputSchema(request):
+    return getInputSchema(request, False)
 
 
 class Datasets(NIGEndpoint):
@@ -157,7 +216,8 @@ class Dataset(NIGEndpoint):
             404: "This dataset cannot be found or you are not authorized to access",
         },
     )
-    @decorators.use_kwargs(DatasetPutSchema)
+    # @decorators.use_kwargs(DatasetPutSchema)
+    @decorators.use_kwargs(getPUTInputSchema)
     @decorators.graph_transactions
     def put(
         self,
