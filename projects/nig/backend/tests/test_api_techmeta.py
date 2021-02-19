@@ -129,7 +129,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/technical/{techmeta1_uuid}",
             headers=user_B1_headers,
-            data={"name": faker.pystr()},
+            data={"name": faker.pystr(), "sequencing_date": f"{faker.iso8601()}.000Z"},
         )
         assert r.status_code == 204
 

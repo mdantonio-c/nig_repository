@@ -42,6 +42,37 @@ class TechmetaOutputSchema(Schema):
     enrichment_kit = fields.Str()
 
 
+class TechnicalMetadatas(NIGEndpoint):
+
+    # schema_expose = True
+    labels = ["technicals"]
+
+    @decorators.auth.require()
+    @decorators.endpoint(
+        path="/study/<uuid>/technicals",
+        summary="Obtain information on a single technical set of metadata",
+        responses={
+            200: "Technical metadata information successfully retrieved",
+            404: "This set of technical metadata cannot be found or you are not authorized to access",
+        },
+    )
+    @decorators.marshal_with(TechmetaOutputSchema(many=True), code=200)
+    def get(self, uuid: str) -> Response:
+
+        graph = neo4j.get_instance()
+
+        study = graph.Study.nodes.get_or_none(uuid=uuid)
+        self.verifyStudyAccess(study, read=True)
+        nodeset = study.technicals
+
+        data = []
+        for techmeta in nodeset.all():
+
+            data.append(techmeta)
+
+        return self.response(data)
+
+
 class TechnicalMetadata(NIGEndpoint):
     def check_timezone(self, date):
         if date.tzinfo is None:
@@ -53,57 +84,27 @@ class TechnicalMetadata(NIGEndpoint):
 
     @decorators.auth.require()
     @decorators.endpoint(
-        path="/study/<study_uuid>/technicals",
+        path="/technical/<uuid>",
         summary="Obtain information on a single technical set of metadata",
         responses={
             200: "Technical metadata information successfully retrieved",
             404: "This set of technical metadata cannot be found or you are not authorized to access",
         },
     )
-    @decorators.endpoint(
-        path="/technical/<technical_uuid>",
-        summary="Obtain information on a single technical set of metadata",
-        responses={
-            200: "Technical metadata information successfully retrieved",
-            404: "This set of technical metadata cannot be found or you are not authorized to access",
-        },
-    )
-    @decorators.marshal_with(TechmetaOutputSchema(many=True), code=200)
-    def get(
-        self, study_uuid: Optional[str] = None, technical_uuid: Optional[str] = None
-    ) -> Response:
+    @decorators.marshal_with(TechmetaOutputSchema, code=200)
+    def get(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
-        if technical_uuid is not None:
-            techmeta = graph.TechnicalMetadata.nodes.get_or_none(uuid=technical_uuid)
-            if techmeta is None:
-                raise NotFound(TECHMETA_NOT_FOUND)
-            study = techmeta.defined_in.single()
-            self.verifyStudyAccess(study, error_type="Technical Metadata", read=True)
-            nodeset = graph.TechnicalMetadata.nodes.filter(uuid=technical_uuid)
+        techmeta = graph.TechnicalMetadata.nodes.get_or_none(uuid=uuid)
+        if not techmeta:
+            raise NotFound(TECHMETA_NOT_FOUND)
+        study = techmeta.defined_in.single()
+        self.verifyStudyAccess(study, error_type="Technical Metadata", read=True)
 
-        elif study_uuid is not None:
-            study = graph.Study.nodes.get_or_none(uuid=study_uuid)
-            self.verifyStudyAccess(study, read=True)
-            nodeset = study.technicals
+        self.log_event(self.events.access, techmeta)
 
-        data = []
-        for t in nodeset.all():
-
-            techmeta_el = {
-                "uuid": t.uuid,
-                "name": t.name,
-                "sequencing_date": t.sequencing_date,
-                "platform": t.platform,
-                "enrichment_kit": t.enrichment_kit,
-            }
-            data.append(techmeta_el)
-
-        if technical_uuid is not None:
-            self.log_event(self.events.access, techmeta)
-
-        return self.response(data)
+        return self.response(techmeta)
 
     @decorators.auth.require()
     # {'custom_parameters': ['Technical']}
