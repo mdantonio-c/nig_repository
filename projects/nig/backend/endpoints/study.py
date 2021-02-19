@@ -19,6 +19,8 @@ class StudyOutput(Schema):
     description = fields.Str(required=True)
     # Number of related datasets
     datasets = Neo4jRelationshipToCount()
+    phenotypes = Neo4jRelationshipToCount()
+    technicals = Neo4jRelationshipToCount()
 
 
 class StudyInputSchema(Schema):
