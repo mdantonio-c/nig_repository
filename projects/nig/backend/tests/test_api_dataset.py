@@ -43,8 +43,30 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 404
 
+        # create a technical
+        r = client.post(
+            f"{API_URI}/study/{study1_uuid}/technicals",
+            headers=user_B1_headers,
+            data={"name": faker.pystr()},
+        )
+        assert r.status_code == 200
+        technical_uuid = self.get_content(r)
+        # create a phenotype
+        r = client.post(
+            f"{API_URI}/study/{study1_uuid}/phenotypes",
+            headers=user_B1_headers,
+            data={"name": faker.pystr(), "sex": "male"},
+        )
+        assert r.status_code == 200
+        phenotype_uuid = self.get_content(r)
+
         # create a new dataset as admin not belonging to study group
-        dataset2 = {"name": faker.pystr(), "description": faker.pystr()}
+        dataset2 = {
+            "name": faker.pystr(),
+            "description": faker.pystr(),
+            "phenotype": phenotype_uuid,
+            "technical": technical_uuid,
+        }
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
             headers=admin_headers,
@@ -104,23 +126,17 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=admin_headers)
         assert r.status_code == 200
 
+        # test technical and phenoype assignation when a new dataset is created
+        r = client.get(f"{API_URI}/dataset/{dataset2_uuid}", headers=user_B1_headers)
+        assert r.status_code == 200
+        response = self.get_content(r)
+        assert "technical" in response
+        assert "phenotype" in response
+        assert response["technical"]["uuid"] == technical_uuid
+        # check phenotype was correctly assigned
+        assert response["phenotype"]["uuid"] == phenotype_uuid
+
         # test dataset modification
-        # create a technical
-        r = client.post(
-            f"{API_URI}/study/{study1_uuid}/technicals",
-            headers=user_B1_headers,
-            data={"name": faker.pystr()},
-        )
-        assert r.status_code == 200
-        technical_uuid = self.get_content(r)
-        # create a phenotype
-        r = client.post(
-            f"{API_URI}/study/{study1_uuid}/phenotypes",
-            headers=user_B1_headers,
-            data={"name": faker.pystr(), "sex": "male"},
-        )
-        assert r.status_code == 200
-        phenotype_uuid = self.get_content(r)
 
         # modify a dataset you do not own
         r = client.put(
