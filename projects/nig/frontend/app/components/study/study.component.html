@@ -1,4 +1,25 @@
-<div class="page-header text-center">
-	<h3>Study: {{study?.name}}</h3>
-	<h5 class='text-justify'><i>{{study?.description}}</i></h5>
+<div class="container-fluid py-0">
+    <div class="row">
+        <div class="col-3 px-1 position-fixed nav-sidebar" id="sticky-sidebar">
+        	<div class="px-3 mt-4 mb-2 border-bottom">
+						<h4 class="mb-0">Study: {{study?.name}}</h4>
+						<p class='text-muted'>{{study?.description}}</p>
+					</div>
+          <div class="nav-sidebar-inner-scroll">
+              <ul ngbNav #nav="ngbNav" [activeId]="route.fragment | async" class="nav flex-column">
+								<li [ngbNavItem]="link.fragment" *ngFor="let link of links">
+							    <a ngbNavLink routerLink="." [fragment]="link.fragment">
+							    	<div class="nav-icon-container">
+							    		<i class="fas" [ngClass]="link.icon"></i>
+							    	</div>
+							    	<span>{{ link.title }}</span>
+							    </a>
+							  </li>
+							</ul>
+          </div>
+        </div>
+        <div class="col offset-3" id="main">
+            <router-outlet></router-outlet>
+        </div>
+    </div>
 </div>

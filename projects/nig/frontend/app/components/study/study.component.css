@@ -1,0 +1,24 @@
+.nav-sidebar {
+	transition: width 0.3s, left 0.3s;
+	/*position: fixed;*/
+	z-index: 600;
+	/*width: 220px;*/
+	top: 40px;
+	bottom: 50px;
+	left: 0;
+	background-color: #fafafa;
+	box-shadow: inset -1px 0 0 #dbdbdb;
+	transform: translate3d(0, 0, 0);
+	min-width: 15rem;
+}
+
+.nav-sidebar-inner-scroll {
+	height: 100%;
+    width: 100%;
+    overflow: auto;
+}
+
+.nav-icon-container {
+	display: inline-flex;
+    margin-right: 8px;
+}

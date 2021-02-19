@@ -26,3 +26,9 @@ td.accession {
 .progress {
   margin-bottom: 5px;
 }
+
+/* top navbar: force bg-white */
+.navbar {
+  background-color: #f8f8f8 !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}

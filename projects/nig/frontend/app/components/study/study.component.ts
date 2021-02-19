@@ -7,14 +7,25 @@ import { NotificationService } from "@rapydo/services/notification";
 @Component({
   selector: "nig-study",
   templateUrl: "./study.component.html",
+  styleUrls: ["./study.component.css"],
 })
 export class StudyComponent implements OnInit {
 
   study: Study;
+  active = 1;
+
+  links = [
+    { title: 'Datasets', fragment: 'datasets', icon: 'fa-database' },
+    { title: 'Stage', fragment: 'stage', icon: 'fa-upload' },
+    { title: 'Technical', fragment: 'technical', icon: 'fa-file-alt' },
+    { title: 'Samples', fragment: 'samples', icon: 'fa-vials' },
+    { title: 'Resources', fragment: 'resources', icon: 'fa-archive' },
+    { title: 'Access & Security', fragment: 'access', icon: 'fa-shield-alt' },
+  ];
 
 	constructor(
     private dataService: DataService,
-    private activatedRoute: ActivatedRoute,
+    public route: ActivatedRoute,
     private router: Router,
     private notify: NotificationService,
   ) {
@@ -22,7 +33,7 @@ export class StudyComponent implements OnInit {
   }
 
   ngOnInit() {
-    const uuid = this.activatedRoute.snapshot.params.study_uuid;
+    const uuid = this.route.snapshot.params.study_uuid;
     if(!uuid){
       this.notify.showError("study_uuid parameter not found");
       return;
