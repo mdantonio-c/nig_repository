@@ -14,7 +14,8 @@ from restapi.models import (
     validate,
 )
 from restapi.rest.definition import Response
-from restapi.utilities.logs import log
+
+# from restapi.utilities.logs import log
 
 
 class TechnicalMetadata(Schema):
@@ -67,6 +68,11 @@ def getInputSchema(request, is_post):
         else:
             default_phenotype = None
 
+        if not is_post:
+            # add option to remove the technical
+            phenotype_keys.append("-1")
+            phenotype_labels.append(" - ")
+
         attributes["phenotype"] = fields.Str(
             required=False,
             default=default_phenotype,
@@ -85,6 +91,11 @@ def getInputSchema(request, is_post):
         else:
             default_techmeta = None
 
+        if not is_post:
+            # add option to remove the technical
+            techmeta_keys.append("-1")
+            techmeta_labels.append(" - ")
+
         attributes["technical"] = fields.Str(
             required=False,
             default=default_techmeta,
@@ -94,17 +105,8 @@ def getInputSchema(request, is_post):
     return Schema.from_dict(attributes, name="DatasetDefinition")
 
 
-# input schema
-class DatasetInputSchema(Schema):
-    name = fields.Str(required=True)
-    description = fields.Str(required=False)
-
-
-# class DatasetPutSchema(Schema):
-# name = fields.Str(required=False)
-# description = fields.Str(required=False)
-# phenotype_uuid = fields.Str(required=False)
-# technical_uuid = fields.Str(required=False)
+def getPOSTInputSchema(request):
+    return getInputSchema(request, True)
 
 
 def getPUTInputSchema(request):
@@ -179,8 +181,15 @@ class Dataset(NIGEndpoint):
         },
     )
     @decorators.graph_transactions
-    @decorators.use_kwargs(DatasetInputSchema)
-    def post(self, uuid: str, **kwargs: Any) -> Response:
+    @decorators.use_kwargs(getPOSTInputSchema)
+    def post(
+        self,
+        uuid: str,
+        name: str,
+        description: str,
+        phenotype: Optional[str] = None,
+        technical: Optional[str] = None,
+    ) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -189,10 +198,23 @@ class Dataset(NIGEndpoint):
 
         current_user = self.get_user()
 
+        kwargs = {"name": name, "description": description}
         dataset = graph.Dataset(**kwargs).save()
 
         dataset.ownership.connect(current_user)
         dataset.parent_study.connect(study)
+        if phenotype:
+            kwargs["phenotype"] = phenotype
+            phenotype = study.phenotypes.get_or_none(uuid=phenotype)
+            if phenotype is None:  # pragma: no cover
+                raise NotFound(PHENOTYPE_NOT_FOUND)
+            dataset.phenotype.connect(phenotype)
+        if technical:
+            kwargs["technical"] = technical
+            technical = study.technicals.get_or_none(uuid=technical)
+            if technical is None:  # pragma: no cover
+                raise NotFound(TECHMETA_NOT_FOUND)
+            dataset.technical.connect(technical)
 
         path = self.getPath(dataset=dataset)
 
@@ -216,7 +238,6 @@ class Dataset(NIGEndpoint):
             404: "This dataset cannot be found or you are not authorized to access",
         },
     )
-    # @decorators.use_kwargs(DatasetPutSchema)
     @decorators.use_kwargs(getPUTInputSchema)
     @decorators.graph_transactions
     def put(
@@ -224,8 +245,8 @@ class Dataset(NIGEndpoint):
         uuid: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        phenotype_uuid: Optional[str] = None,
-        technical_uuid: Optional[str] = None,
+        phenotype: Optional[str] = None,
+        technical: Optional[str] = None,
     ) -> Response:
 
         graph = neo4j.get_instance()
@@ -237,30 +258,28 @@ class Dataset(NIGEndpoint):
         self.verifyStudyAccess(study, error_type="Dataset")
 
         kwargs = {}
-        if phenotype_uuid:
-            kwargs["phenotype_uuid"] = phenotype_uuid
+        if phenotype:
+            kwargs["phenotype"] = phenotype
             if previous := dataset.phenotype.single():
                 dataset.phenotype.disconnect(previous)
 
-            if phenotype_uuid != "-1":
-                phenotype = graph.Phenotype.nodes.get_or_none(uuid=phenotype_uuid)
+            if phenotype != "-1":
+                phenotype = study.phenotypes.get_or_none(uuid=phenotype)
 
-                if phenotype is None:
+                if phenotype is None:  # pragma: no cover
                     raise NotFound(PHENOTYPE_NOT_FOUND)
 
                 dataset.phenotype.connect(phenotype)
 
-        if technical_uuid:
-            kwargs["technical_uuid"] = technical_uuid
+        if technical:
+            kwargs["technical"] = technical
             if previous := dataset.technical.single():
                 dataset.technical.disconnect(previous)
 
-            if technical_uuid != "-1":
-                technical = graph.TechnicalMetadata.nodes.get_or_none(
-                    uuid=technical_uuid
-                )
+            if technical != "-1":
+                technical = study.technicals.get_or_none(uuid=technical)
 
-                if technical is None:
+                if technical is None:  # pragma: no cover
                     raise NotFound(TECHMETA_NOT_FOUND)
 
                 dataset.technical.connect(technical)

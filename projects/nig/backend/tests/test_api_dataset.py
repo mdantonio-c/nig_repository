@@ -140,51 +140,33 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_B2_headers,
-            data={"technical_uuid": technical_uuid, "phenotype_uuid": phenotype_uuid},
+            data={"technical": technical_uuid, "phenotype": phenotype_uuid},
         )
         assert r.status_code == 204
         # check technical was correctly assigned
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B2_headers)
         assert r.status_code == 200
         response = self.get_content(r)
-        assert "technicals" in response[0]
-        assert response[0]["technicals"]["uuid"] == technical_uuid
+        assert "technical" in response
+        assert "phenotype" in response
+        assert response["technical"]["uuid"] == technical_uuid
         # check phenotype was correctly assigned
-        assert response[0]["phenotypes"]["uuid"] == phenotype_uuid
+        assert response["phenotype"]["uuid"] == phenotype_uuid
 
         # modify a dataset of your group removing a technical and a phenotype
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_B2_headers,
-            data={"technical_uuid": "-1", "phenotype_uuid": "-1"},
+            data={"technical": "-1", "phenotype": "-1"},
         )
         assert r.status_code == 204
         # check technical was correctly removed
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B2_headers)
         assert r.status_code == 200
         response = self.get_content(r)
-        assert "technicals" not in response[0]
+        assert response["technical"] is None
         # check phenotype was correctly removed
-        assert "phenotypes" not in response[0]
-
-        # check assign a technical that does not exists
-        r = client.put(
-            f"{API_URI}/dataset/{dataset1_uuid}",
-            headers=user_B2_headers,
-            data={"technical_uuid": faker.pystr()},
-        )
-        assert r.status_code == 404
-        error_msg = self.get_content(r)
-        assert error_msg == TECHMETA_NOT_FOUND
-        # check assign a phenotype that does not exists
-        r = client.put(
-            f"{API_URI}/dataset/{dataset1_uuid}",
-            headers=user_B2_headers,
-            data={"phenotype_uuid": faker.pystr()},
-        )
-        assert r.status_code == 404
-        error_msg = self.get_content(r)
-        assert error_msg == PHENOTYPE_NOT_FOUND
+        assert response["phenotype"] is None
 
         # admin modify a dataset of a group he don't belongs
         r = client.put(
