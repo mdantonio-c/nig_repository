@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Any, Optional
+from typing import Any
 
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
@@ -12,13 +12,19 @@ from restapi.rest.definition import Response
 # from restapi.utilities.logs import log
 
 
+class DatasetNumber(fields.Int):
+    def _serialize(self, value, attr, obj, **kwargs):
+        # Value is expected to a ZeroOrOne neo4j relationship
+        return len(value)
+
+
 # Output schema
 class StudyOutput(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
     description = fields.Str(required=True)
     # Number of related datasets
-    datasets = fields.Int()
+    datasets = DatasetNumber()
 
 
 class StudyInputSchema(Schema):
@@ -29,6 +35,33 @@ class StudyInputSchema(Schema):
 class StudyPutSchema(Schema):
     name = fields.Str(required=False)
     description = fields.Str(required=False)
+
+
+class Studies(NIGEndpoint):
+    labels = ["study"]
+
+    @decorators.auth.require()
+    @decorators.endpoint(
+        path="/study",
+        summary="List of studies to which you have access",
+        responses={
+            200: "List of studies successfully retrieved",
+        },
+    )
+    @decorators.marshal_with(StudyOutput(many=True), code=200)
+    def get(self) -> Response:
+
+        graph = neo4j.get_instance()
+
+        data = []
+        for t in graph.Study.nodes.order_by().all():
+
+            if not self.verifyStudyAccess(t, read=True, raiseError=False):
+                continue
+
+            data.append(t)
+
+        return self.response(data)
 
 
 class Study(NIGEndpoint):
@@ -44,45 +77,17 @@ class Study(NIGEndpoint):
             404: "This study cannot be found or you are not authorized to access",
         },
     )
-    @decorators.endpoint(
-        path="/study",
-        summary="List of studies to which you have access",
-        responses={
-            200: "List of studies successfully retrieved",
-        },
-    )
-    @decorators.marshal_with(StudyOutput(many=True), code=200)
-    def get(self, uuid: Optional[str] = None) -> Response:
+    @decorators.marshal_with(StudyOutput, code=200)
+    def get(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
-        nodeset = graph.Study.nodes.order_by()
-        if uuid is not None:
-            nodeset = nodeset.filter(uuid=uuid)
-            study = graph.Study.nodes.get_or_none(uuid=uuid)
-            self.verifyStudyAccess(study, read=True)
+        study = graph.Study.nodes.get_or_none(uuid=uuid)
+        self.verifyStudyAccess(study, read=True)
 
-        data = []
-        for t in nodeset.all():
+        self.log_event(self.events.access, study)
 
-            access = self.verifyStudyAccess(t, read=True, raiseError=False)
-            # log.debug("access {} to study {} for {}",access,t.name,motivation)
-            if not access:
-                continue
-
-            study_el = {
-                "uuid": t.uuid,
-                "name": t.name,
-                "description": t.description,
-                "datasets": len(t.datasets),
-            }
-
-            data.append(study_el)
-
-        if uuid is not None:
-            self.log_event(self.events.access, study)
-
-        return self.response(data)
+        return self.response(study)
 
     @decorators.auth.require()
     @decorators.use_kwargs(StudyInputSchema)
