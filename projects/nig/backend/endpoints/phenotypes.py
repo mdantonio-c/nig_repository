@@ -6,7 +6,14 @@ from nig.endpoints import PHENOTYPE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import NotFound
-from restapi.models import ISO8601UTC, Schema, fields, validate
+from restapi.models import (
+    ISO8601UTC,
+    Neo4jRelationshipToMany,
+    Neo4jRelationshipToSingle,
+    Schema,
+    fields,
+    validate,
+)
 from restapi.rest.definition import Response
 
 # from restapi.connectors import celery
@@ -33,8 +40,8 @@ class PhenotypeOutputSchema(Schema):
     birthday = fields.DateTime(format=ISO8601UTC)
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
-    hpo = fields.List(fields.Nested(Hpo), required=False)
-    birth_place = fields.Nested(GeoData, required=False)
+    hpo = Neo4jRelationshipToMany(Hpo)
+    birth_place = Neo4jRelationshipToSingle(GeoData)
 
 
 class PhenotypeInputSchema(Schema):
@@ -53,6 +60,37 @@ class PhenotypePutSchema(Schema):
     sex = fields.Str(required=False, validate=validate.OneOf(SEX))
     birth_place_uuids = fields.List(fields.Str())
     hpo_uuids = fields.List(fields.Str())
+
+
+class PhenotypeList(NIGEndpoint):
+
+    # schema_expose = True
+    labels = ["phenotype"]
+
+    @decorators.auth.require()
+    @decorators.endpoint(
+        path="/study/<uuid>/phenotypes",
+        summary="Obtain the list of phenotypes in a study",
+        responses={
+            200: "Phenotype information successfully retrieved",
+            404: "This study cannot be found or you are not authorized to access",
+        },
+    )
+    @decorators.marshal_with(PhenotypeOutputSchema(many=True), code=200)
+    def get(self, uuid: str) -> Response:
+
+        graph = neo4j.get_instance()
+
+        study = graph.Study.nodes.get_or_none(uuid=uuid)
+        self.verifyStudyAccess(study, read=True)
+        nodeset = study.phenotypes
+
+        data = []
+        for phenotype in nodeset.all():
+
+            data.append(phenotype)
+
+        return self.response(data)
 
 
 class Phenotypes(NIGEndpoint):
@@ -90,76 +128,27 @@ class Phenotypes(NIGEndpoint):
 
     @decorators.auth.require()
     @decorators.endpoint(
-        path="/study/<study_uuid>/phenotypes",
-        summary="Obtain the list of phenotypes in a study",
-        responses={
-            200: "Phenotype information successfully retrieved",
-            404: "This study cannot be found or you are not authorized to access",
-        },
-    )
-    @decorators.endpoint(
-        path="/phenotype/<phenotype_uuid>",
+        path="/phenotype/<uuid>",
         summary="Obtain information on a single phenotype",
         responses={
             200: "Phenotype information successfully retrieved",
             404: "This phenotype cannot be found or you are not authorized to access",
         },
     )
-    @decorators.marshal_with(PhenotypeOutputSchema(many=True), code=200)
-    def get(
-        self, study_uuid: Optional[str] = None, phenotype_uuid: Optional[str] = None
-    ) -> Response:
+    @decorators.marshal_with(PhenotypeOutputSchema, code=200)
+    def get(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
-        if phenotype_uuid is not None:
-            phenotype = graph.Phenotype.nodes.get_or_none(uuid=phenotype_uuid)
-            if phenotype is None:
-                raise NotFound(PHENOTYPE_NOT_FOUND)
-            study = phenotype.defined_in.single()
-            self.verifyStudyAccess(study, error_type="Phenotype", read=True)
-            nodeset = graph.Phenotype.nodes.filter(uuid=phenotype_uuid)
+        phenotype = graph.Phenotype.nodes.get_or_none(uuid=uuid)
+        if not phenotype:
+            raise NotFound(PHENOTYPE_NOT_FOUND)
+        study = phenotype.defined_in.single()
+        self.verifyStudyAccess(study, error_type="Phenotype", read=True)
 
-        elif study_uuid is not None:
-            study = graph.Study.nodes.get_or_none(uuid=study_uuid)
-            self.verifyStudyAccess(study, read=True)
-            nodeset = study.phenotypes
+        self.log_event(self.events.access, phenotype)
 
-        data = []
-        for t in nodeset.all():
-
-            phenotype_el = {
-                "uuid": t.uuid,
-                "name": t.name,
-                "birthday": t.birthday,
-                "deathday": t.deathday,
-                "sex": t.sex,
-            }
-            hpo_nodeset = t.hpo.all()
-            phenotype_el["hpo"] = []
-            if hpo_nodeset:
-                for h in hpo_nodeset:
-                    hh = graph.HPO.nodes.get_or_none(uuid=h.uuid)
-                    for hhh in hh.generalized_parent.all():
-                        if hhh.hide_node:
-                            continue
-                        hpo_el = {"uuid": hhh.uuid, "label": hhh.label}
-                        phenotype_el["hpo"].append(hpo_el)
-            birth_place = t.birth_place.single()
-            if birth_place:
-                phenotype_el["birth_place"] = {
-                    "country": birth_place.country,
-                    "region": birth_place.region,
-                    "province": birth_place.province,
-                    "city": birth_place.city,
-                }
-
-            data.append(phenotype_el)
-
-        if phenotype_uuid is not None:
-            self.log_event(self.events.access, phenotype)
-
-        return self.response(data)
+        return self.response(phenotype)
 
     @decorators.auth.require()
     @decorators.endpoint(

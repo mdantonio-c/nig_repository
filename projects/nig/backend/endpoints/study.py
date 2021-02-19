@@ -6,16 +6,10 @@ from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import Conflict
-from restapi.models import Schema, fields
+from restapi.models import Neo4jRelationshipToCount, Schema, fields
 from restapi.rest.definition import Response
 
 # from restapi.utilities.logs import log
-
-
-class DatasetNumber(fields.Int):
-    def _serialize(self, value, attr, obj, **kwargs):
-        # Value is expected to a ZeroOrOne neo4j relationship
-        return len(value)
 
 
 # Output schema
@@ -24,7 +18,7 @@ class StudyOutput(Schema):
     name = fields.Str(required=True)
     description = fields.Str(required=True)
     # Number of related datasets
-    datasets = DatasetNumber()
+    datasets = Neo4jRelationshipToCount()
 
 
 class StudyInputSchema(Schema):

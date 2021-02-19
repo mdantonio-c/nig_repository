@@ -6,18 +6,23 @@ from nig.endpoints import PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import BadRequest, Conflict, NotFound
-from restapi.models import Schema, fields
+from restapi.models import (
+    Neo4jRelationshipToCount,
+    Neo4jRelationshipToSingle,
+    Schema,
+    fields,
+)
 from restapi.rest.definition import Response
 
 # from restapi.utilities.logs import log
 
 
-class Technicals(Schema):
+class TechnicalMetadata(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
 
 
-class Phenotypes(Schema):
+class Phenotype(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
 
@@ -27,9 +32,9 @@ class DatasetOutput(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
     description = fields.Str(required=False)
-    technicals = fields.Nested(Technicals)
-    phenotypes = fields.Nested(Phenotypes)
-    nfiles = fields.Int()
+    technical = Neo4jRelationshipToSingle(TechnicalMetadata)
+    phenotype = Neo4jRelationshipToSingle(Phenotype)
+    files = Neo4jRelationshipToCount()
     # for now only the number of related files, can be useful also a list of some files metadata?
     # virtual files?
 
@@ -47,48 +52,25 @@ class DatasetPutSchema(Schema):
     technical_uuid = fields.Str(required=False)
 
 
-class Dataset(NIGEndpoint):
-
+class Datasets(NIGEndpoint):
     labels = ["dataset"]
 
     @decorators.auth.require()
     @decorators.endpoint(
-        path="/study/<study_uuid>/datasets",
+        path="/study/<uuid>/datasets",
         summary="Obtain the list of datasets in a study",
         responses={
             200: "Dataset list successfully retrieved",
         },
     )
-    @decorators.endpoint(
-        path="/dataset/<dataset_uuid>",
-        summary="Obtain information on a single dataset",
-        responses={
-            200: "Dataset information successfully retrieved",
-            404: "This dataset cannot be found or you are not authorized to access",
-        },
-    )
     @decorators.marshal_with(DatasetOutput(many=True), code=200)
-    def get(
-        self, study_uuid: Optional[str] = None, dataset_uuid: Optional[str] = None
-    ) -> Response:
+    def get(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
-        if study_uuid:
-            study = graph.Study.nodes.get_or_none(uuid=study_uuid)
-            self.verifyStudyAccess(study, read=True)
-            nodeset = study.datasets
-
-        elif dataset_uuid:
-            dataset = graph.Dataset.nodes.get_or_none(uuid=dataset_uuid)
-            self.verifyDatasetAccess(dataset, read=True)
-
-            study = dataset.parent_study.single()
-            self.verifyStudyAccess(study, error_type="Dataset", read=True)
-
-            nodeset = graph.Dataset.nodes.filter(uuid=dataset_uuid)
-        else:  # pragma: no cover
-            raise BadRequest("Missing study or dataset ID")
+        study = graph.Study.nodes.get_or_none(uuid=uuid)
+        self.verifyStudyAccess(study, read=True)
+        nodeset = study.datasets
 
         data = []
         for dataset in nodeset.all():
@@ -99,29 +81,34 @@ class Dataset(NIGEndpoint):
             if not dataset.parent_study.is_connected(study):
                 continue
 
-            dataset_el = {
-                "uuid": dataset.uuid,
-                "name": dataset.name,
-                "description": dataset.description,
-                "nfiles": len(dataset.files),
-            }
-            technical = dataset.technical.single()
-            if technical:
-                dataset_el["technicals"] = {
-                    "uuid": technical.uuid,
-                    "name": technical.name,
-                }
-            phenotype = dataset.phenotype.single()
-            if phenotype:
-                dataset_el["phenotypes"] = {
-                    "uuid": phenotype.uuid,
-                    "name": phenotype.name,
-                }
+            data.append(dataset)
 
-            data.append(dataset_el)
-        if dataset_uuid:
-            self.log_event(self.events.access, dataset)
         return self.response(data)
+
+
+class Dataset(NIGEndpoint):
+    @decorators.auth.require()
+    @decorators.endpoint(
+        path="/dataset/<uuid>",
+        summary="Obtain information on a single dataset",
+        responses={
+            200: "Dataset information successfully retrieved",
+            404: "This dataset cannot be found or you are not authorized to access",
+        },
+    )
+    @decorators.marshal_with(DatasetOutput, code=200)
+    def get(self, uuid: str) -> Response:
+
+        graph = neo4j.get_instance()
+
+        dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
+        self.verifyDatasetAccess(dataset, read=True)
+
+        study = dataset.parent_study.single()
+        self.verifyStudyAccess(study, error_type="Dataset", read=True)
+
+        self.log_event(self.events.access, dataset)
+        return self.response(dataset)
 
     @decorators.auth.require()
     @decorators.endpoint(
