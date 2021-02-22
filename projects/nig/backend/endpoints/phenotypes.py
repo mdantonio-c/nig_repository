@@ -23,7 +23,7 @@ SEX = ["male", "female"]
 
 
 class Hpo(Schema):
-    uuid = fields.Str(required=True)
+    hpo_id = fields.Str(required=True)
     label = fields.Str(required=True)
 
 
@@ -50,7 +50,7 @@ class PhenotypeInputSchema(Schema):
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
     birth_place_uuid = fields.Str()
-    hpo_uuids = fields.List(fields.Str())
+    hpo_ids = fields.List(fields.Str())
 
 
 class PhenotypePutSchema(Schema):
@@ -59,7 +59,7 @@ class PhenotypePutSchema(Schema):
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=False, validate=validate.OneOf(SEX))
     birth_place_uuids = fields.List(fields.Str())
-    hpo_uuids = fields.List(fields.Str())
+    hpo_ids = fields.List(fields.Str())
 
 
 class PhenotypeList(NIGEndpoint):
@@ -98,16 +98,16 @@ class Phenotypes(NIGEndpoint):
     # schema_expose = True
     labels = ["phenotype"]
 
-    def link_hpo(self, graph, phenotype, hpo_uuids):
+    def link_hpo(self, graph, phenotype, hpo_ids):
         # if the hpo list is empty it means "disconnect all phenotypes"
         for p in phenotype.hpo.all():
             phenotype.hpo.disconnect(p)
         connected_hpo = []
-        for uuid in hpo_uuids:
-            hpo = graph.HPO.nodes.get_or_none(uuid=uuid)
+        for id in hpo_ids:
+            hpo = graph.HPO.nodes.get_or_none(hpo_id=id)
             if hpo:
                 phenotype.hpo.connect(hpo)
-                connected_hpo.append(uuid)
+                connected_hpo.append(id)
         return connected_hpo
 
     def link_geodata(self, graph, phenotype, geodata_uuid):
@@ -169,7 +169,7 @@ class Phenotypes(NIGEndpoint):
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
         birth_place_uuid: Optional[str] = None,
-        hpo_uuids: Optional[List[str]] = None,
+        hpo_ids: Optional[List[str]] = None,
     ) -> Response:
 
         graph = neo4j.get_instance()
@@ -197,8 +197,8 @@ class Phenotypes(NIGEndpoint):
         if birth_place_uuid:
             self.link_geodata(graph, phenotype, birth_place_uuid)
             kwargs["birth_place"] = birth_place_uuid
-        if hpo_uuids:
-            connected_hpo = self.link_hpo(graph, phenotype, hpo_uuids)
+        if hpo_ids:
+            connected_hpo = self.link_hpo(graph, phenotype, hpo_ids)
             kwargs["hpo"] = connected_hpo
 
         # c = celery.get_instance()
@@ -228,7 +228,7 @@ class Phenotypes(NIGEndpoint):
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
         birth_place_uuid: Optional[str] = None,
-        hpo_uuids: Optional[List[str]] = None,
+        hpo_ids: Optional[List[str]] = None,
     ) -> Response:
 
         graph = neo4j.get_instance()
@@ -260,8 +260,8 @@ class Phenotypes(NIGEndpoint):
         if birth_place_uuid:
             self.link_geodata(graph, phenotype, birth_place_uuid)
             kwargs["birth_place"] = birth_place_uuid
-        if hpo_uuids:
-            connected_hpo = self.link_hpo(graph, phenotype, hpo_uuids)
+        if hpo_ids:
+            connected_hpo = self.link_hpo(graph, phenotype, hpo_ids)
             kwargs["hpo"] = connected_hpo
 
         # c = celery.get_instance()

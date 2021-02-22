@@ -330,8 +330,9 @@ class GeoData(IdentifiedNode):
 
 class HPO(StructuredNode):
 
+    hpo_id = StringProperty(required=True, unique_index=True)
     label = StringProperty(required=True)
-    description = StringProperty(required=True)
+    description = StringProperty(required=True, nullable=True)
     synonyms = StringProperty()
     translation = StringProperty()
 
@@ -342,3 +343,6 @@ class HPO(StructuredNode):
 
     generalized_parent = RelationshipTo("HPO", "GENERALIZED_BY")
     specification_child = RelationshipFrom("HPO", "GENERALIZED_BY")
+
+    parent = RelationshipFrom("HPO", "IS_CHILD_OF")
+    children = RelationshipTo("HPO", "IS_CHILD_OF")

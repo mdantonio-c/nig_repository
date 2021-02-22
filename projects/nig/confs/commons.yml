@@ -4,6 +4,7 @@ services:
   neo4j:
     volumes:
       - ${VANILLA_DIR}/data/graphdata:/data
+      - ${VANILLA_DIR}/data/data:/var/lib/neo4j/import/repo
     ports:
       - 7687:7687
       - 9090:${NEO4J_WEB_INTERFACE_PORT}
