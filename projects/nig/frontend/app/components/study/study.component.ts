@@ -16,11 +16,9 @@ export class StudyComponent implements OnInit {
 
   links = [
     { title: 'Datasets', fragment: 'datasets', icon: 'fa-database' },
-    { title: 'Stage', fragment: 'stage', icon: 'fa-upload' },
-    { title: 'Technical', fragment: 'technical', icon: 'fa-file-alt' },
-    { title: 'Samples', fragment: 'samples', icon: 'fa-vials' },
-    { title: 'Resources', fragment: 'resources', icon: 'fa-archive' },
-    { title: 'Access & Security', fragment: 'access', icon: 'fa-shield-alt' },
+    { title: 'Technical', fragment: 'technicals', icon: 'fa-file-alt' },
+    { title: 'Samples', fragment: 'phenotypes', icon: 'fa-vials' },
+    // { title: 'Resources', fragment: 'resources', icon: 'fa-archive' },
   ];
 
 	constructor(
@@ -44,11 +42,24 @@ export class StudyComponent implements OnInit {
       this.dataService.getStudy(uuid).subscribe(
         (data) => {
           this.study = data;
+          this.updateLinkCounters();
         },
         (error) => {
           this.notify.showError(error);
         });
+    } else {
+      this.updateLinkCounters();
     }
+
+  }
+
+  private updateLinkCounters() {
+    this.links.forEach((link) => {
+      // console.log(`update counter for: ${link.fragment}`);
+      if (this.study && this.study.hasOwnProperty(link.fragment)) {
+        link['count'] = this.study[link.fragment];
+      }
+    })
   }
 
 }

@@ -13,8 +13,10 @@ export interface Study {
   uuid: string;
   name: string;
   description: string;
-  /** Number of the contained datasets */
-  datasets: number;
+  /** counter for existing relationships */
+  datasets?: number;
+  phenotypes?: number;
+  technicals?: number;
 }
 
 export interface Studies extends Array<Study> {}

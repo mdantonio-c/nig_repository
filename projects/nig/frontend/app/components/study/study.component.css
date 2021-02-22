@@ -22,3 +22,18 @@
 	display: inline-flex;
     margin-right: 8px;
 }
+
+.nav-sidebar li>a {
+	color: #525252;
+    text-decoration: none;
+}
+
+.nav-sidebar li>a:hover {
+	background: rgba(0,0,0,0.04);
+}
+
+.nav-sidebar li>a.active {
+	font-weight: 600;
+	background: rgba(0,0,0,0.04);
+    box-shadow: inset 4px 0 0 #666;
+}
