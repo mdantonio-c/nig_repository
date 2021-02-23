@@ -39,7 +39,7 @@ jobs:
           sleep 20
           rapydo logs
 
-          rapydo shell backend "bash nig/scripts/init_hpo.sh"
+          rapydo shell --no-tty backend "bash nig/scripts/init_hpo.sh"
 
           rapydo shell --no-tty backend --detach "restapi launch"
           rapydo -s frontend logs
