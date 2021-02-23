@@ -21,7 +21,8 @@ with open(output_nodes, "wt") as out_nodes:
             tsv_node_writer.writerow([cl[hpo].id, cl[hpo].name, cl[hpo].definition])
             sons = list(cl[hpo].subclasses())
             for s in sons:
-                tsv_rel_writer.writerow([cl[hpo].id, s.id])
+                if cl[hpo].id != s.id:
+                    tsv_rel_writer.writerow([cl[hpo].id, s.id])
 
 # enter data in neo4j
 graph = neo4j.get_instance()
