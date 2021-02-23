@@ -19,7 +19,7 @@ with open(output_nodes, "wt") as out_nodes:
             # 	xrefs_list += f"{x.id}, "
             # tsv_node_writer.writerow([cl[hpo].id, cl[hpo].name,cl[hpo].definition,xrefs_list])
             tsv_node_writer.writerow([cl[hpo].id, cl[hpo].name, cl[hpo].definition])
-            sons = list(cl[hpo].subclasses())
+            sons = list(cl[hpo].subclasses(distance=1))
             for s in sons:
                 if cl[hpo].id != s.id:
                     tsv_rel_writer.writerow([cl[hpo].id, s.id])
