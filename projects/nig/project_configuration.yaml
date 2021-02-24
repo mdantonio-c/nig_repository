@@ -2,8 +2,8 @@
 project:
   title: NIG Repository
   description: Data repository for genomic and phenotypic datasets
-  version: "1.0"
-  rapydo: "1.0"
+  version: "1.1"
+  rapydo: "1.1"
 
 variables:
   env:
