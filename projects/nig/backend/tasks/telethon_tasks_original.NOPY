@@ -34,7 +34,7 @@ def progress(self, state, uuid):
     self.update_state(state=state)
 
 
-@CeleryExt.task(name="import_file")
+@CeleryExt.task()
 def import_file(
         self, uuid, stage_path, abs_file, type='File',
         tmp_name=None, irods_user=None, irods_group=None, data_path=None):

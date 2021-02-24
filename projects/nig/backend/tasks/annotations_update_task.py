@@ -128,7 +128,7 @@ def updateNodeModel(self, graph, data, oldModel, newModel, label):
     log.info("%s updated: %d" % (label, node.id))
 
 
-@CeleryExt.task(name="update_annotations")
+@CeleryExt.task()
 def update_annotations(self):
     graph = CeleryExt.app.get_service("neo4j")
 

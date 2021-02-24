@@ -3,7 +3,7 @@ from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
 
 
-@CeleryExt.task(name="link_variants")
+@CeleryExt.task()
 def link_variants(self, phenotype_uuid=None):
     graph = neo4j.get_instance()
     if phenotype_uuid is None:

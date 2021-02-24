@@ -62,7 +62,7 @@ def progress(self, state, uuid):
 
 
 """
-@CeleryExt.task(name="import_file")
+@CeleryExt.task()
 def import_file(
     self,
     uuid,
