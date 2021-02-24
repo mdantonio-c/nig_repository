@@ -159,7 +159,7 @@ class Phenotypes(NIGEndpoint):
             404: "This study cannot be found or you are not authorized to access",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     @decorators.use_kwargs(PhenotypeInputSchema)
     def post(
         self,
@@ -218,7 +218,7 @@ class Phenotypes(NIGEndpoint):
             404: "This phenotype cannot be found or you are not authorized to access",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     @decorators.use_kwargs(PhenotypePutSchema)
     def put(
         self,
@@ -282,7 +282,7 @@ class Phenotypes(NIGEndpoint):
             404: "This phenotype cannot be found or you are not authorized to access",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def delete(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()

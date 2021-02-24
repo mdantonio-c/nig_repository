@@ -1,11 +1,11 @@
 import os
 import shutil
-from typing import Any, Dict, Optional, Union
+from typing import Dict, Optional, Union
 
 from nig.endpoints import PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import BadRequest, Conflict, NotFound
+from restapi.exceptions import Conflict, NotFound
 from restapi.models import (
     Neo4jRelationshipToCount,
     Neo4jRelationshipToSingle,
@@ -180,7 +180,7 @@ class Dataset(NIGEndpoint):
             404: "This study cannot be found or you are not authorized to access",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     @decorators.use_kwargs(getPOSTInputSchema)
     def post(
         self,
@@ -239,7 +239,7 @@ class Dataset(NIGEndpoint):
         },
     )
     @decorators.use_kwargs(getPUTInputSchema)
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def put(
         self,
         uuid: str,
@@ -306,7 +306,7 @@ class Dataset(NIGEndpoint):
             403: "You are not authorized to perform actions on this dataset",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def delete(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()

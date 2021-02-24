@@ -2,9 +2,10 @@ from nig.endpoints import PHENOTYPE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import BadRequest, NotFound
-from restapi.models import Schema, fields, validate
+from restapi.models import fields, validate
 from restapi.rest.definition import Response
-from restapi.utilities.logs import log
+
+# from restapi.utilities.logs import log
 
 
 class Family(NIGEndpoint):
@@ -29,7 +30,7 @@ class Family(NIGEndpoint):
         },
         location="body",
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def post(self, uuid1: str, uuid2: str, relationship: str) -> Response:
 
         graph = neo4j.get_instance()
@@ -83,7 +84,7 @@ class Family(NIGEndpoint):
         },
         location="body",
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def delete(self, uuid1: str, uuid2: str, relationship: str) -> Response:
 
         graph = neo4j.get_instance()

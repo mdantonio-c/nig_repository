@@ -1,13 +1,14 @@
-from typing import Any, Optional
+from typing import Any
 
 import pytz
 from nig.endpoints import TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import BadRequest, NotFound
+from restapi.exceptions import NotFound
 from restapi.models import ISO8601UTC, Schema, fields, validate
 from restapi.rest.definition import Response
-from restapi.utilities.logs import log
+
+# from restapi.utilities.logs import log
 
 PLATFORMS = [
     "Illumina",
@@ -116,7 +117,7 @@ class TechnicalMetadata(NIGEndpoint):
             404: "This study cannot be found or you are not authorized to access",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     @decorators.use_kwargs(TechmetaInputSchema)
     def post(self, uuid: str, **kwargs: Any) -> Response:
 
@@ -151,7 +152,7 @@ class TechnicalMetadata(NIGEndpoint):
             404: "This set of technical metadata cannot be found or you are not authorized to access",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     @decorators.use_kwargs(TechmetaPutSchema)
     def put(self, uuid: str, **kwargs: Any) -> Response:
 
@@ -187,7 +188,7 @@ class TechnicalMetadata(NIGEndpoint):
             404: "This set of technical metadata cannot be found or you are not authorized to access",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def delete(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()

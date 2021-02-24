@@ -102,7 +102,7 @@ class Files(NIGEndpoint):
             403: "You are not authorized to perform actions on this file",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def delete(self, uuid):
 
         graph = neo4j.get_instance()
@@ -142,7 +142,7 @@ class FileUpload(Uploader, NIGEndpoint):
             200: "File successfully uploaded",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def post(self, uuid):
 
         graph = neo4j.get_instance()

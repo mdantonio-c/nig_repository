@@ -94,7 +94,7 @@ class Study(NIGEndpoint):
             200: "Study successfully created. the new uuid is returned",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def post(self, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
@@ -129,7 +129,7 @@ class Study(NIGEndpoint):
             403: "You are not authorized to perform actions on this study",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def put(self, uuid: str, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
@@ -154,7 +154,7 @@ class Study(NIGEndpoint):
             403: "You are not authorized to perform actions on this study",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def delete(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()

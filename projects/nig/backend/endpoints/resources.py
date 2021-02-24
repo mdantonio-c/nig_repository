@@ -56,7 +56,7 @@ class Resources(NIGEndpoint):
             404: "This resource cannot be found or you are not authorized to access",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def delete(self, uuid):
 
         graph = neo4j.get_instance()
@@ -100,7 +100,7 @@ class ResourcesUpload(Uploader, NIGEndpoint):
             200: "Resource file successfully uploaded",
         },
     )
-    @decorators.graph_transactions
+    @decorators.database_transaction
     def post(self, uuid):
 
         graph = neo4j.get_instance()
