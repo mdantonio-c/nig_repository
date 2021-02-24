@@ -62,7 +62,7 @@ def progress(self, state, uuid):
 
 
 """
-@CeleryExt.celery_app.task(bind=True, name="import_file")
+@CeleryExt.task(name="import_file")
 def import_file(
     self,
     uuid,
@@ -74,127 +74,126 @@ def import_file(
     irods_group=None,
     data_path=None,
 ):
-    with CeleryExt.app.app_context():
 
-        progress(self, "Starting import", uuid)
+    progress(self, "Starting import", uuid)
 
-        if stage_path is not None:
-            stage_path = stage_path.replace("//", "/")
-            progress(self, "Reading file from %s", stage_path)
+    if stage_path is not None:
+        stage_path = stage_path.replace("//", "/")
+        progress(self, "Reading file from %s", stage_path)
 
-        graph = neo4j.get_instance()
-        from undefined.connectors import irods
+    graph = neo4j.get_instance()
+    from undefined.connectors import irods
 
-        icom = irods.get_instance()
+    icom = irods.get_instance()
 
-        fromDisk = tmp_name is not None
-        reimport = data_path is not None
-        try:
+    fromDisk = tmp_name is not None
+    reimport = data_path is not None
+    try:
 
-            if type == FILE_TYPE:
-                model = graph.File
-            elif type == RESOURCE_TYPE:
-                model = graph.Resource
+        if type == FILE_TYPE:
+            model = graph.File
+        elif type == RESOURCE_TYPE:
+            model = graph.Resource
+        else:
+            model = None
+
+        self.type = type
+        self.fileNode = model.nodes.get(uuid=uuid)
+
+        # METADATA EXTRACTION
+        filename, file_extension = os.path.splitext(abs_file)
+        unused, file_sub_extension = os.path.splitext(filename)
+
+        if file_extension.startswith("."):
+            file_extension = file_extension[1:]
+
+        if file_sub_extension.startswith("."):
+            file_sub_extension = file_sub_extension[1:]
+
+        file_type = file_extension
+        fastq = ["fastq", "fq"]
+        vcf = ["vcf"]
+        ped = ["ped", "pedigree"]
+        tech = ["tech", "technical"]
+        parser = None
+        if file_extension in fastq:
+            parser = parse_file_fastq
+            file_type = "fastq"
+        elif file_extension in vcf:
+            if file_sub_extension == "g":
+                file_type = "gvcf"
             else:
-                model = None
+                parser = parse_file_vcf
+                file_type = "vcf"
+        elif file_extension in ped:
+            parser = parse_file_ped
+            file_type = "ped"
+        elif file_extension in tech:
+            parser = parse_file_tech
+            file_type = "tech"
 
-            self.type = type
-            self.fileNode = model.nodes.get(uuid=uuid)
+        if parser is None:
+            metadata = {}
+        else:
+            # IRODS -> LOCAL/TMP
+            progress(self, "Reading file", uuid)
 
-            # METADATA EXTRACTION
-            filename, file_extension = os.path.splitext(abs_file)
-            unused, file_sub_extension = os.path.splitext(filename)
+            if not fromDisk:
+                # mah!
+                # from utilities.random import get_random_name
 
-            if file_extension.startswith("."):
-                file_extension = file_extension[1:]
+                # tmp_name = "/tmp/%s" % get_random_name(lenght=48, prefix="TMP_")
+                tmp_name = "/tmp/get_random_name_not_implemented"
+                if stage_path is not None:
+                    icom.open(stage_path, tmp_name)
+                    log.info("copy from %s to %s", stage_path, tmp_name)
+                elif data_path is not None:
+                    icom.open(data_path, tmp_name)
+                    log.info("copy from %s to %s", data_path, tmp_name)
 
-            if file_sub_extension.startswith("."):
-                file_sub_extension = file_sub_extension[1:]
+            progress(self, "Extracting metadata", uuid)
+            metadata = parser(self, graph, tmp_name, reimport=reimport)
+            st = os.stat(tmp_name)
+            self.fileNode.size = st.st_size
 
-            file_type = file_extension
-            fastq = ["fastq", "fq"]
-            vcf = ["vcf"]
-            ped = ["ped", "pedigree"]
-            tech = ["tech", "technical"]
-            parser = None
-            if file_extension in fastq:
-                parser = parse_file_fastq
-                file_type = "fastq"
-            elif file_extension in vcf:
-                if file_sub_extension == "g":
-                    file_type = "gvcf"
-                else:
-                    parser = parse_file_vcf
-                    file_type = "vcf"
-            elif file_extension in ped:
-                parser = parse_file_ped
-                file_type = "ped"
-            elif file_extension in tech:
-                parser = parse_file_tech
-                file_type = "tech"
+        # SAVE METADATA
+        self.fileNode.status = "completed"
+        self.fileNode.metadata = metadata
+        self.fileNode.type = file_type
+        self.fileNode.save()
 
-            if parser is None:
-                metadata = {}
-            else:
-                # IRODS -> LOCAL/TMP
-                progress(self, "Reading file", uuid)
+        if fromDisk:
+            # TMP DISK -> IRODS DATA
+            progress(self, "Importing file from tmp disk", uuid)
+            icom.save(tmp_name, destination=abs_file, force=True)
 
-                if not fromDisk:
-                    # mah!
-                    # from utilities.random import get_random_name
+        elif stage_path is not None:
+            # IRODS STAGE -> IRODS DATA
+            progress(self, "Importing file from stage", uuid)
+            icom.copy(stage_path, abs_file, force=True)
+            # RM FROM IRODS STAGE
+            progress(self, "Removing file from stage", uuid)
+            icom.remove(stage_path, recursive=True)
 
-                    # tmp_name = "/tmp/%s" % get_random_name(lenght=48, prefix="TMP_")
-                    tmp_name = "/tmp/get_random_name_not_implemented"
-                    if stage_path is not None:
-                        icom.open(stage_path, tmp_name)
-                        log.info("copy from %s to %s", stage_path, tmp_name)
-                    elif data_path is not None:
-                        icom.open(data_path, tmp_name)
-                        log.info("copy from %s to %s", data_path, tmp_name)
+        if irods_user is not None:
+            icom.set_permissions(abs_file, "read", irods_user, recursive=False)
 
-                progress(self, "Extracting metadata", uuid)
-                metadata = parser(self, graph, tmp_name, reimport=reimport)
-                st = os.stat(tmp_name)
-                self.fileNode.size = st.st_size
+        if irods_group is not None:
+            for g in irods_group:
+                icom.set_permissions(abs_file, "read", g, recursive=False)
 
-            # SAVE METADATA
-            self.fileNode.status = "completed"
-            self.fileNode.metadata = metadata
-            self.fileNode.type = file_type
-            self.fileNode.save()
+        if tmp_name is not None:
+            # REMOVE LOCAL/TMP
+            progress(self, "Removing temporary files", uuid)
+            os.remove(tmp_name)
 
-            if fromDisk:
-                # TMP DISK -> IRODS DATA
-                progress(self, "Importing file from tmp disk", uuid)
-                icom.save(tmp_name, destination=abs_file, force=True)
+        progress(self, "Completed", uuid)
 
-            elif stage_path is not None:
-                # IRODS STAGE -> IRODS DATA
-                progress(self, "Importing file from stage", uuid)
-                icom.copy(stage_path, abs_file, force=True)
-                # RM FROM IRODS STAGE
-                progress(self, "Removing file from stage", uuid)
-                icom.remove(stage_path, recursive=True)
+    except graph.File.DoesNotExist:
+        progress(self, "Import error", None)
+        log.error("Task error, uuid %s not found" % uuid)
 
-            if irods_user is not None:
-                icom.set_permissions(abs_file, "read", irods_user, recursive=False)
-
-            if irods_group is not None:
-                for g in irods_group:
-                    icom.set_permissions(abs_file, "read", g, recursive=False)
-
-            if tmp_name is not None:
-                # REMOVE LOCAL/TMP
-                progress(self, "Removing temporary files", uuid)
-                os.remove(tmp_name)
-
-            progress(self, "Completed", uuid)
-
-        except graph.File.DoesNotExist:
-            progress(self, "Import error", None)
-            log.error("Task error, uuid %s not found" % uuid)
-
-        return 1
+    return 1
 """
 
 

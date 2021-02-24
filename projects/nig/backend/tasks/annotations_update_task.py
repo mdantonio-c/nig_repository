@@ -128,62 +128,58 @@ def updateNodeModel(self, graph, data, oldModel, newModel, label):
     log.info("%s updated: %d" % (label, node.id))
 
 
-@CeleryExt.celery_app.task(bind=True, name="update_annotations")
+@CeleryExt.task(name="update_annotations")
 def update_annotations(self):
-    with CeleryExt.app.app_context():
+    graph = CeleryExt.app.get_service("neo4j")
 
-        graph = CeleryExt.app.get_service("neo4j")
-
-        """
+    """
 MATCH (v:Variant) WHERE not v:ToBeUpdated WITH v LIMIT 250000 SET v:ToBeUpdated
 
-        cypher = "MATCH (n:Variant) WHERE not v:ToBeUpdated SET n:ToBeUpdated"
-        graph.cypher(cypher)
-        cypher = "MATCH (n:Gene) SET n:ToBeUpdated"
-        graph.cypher(cypher)
-        """
+    cypher = "MATCH (n:Variant) WHERE not v:ToBeUpdated SET n:ToBeUpdated"
+    graph.cypher(cypher)
+    cypher = "MATCH (n:Gene) SET n:ToBeUpdated"
+    graph.cypher(cypher)
+    """
 
-        log.info("Updating probands...")
-        # Determine probands in trios, to be excluded for frequency, issue #114
-        graph.cypher("MATCH (d:Dataset) SET d.is_proband = false")
-        cypher = """
+    log.info("Updating probands...")
+    # Determine probands in trios, to be excluded for frequency, issue #114
+    graph.cypher("MATCH (d:Dataset) SET d.is_proband = false")
+    cypher = """
 MATCH
-    (d:Dataset)-[:IS_DESCRIBED_BY]->(proband:Phenotype),
-    (proband)-[:SON]->(father:Phenotype)<-[:IS_DESCRIBED_BY]-(:Dataset),
-    (proband)-[:SON]->(mother:Phenotype)<-[:IS_DESCRIBED_BY]-(:Dataset)
+(d:Dataset)-[:IS_DESCRIBED_BY]->(proband:Phenotype),
+(proband)-[:SON]->(father:Phenotype)<-[:IS_DESCRIBED_BY]-(:Dataset),
+(proband)-[:SON]->(mother:Phenotype)<-[:IS_DESCRIBED_BY]-(:Dataset)
 WHERE (father) <> (mother)
 SET d.is_proband = true
 """
-        graph.cypher(cypher)
+    graph.cypher(cypher)
 
-        log.info("Caching datasets...")
-        datasets = {}
-        for d in graph.Dataset.nodes.all():
-            datasets[d.uuid] = d.is_proband
+    log.info("Caching datasets...")
+    datasets = {}
+    for d in graph.Dataset.nodes.all():
+        datasets[d.uuid] = d.is_proband
 
-        chunk = 0
-        while True:
-            chunk += 1
-            log.info("Retrieving chunk number %d" % chunk)
-            cypher = "MATCH (n:ToBeUpdated) WHERE n:Variant"
-            # cypher += " RETURN id(n) as id LIMIT 50000"
-            cypher += " RETURN n LIMIT 50000"
-            results = graph.cypher(cypher)
+    chunk = 0
+    while True:
+        chunk += 1
+        log.info("Retrieving chunk number %d" % chunk)
+        cypher = "MATCH (n:ToBeUpdated) WHERE n:Variant"
+        # cypher += " RETURN id(n) as id LIMIT 50000"
+        cypher += " RETURN n LIMIT 50000"
+        results = graph.cypher(cypher)
 
-            log.info("Updating chunk number %d" % chunk)
+        log.info("Updating chunk number %d" % chunk)
 
-            count = 0
-            for row in results:
-                # computeAlleleFrequency(self, int(row[0]))
-                computeAlleleFrequency(
-                    self, graph, graph.Variant.inflate(row[0]), datasets
-                )
+        count = 0
+        for row in results:
+            # computeAlleleFrequency(self, int(row[0]))
+            computeAlleleFrequency(self, graph, graph.Variant.inflate(row[0]), datasets)
 
-                count += 1
+            count += 1
 
-            if count == 0:
-                log.info("No more variants to be updated")
-                break
+        if count == 0:
+            log.info("No more variants to be updated")
+            break
 
-        log.info("Everything is updated!")
-        return "Everything is updated!"
+    log.info("Everything is updated!")
+    return "Everything is updated!"
