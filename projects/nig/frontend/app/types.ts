@@ -20,3 +20,40 @@ export interface Study {
 }
 
 export interface Studies extends Array<Study> {}
+
+export interface Dataset {
+  uuid: string;
+  name: string;
+  description: string;
+  files: number;
+  technical: number | null;
+  phenotype: PhenotypeIdentity;
+}
+
+export interface Datasets extends Array<Dataset> {}
+
+export interface PhenotypeIdentity {
+  uuid: string;
+  name: string;
+}
+
+export interface Phenotype extends PhenotypeIdentity {
+  birth_place?: string;
+  birthday: string;
+  deathday?: string;
+  hpo: HPO[];
+  sex: string;
+}
+
+export interface Phenotypes extends Array<Phenotype> {}
+
+export interface HPO {
+  hpo_id: string;
+  label: string;
+}
+
+export interface TechnicalMetadata {
+  
+}
+
+export interface Technicals extends Array<TechnicalMetadata> {}

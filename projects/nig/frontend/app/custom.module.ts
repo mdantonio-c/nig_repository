@@ -6,6 +6,9 @@ import { AuthGuard } from "@rapydo/app.auth.guard";
 
 import { StudiesComponent } from "./components/studies/studies.component";
 import { StudyComponent } from "./components/study/study.component";
+import { DatasetsComponent } from "./components/study/datasets/datasets.component";
+import { TechnicalsComponent } from "./components/study/technicals/technicals.component";
+import { PhenotypesComponent } from "./components/study/phenotypes/phenotypes.component";
 
 const routes: Routes = [
   {
@@ -20,6 +23,7 @@ const routes: Routes = [
     canActivate: [AuthGuard],
     runGuardsAndResolvers: "always",
   },
+  
   {
     path: "",
     redirectTo: "/app/studies",
@@ -145,7 +149,10 @@ const routes: Routes = [
   imports: [SharedModule, RouterModule.forChild(routes)],
   declarations: [
     StudiesComponent,
-    StudyComponent
+    StudyComponent,
+    DatasetsComponent,
+    TechnicalsComponent,
+    PhenotypesComponent
   ],
 
   providers: [],

@@ -3,6 +3,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { DataService } from "@app/services/data.service";
 import { Study } from "@app/types";
 import { NotificationService } from "@rapydo/services/notification";
+import { Observable } from 'rxjs';
+import { map } from "rxjs/operators";
+import { NgbNavChangeEvent } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: "nig-study",
@@ -12,14 +15,14 @@ import { NotificationService } from "@rapydo/services/notification";
 export class StudyComponent implements OnInit {
 
   study: Study;
-  active = 1;
 
   links = [
     { title: 'Datasets', fragment: 'datasets', icon: 'fa-database' },
     { title: 'Technical', fragment: 'technicals', icon: 'fa-file-alt' },
-    { title: 'Samples', fragment: 'phenotypes', icon: 'fa-vials' },
+    { title: 'Samples', fragment: 'phenotypes', icon: 'fa-users' },
     // { title: 'Resources', fragment: 'resources', icon: 'fa-archive' },
   ];
+  active;
 
 	constructor(
     private dataService: DataService,
@@ -60,6 +63,9 @@ export class StudyComponent implements OnInit {
         link['count'] = this.study[link.fragment];
       }
     })
+  }
+
+  onNavChange(changeEvent: NgbNavChangeEvent) {
   }
 
 }
