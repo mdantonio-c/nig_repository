@@ -17,7 +17,8 @@ export class TechnicalsComponent extends BasePaginationComponent<TechnicalMetada
 	}
 
 	ngOnInit() {
-		this.init("technicals", `study/${this.studyUUID}/technicals`, "Technicals");
+		this.init("Technical Metadata", `study/${this.studyUUID}/technicals`, "Technicals");
+		this.set_resource_endpoint("technical");
 	    this.initPaging(20, false);
 	    this.list();
 	}
