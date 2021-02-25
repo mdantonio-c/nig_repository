@@ -38,9 +38,9 @@ export interface PhenotypeIdentity {
 }
 
 export interface Phenotype extends PhenotypeIdentity {
-  birth_place?: string;
+  birth_place?: string | null;
   birthday: string;
-  deathday?: string;
+  deathday?: string | null;
   hpo: HPO[];
   sex: string;
 }
@@ -53,7 +53,7 @@ export interface HPO {
 }
 
 export interface TechnicalMetadata {
-  
+
 }
 
 export interface Technicals extends Array<TechnicalMetadata> {}
