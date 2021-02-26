@@ -17,25 +17,23 @@ export interface Study {
 
 export interface Studies extends Array<Study> {}
 
-export interface Dataset {
-  uuid: string;
-  name: string;
+export interface Dataset extends ResourceIdentity {
   description: string;
   files: number;
   /** @nullable */
   technical?: number;
   /** @nullable */
-  phenotype: PhenotypeIdentity;
+  phenotype: ResourceIdentity;
 }
 
 export interface Datasets extends Array<Dataset> {}
 
-export interface PhenotypeIdentity {
+export interface ResourceIdentity {
   uuid: string;
   name: string;
 }
 
-export interface Phenotype extends PhenotypeIdentity {
+export interface Phenotype extends ResourceIdentity {
   /** @nullable */
   birth_place?: string;
   /** @nullable */
@@ -53,8 +51,13 @@ export interface HPO {
   label: string;
 }
 
-export interface TechnicalMetadata {
-
+export interface TechnicalMetadata extends ResourceIdentity {
+  /** @nullable */
+  sequencing_date: string;
+  /** @nullable */
+  platform: string;
+  /** @nullable */
+  enrichment_kit: string;
 }
 
 export interface Technicals extends Array<TechnicalMetadata> {}

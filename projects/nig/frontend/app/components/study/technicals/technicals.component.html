@@ -29,6 +29,31 @@
 					[offset]="paging.page"
 					[rowHeight]="'auto'"
 				>
+				  <!-- Column Templates -->
+					<!-- Name -->
+					<ngx-datatable-column prop="name" [flexGrow]="1">
+						<ng-template let-value="value" ngx-datatable-cell-template>
+							{{value}}
+						</ng-template>
+					</ngx-datatable-column>
+					<!-- Sequencing Date-->
+					<ngx-datatable-column prop="sequencing_date" name="Sequencing Date" [flexGrow]="1">
+						<ng-template let-value="value" ngx-datatable-cell-template>
+							{{(value | amFromUtc | date: "dd-MM-yyyy") || "-"}}
+						</ng-template>
+					</ngx-datatable-column>
+					<!-- Platform -->
+					<ngx-datatable-column prop="platform" [flexGrow]="1">
+						<ng-template let-value="value" ngx-datatable-cell-template>
+							{{value || "-"}}
+						</ng-template>
+					</ngx-datatable-column>
+					<!-- Platform -->
+					<ngx-datatable-column prop="enrichment_kit" name="Enrichment Kit" [flexGrow]="1">
+						<ng-template let-value="value" ngx-datatable-cell-template>
+							{{value || "-"}}
+						</ng-template>
+					</ngx-datatable-column>
 				</ngx-datatable>
 			</div>
 		</div>
