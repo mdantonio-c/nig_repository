@@ -51,14 +51,14 @@
 					<!-- Birthday -->
 					<ngx-datatable-column prop="birthday" name="Birth Date" [flexGrow]="1">
 						<ng-template let-value="value" ngx-datatable-cell-template>
-							{{value | date: "dd-MM-yyyy"}}
+							{{value | amFromUtc | date: "dd-MM-yyyy"}}
 						</ng-template>
 					</ngx-datatable-column>
 					<!-- Deathday -->
 					<ngx-datatable-column prop="deathday" name="Death Date" [flexGrow]="1">
 						<ng-template let-value="value" ngx-datatable-cell-template>
 							<span *ngIf="value; else noValue">{{
-			          value | date: "dd-MM-yyyy"
+			          value | amFromUtc | date: "dd-MM-yyyy"
 			        }}</span>
 						</ng-template>
 					</ngx-datatable-column>
