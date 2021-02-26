@@ -1,0 +1,108 @@
+province	code	region	macroarea	population	country
+Agrigento	AG	Sicilia	Isole	434870	Italia
+Alessandria	AL	Piemonte	Nord-Ovest	421284	Italia
+Ancona	AN	Marche	Centro	471228	Italia
+Aosta	AO	Valle d'Aosta	Nord-Ovest	125666	Italia
+Arezzo	AR	Toscana	Centro	342654	Italia
+Ascoli Piceno	AP	Marche	Centro	207179	Italia
+Asti	AT	Piemonte	Nord-Ovest	214638	Italia
+Avellino	AV	Campania	Sud	418306	Italia
+Bari	BA	Puglia	Sud	1251994	Italia
+Barletta-Andria-Trani	BT	Puglia	Sud	390011	Italia
+Belluno	BL	Veneto	Nord-Est	202950	Italia
+Benevento	BN	Campania	Sud	277018	Italia
+Bergamo	BG	Lombardia	Nord-Ovest	1114590	Italia
+Biella	BI	Piemonte	Nord-Ovest	175585	Italia
+Bologna	BO	Emilia-Romagna	Nord-Est	1014619	Italia
+Brescia	BS	Lombardia	Nord-Ovest	1265954	Italia
+Brindisi	BR	Puglia	Sud	392975	Italia
+Cagliari	CA	Sardegna	Isole	431038	Italia
+Caltanissetta	CL	Sicilia	Isole	262458	Italia
+Campobasso	CB	Molise	Sud	221238	Italia
+Caserta	CE	Campania	Sud	922965	Italia
+Catania	CT	Sicilia	Isole	1107702	Italia
+Catanzaro	CZ	Calabria	Sud	358316	Italia
+Chieti	CH	Abruzzo	Sud	385588	Italia
+Como	CO	Lombardia	Nord-Ovest	599204	Italia
+Cosenza	CS	Calabria	Sud	705753	Italia
+Cremona	CR	Lombardia	Nord-Ovest	358955	Italia
+Crotone	KR	Calabria	Sud	174980	Italia
+Cuneo	CN	Piemonte	Nord-Ovest	587089	Italia
+Enna	EN	Sicilia	Isole	164788	Italia
+Fermo	FM	Marche	Centro	173800	Italia
+Ferrara	FE	Emilia-Romagna	Nord-Est	345691	Italia
+Firenze	FI	Toscana	Centro	1011349	Italia
+Foggia	FG	Puglia	Sud	622183	Italia
+Forlì-Cesena	FC	Emilia-Romagna	Nord-Est	394627	Italia
+Frosinone	FR	Lazio	Centro	489083	Italia
+Genova	GE	Liguria	Nord-Ovest	841180	Italia
+Gorizia	GO	Friuli-Venezia Giulia	Nord-Est	139403	Italia
+Grosseto	GR	Toscana	Centro	221629	Italia
+Imperia	IM	Liguria	Nord-Ovest	213840	Italia
+Isernia	IS	Molise	Sud	84379	Italia
+La Spezia	SP	Liguria	Nord-Ovest	219556	Italia
+L'Aquila	AQ	Abruzzo	Sud	299031	Italia
+Latina	LT	Lazio	Centro	575254	Italia
+Lecce	LE	Puglia	Sud	795134	Italia
+Lecco	LC	Lombardia	Nord-Ovest	337380	Italia
+Livorno	LI	Toscana	Centro	334832	Italia
+Lodi	LO	Lombardia	Nord-Ovest	230198	Italia
+Lucca	LU	Toscana	Centro	387876	Italia
+Macerata	MC	Marche	Centro	314178	Italia
+Mantova	MN	Lombardia	Nord-Ovest	412292	Italia
+Massa e Carrara	MS	Toscana	Centro	194878	Italia
+Matera	MT	Basilicata	Sud	197909	Italia
+Messina	ME	Sicilia	Isole	626876	Italia
+Milano	MI	Lombardia	Nord-Ovest	3250315	Italia
+Modena	MO	Emilia-Romagna	Nord-Est	705393	Italia
+Monza e Brianza	MB	Lombardia	Nord-Ovest	873935	Italia
+Napoli	NA	Campania	Sud	3084890	Italia
+Novara	NO	Piemonte	Nord-Ovest	369018	Italia
+Nuoro	NU	Sardegna	Isole	208550	Italia
+Oristano	OR	Sardegna	Isole	157707	Italia
+Padova	PD	Veneto	Nord-Est	937908	Italia
+Palermo	PA	Sicilia	Isole	1252588	Italia
+Parma	PR	Emilia-Romagna	Nord-Est	451631	Italia
+Pavia	PV	Lombardia	Nord-Ovest	545888	Italia
+Perugia	PG	Umbria	Centro	656382	Italia
+Pesaro e Urbino	PU	Marche	Centro	358886	Italia
+Pescara	PE	Abruzzo	Sud	318909	Italia
+Piacenza	PC	Emilia-Romagna	Nord-Est	287152	Italia
+Pisa	PI	Toscana	Centro	419037	Italia
+Pistoia	PT	Toscana	Centro	292473	Italia
+Pordenone	PN	Friuli-Venezia Giulia	Nord-Est	312533	Italia
+Potenza	PZ	Basilicata	Sud	364960	Italia
+Prato	PO	Toscana	Centro	257716	Italia
+Ragusa	RG	Sicilia	Isole	320893	Italia
+Ravenna	RA	Emilia-Romagna	Nord-Est	389456	Italia
+Reggio Calabria	RC	Calabria	Sud	548009	Italia
+Reggio Emilia	RE	Emilia-Romagna	Nord-Est	531891	Italia
+Rieti	RI	Lazio	Centro	155503	Italia
+Rimini	RN	Emilia-Romagna	Nord-Est	339017	Italia
+Roma	RM	Lazio	Centro	4342212	Italia
+Rovigo	RO	Veneto	Nord-Est	234937	Italia
+Salerno	SA	Campania	Sud	1098513	Italia
+Sassari	SS	Sardegna	Isole	491571	Italia
+Savona	SV	Liguria	Nord-Ovest	276064	Italia
+Siena	SI	Toscana	Centro	267197	Italia
+Sondrio	SO	Lombardia	Nord-Ovest	181095	Italia
+Sud Sardegna	SU	Sardegna	Isole	350725	Italia
+Bolzano	BZ	Trentino Alto-Adige	Nord-Est	531178	Italia
+Siracusa	SR	Sicilia	Isole	399224	Italia
+Taranto	TA	Puglia	Sud	576756	Italia
+Teramo	TE	Abruzzo	Sud	308052	Italia
+Terni	TR	Umbria	Centro	225633	Italia
+Trapani	TP	Sicilia	Isole	430492	Italia
+Trento	TN	Trentino Alto-Adige	Nord-Est	541098	Italia
+Treviso	TV	Veneto	Nord-Est	887806	Italia
+Trieste	TS	Friuli-Venezia Giulia	Nord-Est	234493	Italia
+Torino	TO	Piemonte	Nord-Ovest	2259523	Italia
+Udine	UD	Friuli-Venezia Giulia	Nord-Est	528791	Italia
+Varese	VA	Lombardia	Nord-Ovest	890768	Italia
+Venezia	VE	Veneto	Nord-Est	853338	Italia
+Verbano-Cusio-Ossola	VB	Piemonte	Nord-Ovest	158349	Italia
+Vercelli	VC	Piemonte	Nord-Ovest	170911	Italia
+Verona	VR	Veneto	Nord-Est	926497	Italia
+Vibo Valentia	VV	Calabria	Sud	160073	Italia
+Vicenza	VI	Veneto	Nord-Est	862418	Italia
+Viterbo	VT	Lazio	Centro	317030	Italia

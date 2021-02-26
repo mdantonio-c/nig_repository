@@ -31,7 +31,7 @@ class GeoData(Schema):
     country = fields.Str(required=True)
     region = fields.Str(required=True)
     province = fields.Str(required=True)
-    city = fields.Str(required=True)
+    code = fields.Str(required=True)
 
 
 class PhenotypeOutputSchema(Schema):

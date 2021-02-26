@@ -320,9 +320,7 @@ class GeoData(IdentifiedNode):
     macroarea = StringProperty()
     region = StringProperty(required=True)
     province = StringProperty(required=True)
-    city = StringProperty(required=True)
-    latitude = FloatProperty()
-    longitude = FloatProperty()
+    code = StringProperty(required=True)
     population = IntegerProperty()
 
     birth_place = RelationshipFrom("Phenotype", "BIRTH_PLACE", cardinality=ZeroOrMore)
