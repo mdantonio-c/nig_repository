@@ -2,20 +2,16 @@
 // Put here custom User properties, if any... or keep it empty
 export interface CustomUser {}
 
-/**
-export interface MyType {
-  myfield: string;
-  readonly ro: number;
-  optional?: Date;
-}
-**/
 export interface Study {
   uuid: string;
   name: string;
   description: string;
   /** counter for existing relationships */
+  /** @nullable */
   datasets?: number;
+  /** @nullable */
   phenotypes?: number;
+  /** @nullable */
   technicals?: number;
 }
 
@@ -26,7 +22,9 @@ export interface Dataset {
   name: string;
   description: string;
   files: number;
-  technical: number | null;
+  /** @nullable */
+  technical?: number;
+  /** @nullable */
   phenotype: PhenotypeIdentity;
 }
 
@@ -38,9 +36,12 @@ export interface PhenotypeIdentity {
 }
 
 export interface Phenotype extends PhenotypeIdentity {
-  birth_place?: string | null;
-  birthday: string;
-  deathday?: string | null;
+  /** @nullable */
+  birth_place?: string;
+  /** @nullable */
+  birthday?: string;
+  /** @nullable */
+  deathday?: string;
   hpo: HPO[];
   sex: string;
 }

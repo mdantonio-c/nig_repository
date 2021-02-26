@@ -86,12 +86,12 @@
 			            >
 			              <i class="fa fa-edit"></i>
 			            </button>
-			            <!-- <button
+			            <button
 			              class="btn p-0"
 			              (click)="delete(row.uuid)"
 			            >
 			              <i class="fa fa-trash red"></i>
-			            </button> -->
+			            </button>
 			          </div>
 			        </div>
 			      </ng-template>
@@ -101,4 +101,11 @@
 			</div>
 		</div>
 	</div>
+	<div class="card-footer text-muted">
+    <div class="col-12 text-right">
+      <button class="btn btn-info" (click)="create()">
+        <!-- <i class="fas fa-plus"></i> --> Add {{resource_name}}
+      </button>
+    </div>
+  </div>
 </div>

@@ -17,7 +17,8 @@ export class PhenotypesComponent extends BasePaginationComponent<Phenotype> {
 	}
 
 	ngOnInit() {
-		this.init("phenotypes", `study/${this.studyUUID}/phenotypes`, "Phenotypes");
+		this.init("phenotype", `study/${this.studyUUID}/phenotypes`, "Phenotypes");
+		this.set_resource_endpoint("phenotype");
 	    this.initPaging(20, false);
 	    this.list();
 	}

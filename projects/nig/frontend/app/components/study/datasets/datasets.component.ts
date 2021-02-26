@@ -9,12 +9,6 @@ import { Dataset } from "@app/types";
 })
 export class DatasetsComponent extends BasePaginationComponent<Dataset> {
 	@Input() studyUUID;
-	/*columns = [
-	  { prop: 'name' },
-	  { prop: 'description' },
-	  { prop: 'files', sortable: false },
-	  { prop: 'technicals', name: 'Metadata', sortable: false }
-	];*/
 
 	constructor(
 		protected injector: Injector
@@ -23,7 +17,8 @@ export class DatasetsComponent extends BasePaginationComponent<Dataset> {
 	}
 
 	ngOnInit() {
-		this.init("datasets", `study/${this.studyUUID}/datasets`, "Datasets");
+		this.init("Dataset", `study/${this.studyUUID}/datasets`, "Datasets");
+		this.set_resource_endpoint("dataset");
 	    this.initPaging(20, false);
 	    this.list();
 	}
