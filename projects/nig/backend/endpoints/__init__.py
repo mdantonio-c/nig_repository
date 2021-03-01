@@ -21,6 +21,9 @@ RESOURCE_NOT_FOUND = "This resource cannot be found or you are not authorized to
 class NIGEndpoint(EndpointResource):
     def getPath(self, study=None, dataset=None, file=None):
         current_user = self.get_user()
+        if not current_user:  # pragma: no cover
+            raise NotFound("User not found")
+
         group = current_user.belongs_to.single()
         if not group:
             raise NotFound("User group not found")
