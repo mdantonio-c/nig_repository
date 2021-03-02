@@ -1,12 +1,9 @@
-from typing import Optional
-
 from restapi.connectors import neo4j
-from restapi.customizer import FlaskApp
 from restapi.utilities.logs import log
 
 
 class Initializer:
-    def __init__(self, app: Optional[FlaskApp] = None):
+    def __init__(self) -> None:
         # enter GeoData in neo4j
         graph = neo4j.get_instance()
         query_for_nodes = """
