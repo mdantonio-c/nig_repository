@@ -1,7 +1,6 @@
-import ast
 import time
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, Optional
 
 import pytz
 from restapi.connectors import neo4j
@@ -9,7 +8,7 @@ from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
 
 
-def count_alleles(datasets: List[str], probands: Dict[str, bool]):
+def count_alleles(datasets: Optional[Dict[str, str]], probands: Dict[str, bool]):
     if datasets is None:
         return 0
 

@@ -5,6 +5,7 @@ from nig.endpoints import RESOURCE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import celery, neo4j
 from restapi.exceptions import NotFound
+from restapi.rest.definition import Response
 from restapi.services.uploader import Uploader
 
 
@@ -20,7 +21,7 @@ class Resources(NIGEndpoint):
             200: "List of resources successfully retrieved",
         },
     )
-    def get(self, uuid):
+    def get(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -57,7 +58,7 @@ class Resources(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def delete(self, uuid):
+    def delete(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -101,7 +102,7 @@ class ResourcesUpload(Uploader, NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def post(self, uuid):
+    def post(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 

@@ -34,7 +34,7 @@ class Search(NIGEndpoint):
 
     #     return data
 
-    def get_chr_list(self):
+    def get_chr_list(self) -> List[Dict[str, str]]:
 
         return [
             {"id": "", "value": ""},

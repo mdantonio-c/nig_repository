@@ -1,3 +1,5 @@
+from typing import Dict
+
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
@@ -17,17 +19,20 @@ class PublicStats(NIGEndpoint):
         for row in result:
             return int(row[0])
 
-    def get_group_count(graph: neo4j.NeoModel, query: str) -> int:
+        return 0
+
+    @staticmethod
+    def get_group_count(graph: neo4j.NeoModel, query: str) -> Dict[str, int]:
 
         result = graph.cypher(query)
-        data = {}
+        data: Dict[str, int] = {}
         for row in result:
             key = row[0]
             if key is None:
                 continue
-            data[key] = row[1]
+            data[key] = int(row[1])
 
-        return int(data)
+        return data
 
     @decorators.endpoint(
         path="/stats/public",
@@ -120,21 +125,25 @@ class PrivateStats(NIGEndpoint):
 
     labels = ["stats"]
 
-    def get_count(self, graph, query):
+    @staticmethod
+    def get_count(graph: neo4j.NeoModel, query: str) -> int:
 
         result = graph.cypher(query)
         for row in result:
             return row[0]
 
-    def get_group_count(self, graph, query):
+        return 0
+
+    @staticmethod
+    def get_group_count(graph: neo4j.NeoModel, query: str) -> Dict[str, int]:
 
         result = graph.cypher(query)
-        data = {}
+        data: Dict[str, int] = {}
         for row in result:
             key = row[0]
             if key is None:
                 continue
-            data[key] = row[1]
+            data[key] = int(row[1])
 
         return data
 

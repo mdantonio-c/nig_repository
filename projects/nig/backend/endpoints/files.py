@@ -1,10 +1,12 @@
 import os
+from typing import Optional
 
 from flask import request
 from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import celery, neo4j
 from restapi.exceptions import NotFound
+from restapi.rest.definition import Response
 from restapi.services.uploader import Uploader
 
 # from restapi.utilities.logs import log
@@ -31,7 +33,9 @@ class Files(NIGEndpoint):
             404: "This file cannot be found or you are not authorized to access",
         },
     )
-    def get(self, dataset_uuid=None, file_uuid=None):
+    def get(
+        self, dataset_uuid: Optional[str] = None, file_uuid: Optional[str] = None
+    ) -> Response:
 
         graph = neo4j.get_instance()
         # celery = self.get_service_instance('celery')
@@ -103,7 +107,7 @@ class Files(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def delete(self, uuid):
+    def delete(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -143,7 +147,7 @@ class FileUpload(Uploader, NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def post(self, uuid):
+    def post(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
 

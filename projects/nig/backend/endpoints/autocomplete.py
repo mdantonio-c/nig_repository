@@ -3,6 +3,7 @@ import re
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
+from restapi.rest.definition import Response
 
 
 class City(NIGEndpoint):
@@ -17,7 +18,7 @@ class City(NIGEndpoint):
             200: "Matching cities successfully retrieved",
         },
     )
-    def get(self, query):
+    def get(self, query: str) -> Response:
         graph = neo4j.get_instance()
 
         data = []
@@ -48,7 +49,7 @@ class HPO(NIGEndpoint):
             200: "Matching hpo terms successfully retrieved",
         },
     )
-    def get(self, query):
+    def get(self, query: str) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -83,7 +84,7 @@ class MainEffect(NIGEndpoint):
             200: "Matching variant main effects successfully retrieved",
         },
     )
-    def get(self, query):
+    def get(self, query: str) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -114,7 +115,7 @@ class EnrichmentKit(NIGEndpoint):
             200: "Matching enrichment kits successfully retrieved",
         },
     )
-    def get(self, query):
+    def get(self, query: str) -> Response:
 
         kits = []
 
