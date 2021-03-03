@@ -1,7 +1,7 @@
 import ast
 import time
 from datetime import datetime
-from typing import Any, List
+from typing import Any, Dict, List
 
 import pytz
 from restapi.connectors import neo4j
@@ -9,13 +9,13 @@ from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
 
 
-def count_alleles(datasets, probands):
+def count_alleles(datasets: List[str], probands: Dict[str, bool]):
     if datasets is None:
         return 0
 
     alleles = 0
 
-    for d in datasets:
+    for d in datasets.values():
         is_proband = probands.get(d, False)
         if is_proband:
             continue
@@ -26,7 +26,7 @@ def count_alleles(datasets, probands):
 
 # def computeAlleleFrequency(self, node_id):
 def computeAlleleFrequency(
-    self, graph: neo4j.NeoModel, variant: Any, datasets: List[str]
+    graph: neo4j.NeoModel, variant: Any, datasets: Dict[str, bool]
 ) -> bool:
     now = time.mktime(datetime.now(pytz.utc).timetuple())
 
@@ -77,63 +77,8 @@ REMOVE v:ToBeUpdated
     return True
 
 
-def updateNodeModel(self, graph, data, oldModel, newModel, label):
-
-    import neomodel
-
-    node = oldModel.inflate(data)
-
-    for f in dir(node):
-        if f[0] == "_":
-            continue
-        attrAfter = getattr(newModel, f)
-        attrBefore = getattr(oldModel, f)
-        if (
-            type(attrAfter) is neomodel.properties.ArrayProperty
-            and type(attrBefore) is neomodel.properties.StringProperty
-        ):
-
-            oldvalue = getattr(node, f)
-            if oldvalue is None:
-                continue
-
-            newvalue = ast.literal_eval(oldvalue)
-            for k, v in enumerate(newvalue):
-                if v is None:
-                    newvalue[k] = "None"
-
-            """
-                We must ensure that the lists have the same types because
-                in neo4j all values in the array must be of the same type.
-                That means either all integers, all floats, all booleans
-                or all strings. Mixing types is not currently supported.
-                Storing empty arrays is only possible given certain conditions
-            """
-            if type(newvalue) is list:
-
-                # Collect types of values in a set to remove duplicates
-                types = {type(v) for v in newvalue}
-                # If set contains more than a type, convert all to string
-                if len(types) > 1:
-                    for k, v in enumerate(newvalue):
-                        newvalue[k] = "%s" % v
-
-            cypher = "MATCH (n:ToBeUpdated)"
-            cypher += " WHERE id(n) = %d" % node.id
-            cypher += f" SET n.{f} = {newvalue}"
-            graph.cypher(cypher)
-
-    now = time.mktime(datetime.now(pytz.utc).timetuple())
-    cypher = "MATCH (n:ToBeUpdated)"
-    cypher += " WHERE id(n) = %d" % node.id
-    cypher += " SET n.modified = %f" % now
-    cypher += " REMOVE n:ToBeUpdated"
-    graph.cypher(cypher)
-    log.info("%s updated: %d" % (label, node.id))
-
-
 @CeleryExt.task()
-def update_annotations(self):
+def update_annotations(self: CeleryExt.TaskType):
     graph = neo4j.get_instance()
 
     """
@@ -159,7 +104,7 @@ SET d.is_proband = true
     graph.cypher(cypher)
 
     log.info("Caching datasets...")
-    datasets = {}
+    datasets: Dict[str, bool] = {}
     for d in graph.Dataset.nodes.all():
         datasets[d.uuid] = d.is_proband
 
@@ -176,8 +121,7 @@ SET d.is_proband = true
 
         count = 0
         for row in results:
-            # computeAlleleFrequency(self, int(row[0]))
-            computeAlleleFrequency(self, graph, graph.Variant.inflate(row[0]), datasets)
+            computeAlleleFrequency(graph, graph.Variant.inflate(row[0]), datasets)
 
             count += 1
 

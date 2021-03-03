@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 import pytz
@@ -75,7 +76,8 @@ class TechnicalMetadatas(NIGEndpoint):
 
 
 class TechnicalMetadata(NIGEndpoint):
-    def check_timezone(self, date):
+    @staticmethod
+    def check_timezone(date: datetime) -> datetime:
         if date.tzinfo is None:
             date = pytz.utc.localize(date)
         return date

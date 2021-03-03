@@ -79,7 +79,7 @@ def delete_test_env(
     uuid_group_B: str,
     study1_uuid: Optional[str] = None,
     study2_uuid: Optional[str] = None,
-):
+) -> None:
 
     # delete all the elements used by the test
     if study1_uuid:

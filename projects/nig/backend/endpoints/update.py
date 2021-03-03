@@ -3,6 +3,7 @@ from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import celery, neo4j
 from restapi.exceptions import NotFound
+from restapi.rest.definition import Response
 from restapi.services.authentication import Role
 
 # from restapi.utilities.logs import log
@@ -20,7 +21,7 @@ class Update(NIGEndpoint):
             200: "Update task successfully executed",
         },
     )
-    def get(self):
+    def get(self) -> Response:
 
         graph = neo4j.get_instance()
 

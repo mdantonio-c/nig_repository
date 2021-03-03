@@ -1,6 +1,7 @@
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
+from restapi.rest.definition import Response
 
 # from restapi.utilities.logs import log
 
@@ -9,13 +10,14 @@ class PublicStats(NIGEndpoint):
 
     labels = ["stats"]
 
-    def get_count(self, graph, query):
+    @staticmethod
+    def get_count(graph: neo4j.NeoModel, query: str) -> int:
 
         result = graph.cypher(query)
         for row in result:
-            return row[0]
+            return int(row[0])
 
-    def get_group_count(self, graph, query):
+    def get_group_count(graph: neo4j.NeoModel, query: str) -> int:
 
         result = graph.cypher(query)
         data = {}
@@ -25,7 +27,7 @@ class PublicStats(NIGEndpoint):
                 continue
             data[key] = row[1]
 
-        return data
+        return int(data)
 
     @decorators.endpoint(
         path="/stats/public",
@@ -34,7 +36,7 @@ class PublicStats(NIGEndpoint):
             200: "Statistics successfully retrieved",
         },
     )
-    def get(self):
+    def get(self) -> Response:
 
         graph = neo4j.get_instance()
 
