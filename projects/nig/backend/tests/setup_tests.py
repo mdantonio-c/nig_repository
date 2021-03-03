@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Any
+from typing import Any, Dict, Optional, Tuple
 
 from faker import Faker
 from nig.endpoints import GROUP_DIR
@@ -68,17 +68,17 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
 
 
 def delete_test_env(
-    client,
-    admin_headers,
-    user_A1_headers,
-    user_B1_headers,
-    user_B1_uuid,
-    user_B2_uuid,
-    user_A1_uuid,
-    uuid_group_A,
-    uuid_group_B,
-    study1_uuid=None,
-    study2_uuid=None,
+    client: FlaskClient,
+    admin_headers: Tuple[Optional[Dict[str, str]], str],
+    user_A1_headers: Tuple[Optional[Dict[str, str]], str],
+    user_B1_headers: Tuple[Optional[Dict[str, str]], str],
+    user_B1_uuid: str,
+    user_B2_uuid: str,
+    user_A1_uuid: str,
+    uuid_group_A: str,
+    uuid_group_B: str,
+    study1_uuid: Optional[str] = None,
+    study2_uuid: Optional[str] = None,
 ):
 
     # delete all the elements used by the test
