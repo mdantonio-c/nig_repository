@@ -18,13 +18,18 @@ TECHMETA_NOT_FOUND = (
 FILE_NOT_FOUND = "This file cannot be found or you are not authorized to access"
 RESOURCE_NOT_FOUND = "This resource cannot be found or you are not authorized to access"
 
+# Should be the class models, but can't be imported here
+Study = Any
+Dataset = Any
+File = Any
+
 
 class NIGEndpoint(EndpointResource):
     def getPath(
         self,
-        study: Optional[str] = None,
-        dataset: Optional[str] = None,
-        file: Optional[str] = None,
+        study: Optional[Study] = None,
+        dataset: Optional[Dataset] = None,
+        file: Optional[File] = None,
     ) -> str:
         current_user = self.get_user()
         if not current_user:  # pragma: no cover
@@ -67,7 +72,7 @@ class NIGEndpoint(EndpointResource):
     #   - a human readable motivation
     def verifyStudyAccess(
         self,
-        study: Any,
+        study: Study,
         error_type: str = "Study",
         read: bool = False,
         raiseError: bool = True,
@@ -108,7 +113,7 @@ class NIGEndpoint(EndpointResource):
 
     def verifyDatasetAccess(
         self,
-        dataset: Any,
+        dataset: Dataset,
         error_type: str = "Dataset",
         read: bool = False,
         raiseError: bool = True,

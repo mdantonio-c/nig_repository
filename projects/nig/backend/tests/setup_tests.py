@@ -1,22 +1,23 @@
 import os
 import shutil
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from faker import Faker
 from nig.endpoints import GROUP_DIR
 from restapi.services.authentication import Role
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
+DO_LOGIN_RETURN = Tuple[Optional[Dict[str, str]], str]
 CREATE_ENV_RESPONSE = Tuple[
-    Dict[str, str],
+    DO_LOGIN_RETURN,
     str,
     str,
-    Dict[str, str],
+    DO_LOGIN_RETURN,
     str,
     str,
-    Dict[str, str],
+    DO_LOGIN_RETURN,
     str,
-    Dict[str, str],
+    DO_LOGIN_RETURN,
     str,
     str,
 ]

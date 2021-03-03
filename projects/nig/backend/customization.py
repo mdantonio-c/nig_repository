@@ -1,10 +1,7 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Tuple
 
-from restapi.customizer import BaseCustomizer
-
-# from restapi.utilities.logs import log
-
-Props = Dict[str, Any]
+from restapi.customizer import BaseCustomizer, FlaskRequest, Props, User
+from restapi.rest.definition import EndpointResource
 
 
 class Customizer(BaseCustomizer):
@@ -27,7 +24,9 @@ class Customizer(BaseCustomizer):
         return properties, extra_properties
 
     @staticmethod
-    def custom_user_properties_post(user, properties, extra_properties, db):
+    def custom_user_properties_post(
+        user: User, properties: Props, extra_properties: Props, db: Any
+    ) -> None:
         """
         executed just after user creation
         use this method to implement extra operation needed to create a user
@@ -36,7 +35,7 @@ class Customizer(BaseCustomizer):
         pass
 
     @staticmethod
-    def manipulate_profile(ref, user, data):
+    def manipulate_profile(ref: EndpointResource, user: User, data: Props) -> Props:
         """
         execute before sending data from the profile endpoint
         use this method to add additonal information to the user profile
@@ -46,7 +45,7 @@ class Customizer(BaseCustomizer):
         return data
 
     @staticmethod
-    def get_custom_input_fields(request, scope):
+    def get_custom_input_fields(request: FlaskRequest, scope: int) -> Props:
 
         # required = request and request.method == "POST"
         """
@@ -71,7 +70,7 @@ class Customizer(BaseCustomizer):
         return {}
 
     @staticmethod
-    def get_custom_output_fields(request):
+    def get_custom_output_fields(request: FlaskRequest) -> Props:
         """
         this method is used to extend the output model of admin users
         """

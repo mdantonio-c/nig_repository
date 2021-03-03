@@ -1,4 +1,4 @@
-import json
+# import json
 import os
 import re
 from datetime import datetime
@@ -25,40 +25,40 @@ SKIPM = "SKIP METADATA"
 #     log.critical("Setting status 'SENT' to task %s " % task.id)
 
 
-def export(export_counter, variants):
-    f = "/jwt_tokens/export/export.variants.%s.json" % export_counter
-    log.info("Exporting variants to %s" % f)
-    with open(f, "w+") as fp:
-        json.dump(variants, fp)
+# def export(export_counter, variants):
+#     f = "/jwt_tokens/export/export.variants.%s.json" % export_counter
+#     log.info("Exporting variants to %s" % f)
+#     with open(f, "w+") as fp:
+#         json.dump(variants, fp)
 
 
-def export_genes(genes):
-    f = "/jwt_tokens/export/export.genes.json"
-    log.info("Exporting genes to %s" % f)
-    with open(f, "w+") as fp:
-        json.dump(genes, fp)
+# def export_genes(genes):
+#     f = "/jwt_tokens/export/export.genes.json"
+#     log.info("Exporting genes to %s" % f)
+#     with open(f, "w+") as fp:
+#         json.dump(genes, fp)
 
 
-def count_alleles(datasets, probands):
-    if datasets is None:
-        return 0
+# def count_alleles(datasets, probands):
+#     if datasets is None:
+#         return 0
 
-    alleles = 0
+#     alleles = 0
 
-    for d in datasets:
-        is_proband = probands.get(d, False)
-        if is_proband:
-            # log.info("Skipping variant because %s is proband", d)
-            continue
-        alleles += 2
+#     for d in datasets:
+#         is_proband = probands.get(d, False)
+#         if is_proband:
+#             # log.info("Skipping variant because %s is proband", d)
+#             continue
+#         alleles += 2
 
-    return alleles
+#     return alleles
 
 
-def progress(self, state, uuid):
-    if uuid is not None:
-        log.info(f"{state} [{uuid}]")
-    self.update_state(state=state)
+# def progress(self, state, uuid):
+#     if uuid is not None:
+#         log.info(f"{state} [{uuid}]")
+#     self.update_state(state=state)
 
 
 """

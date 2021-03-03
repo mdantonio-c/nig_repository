@@ -1,8 +1,10 @@
 import ast
 import time
 from datetime import datetime
+from typing import Any, List
 
 import pytz
+from restapi.connectors import neo4j
 from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
 
@@ -23,7 +25,9 @@ def count_alleles(datasets, probands):
 
 
 # def computeAlleleFrequency(self, node_id):
-def computeAlleleFrequency(self, graph, variant, datasets):
+def computeAlleleFrequency(
+    self, graph: neo4j.NeoModel, variant: Any, datasets: List[str]
+) -> bool:
     now = time.mktime(datetime.now(pytz.utc).timetuple())
 
     num_obs = count_alleles(variant.observed, datasets)
@@ -34,7 +38,7 @@ def computeAlleleFrequency(self, graph, variant, datasets):
         variant.allele_count = 0
         variant.allele_frequency = 0
         variant.save()
-        return
+        return False
 
     total_allele = num_obs + num_nonobs
 
@@ -130,7 +134,7 @@ def updateNodeModel(self, graph, data, oldModel, newModel, label):
 
 @CeleryExt.task()
 def update_annotations(self):
-    graph = CeleryExt.app.get_service("neo4j")
+    graph = neo4j.get_instance()
 
     """
 MATCH (v:Variant) WHERE not v:ToBeUpdated WITH v LIMIT 250000 SET v:ToBeUpdated
