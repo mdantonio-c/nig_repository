@@ -1,10 +1,14 @@
+from typing import Optional
+
 from restapi.connectors import neo4j
 from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
 
 
 @CeleryExt.task()
-def link_variants(self, phenotype_uuid=None):
+def link_variants(
+    self: CeleryExt.TaskType, phenotype_uuid: Optional[str] = None
+) -> bool:
     graph = neo4j.get_instance()
     if phenotype_uuid is None:
         phenotypes = graph.Phenotype.nodes.all()

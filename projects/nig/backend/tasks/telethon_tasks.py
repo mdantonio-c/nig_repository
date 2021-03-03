@@ -194,7 +194,6 @@ def import_file(
         log.error("Task error, uuid %s not found" % uuid)
 
     return 1
-"""
 
 
 def parse_file_fastq(self, graph, filename, reimport=False):
@@ -313,12 +312,12 @@ def parse_file_ped(self, graph, filename, reimport=False):
             if row.startswith("#"):
                 # Remove the initial #
                 row = row[1:].strip().lower()
-                # header = re.split(r"\s+|\t", line)
+                # header = re.split(r"\\s+|\t", line)
                 header = re.split(r"\t", row)
                 continue
 
             row = row.strip()
-            # line = re.split(r"\s+|\t", line)
+            # line = re.split(r"\\s+|\t", line)
             line = re.split(r"\t", row)
 
             if len(line) < 5:
@@ -447,12 +446,12 @@ def parse_file_tech(self, graph, filename, reimport=False):
             if row.startswith("#"):
                 # Remove the initial #
                 row = row[1:].strip().lower()
-                # header = re.split(r"\s+|\t", row)
+                # header = re.split(r"\\s+|\t", row)
                 header = re.split(r"\t", row)
                 continue
 
             row = row.strip()
-            # line = re.split(r"\s+|\t", row)
+            # line = re.split(r"\\s+|\t", row)
             line = re.split(r"\t", row)
 
             if len(line) < 4:
@@ -506,7 +505,6 @@ def parse_file_tech(self, graph, filename, reimport=False):
                                 )
 
 
-"""
 def parse_file_vcf(self, graph, vcf_file, reimport=False):
 
     from restapi.services.neo4j.models import ArrayProperty
