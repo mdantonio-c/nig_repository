@@ -1,4 +1,5 @@
 import os
+from typing import Any, Optional
 
 from restapi.exceptions import NotFound
 from restapi.rest.definition import EndpointResource
@@ -19,7 +20,12 @@ RESOURCE_NOT_FOUND = "This resource cannot be found or you are not authorized to
 
 
 class NIGEndpoint(EndpointResource):
-    def getPath(self, study=None, dataset=None, file=None):
+    def getPath(
+        self,
+        study: Optional[str] = None,
+        dataset: Optional[str] = None,
+        file: Optional[str] = None,
+    ) -> str:
         current_user = self.get_user()
         if not current_user:  # pragma: no cover
             raise NotFound("User not found")
@@ -35,7 +41,7 @@ class NIGEndpoint(EndpointResource):
         return path
 
     @staticmethod
-    def createUniqueIndex(*var):
+    def createUniqueIndex(*var: str) -> str:
 
         separator = "#_#"
         return separator.join(var)
@@ -59,7 +65,13 @@ class NIGEndpoint(EndpointResource):
     # returns 2 values:
     #   - user has access True/False
     #   - a human readable motivation
-    def verifyStudyAccess(self, study, error_type="Study", read=False, raiseError=True):
+    def verifyStudyAccess(
+        self,
+        study: Any,
+        error_type: str = "Study",
+        read: bool = False,
+        raiseError: bool = True,
+    ) -> bool:
 
         not_found = self.getError(error_type)
 
@@ -95,8 +107,12 @@ class NIGEndpoint(EndpointResource):
             return False
 
     def verifyDatasetAccess(
-        self, dataset, error_type="Dataset", read=False, raiseError=True
-    ):
+        self,
+        dataset: Any,
+        error_type: str = "Dataset",
+        read: bool = False,
+        raiseError: bool = True,
+    ) -> bool:
 
         not_found = self.getError(error_type)
 

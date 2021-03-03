@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import neomodel
 from neomodel import (  # StructuredRel,
@@ -43,7 +43,7 @@ uri = "bolt://{}:{}@{}:{}".format(
 )
 
 
-def cypher(query):
+def cypher(query: str) -> Any:
     """ Execute normal neo4j queries """
     try:
         # results, meta = db.cypher_query(query)

@@ -19,7 +19,7 @@ from neomodel import (  # StructuredRel,
 from restapi.utilities.logs import log
 
 
-def cypher(query):
+def cypher(query: str) -> Any:
     """ Execute normal neo4j queries """
     try:
         # results, meta = db.cypher_query(query)
@@ -139,7 +139,7 @@ class Variant(StructuredNode):
     gene = RelationshipTo("Gene", "LOCATED_IN", cardinality=ZeroOrOne)
 
 
-def set_connection():
+def set_connection() -> None:
     try:
         params = {
             "user": "neo4j",
