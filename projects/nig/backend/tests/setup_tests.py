@@ -1,12 +1,30 @@
 import os
 import shutil
+from typing import Dict, Tuple
 
+from faker import Faker
 from nig.endpoints import GROUP_DIR
 from restapi.services.authentication import Role
-from restapi.tests import API_URI, BaseTests
+from restapi.tests import API_URI, BaseTests, FlaskClient
+
+CREATE_ENV_RESPONSE = Tuple[
+    Dict[str, str],
+    str,
+    str,
+    Dict[str, str],
+    str,
+    str,
+    Dict[str, str],
+    str,
+    Dict[str, str],
+    str,
+    str,
+]
 
 
-def create_test_env(client, faker, study=False):
+def create_test_env(
+    client: FlaskClient, faker: Faker, study: bool = False
+) -> CREATE_ENV_RESPONSE:
     admin_headers, _ = BaseTests.do_login(client, None, None)
 
     # create a group with one user
