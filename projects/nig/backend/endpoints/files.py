@@ -94,7 +94,7 @@ class Files(NIGEndpoint):
                 row["attributes"]["metadata"] = file.metadata
             data.append(row)
 
-        return data
+        return self.response(data)
 
     @decorators.auth.require()
     @decorators.endpoint(

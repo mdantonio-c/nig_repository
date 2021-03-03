@@ -1,10 +1,11 @@
 import os
 import shutil
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Type, Union
 
 from nig.endpoints import PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
+from restapi.customizer import FlaskRequest
 from restapi.exceptions import Conflict, NotFound
 from restapi.models import (
     Neo4jRelationshipToCount,
@@ -40,7 +41,7 @@ class DatasetOutput(Schema):
     # virtual files?
 
 
-def getInputSchema(request, is_post):
+def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
     graph = neo4j.get_instance()
     # as defined in Marshmallow.schema.from_dict
     attributes: Dict[str, Union[fields.Field, type]] = {}
@@ -105,11 +106,11 @@ def getInputSchema(request, is_post):
     return Schema.from_dict(attributes, name="DatasetDefinition")
 
 
-def getPOSTInputSchema(request):
+def getPOSTInputSchema(request: FlaskRequest) -> Type[Schema]:
     return getInputSchema(request, True)
 
 
-def getPUTInputSchema(request):
+def getPUTInputSchema(request: FlaskRequest) -> Type[Schema]:
     return getInputSchema(request, False)
 
 

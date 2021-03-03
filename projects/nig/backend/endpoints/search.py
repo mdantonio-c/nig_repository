@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
@@ -331,7 +331,7 @@ class Search(NIGEndpoint):
     """
 
     @staticmethod
-    def cleanFilters(filters: Dict[str, str]) -> Dict[str, str]:
+    def cleanFilters(filters: Dict[str, Optional[str]]) -> Dict[str, str]:
         clean_filters = {}
         for k in filters:
             v = filters[k]
@@ -372,8 +372,8 @@ class Search(NIGEndpoint):
         return "({} {{{}}})".format(node, ", ".join(apply_filters))
 
     def getAutocomplete(
-        self, data: Dict[str, str], label: str = "label"
-    ) -> Dict[str, str]:
+        self, data: Optional[Union[str, Dict[str, str]]], label: str = "label"
+    ) -> Optional[Union[str, Dict[str, str]]]:
         if data is None:
             return data
         if data == "":
@@ -439,8 +439,8 @@ class Search(NIGEndpoint):
         technical_filters = self.cleanFilters(technical_filters)
 
         # hpo_id: {label: '...', hpo_id: '...'}
-        if "hpo_id" in hpo_filters and "hpo_id" in hpo_filters["hpo_id"]:
-            hpo_filters["hpo_id"] = hpo_filters["hpo_id"]["hpo_id"]
+        # if "hpo_id" in hpo_filters and "hpo_id" in hpo_filters["hpo_id"]:
+        #     hpo_filters["hpo_id"] = hpo_filters["hpo_id"]["hpo_id"]
 
         variant_start = None
         variant_end = None

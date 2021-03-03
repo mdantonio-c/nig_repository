@@ -155,7 +155,7 @@ class PrivateStats(NIGEndpoint):
             200: "Statistics successfully retrieved",
         },
     )
-    def get(self):
+    def get(self) -> Response:
 
         graph = neo4j.get_instance()
 

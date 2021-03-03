@@ -98,7 +98,9 @@ class Phenotypes(NIGEndpoint):
     # schema_expose = True
     labels = ["phenotype"]
 
-    def link_hpo(self, graph, phenotype, hpo_ids):
+    def link_hpo(
+        self, graph: neo4j.Neomodel, phenotype: Any, hpo_ids: List[str]
+    ) -> List[str]:
         # if the hpo list is empty it means "disconnect all phenotypes"
         for p in phenotype.hpo.all():
             phenotype.hpo.disconnect(p)
@@ -110,7 +112,9 @@ class Phenotypes(NIGEndpoint):
                 connected_hpo.append(id)
         return connected_hpo
 
-    def link_geodata(self, graph, phenotype, geodata_uuid):
+    def link_geodata(
+        self, graph: neo4j.Neomodel, phenotype: Any, geodata_uuid: List[str]
+    ) -> List[str]:
         if previous := phenotype.birth_place.single():
             phenotype.birth_place.disconnect(previous)
 
@@ -121,7 +125,7 @@ class Phenotypes(NIGEndpoint):
 
             phenotype.birth_place.connect(geodata)
 
-    def check_timezone(self, date):
+    def check_timezone(self, date: datetime) -> datetime:
         if date.tzinfo is None:
             date = pytz.utc.localize(date)
         return date

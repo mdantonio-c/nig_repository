@@ -1,9 +1,10 @@
+from faker import Faker
 from nig.tests.setup_tests import create_test_env, delete_test_env
-from restapi.tests import API_URI, BaseTests
+from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
 class TestApp(BaseTests):
-    def test_api_phenotype(self, client, faker):
+    def test_api_phenotype(self, client: FlaskClient, faker: Faker) -> None:
         # setup the test env
         (
             admin_headers,

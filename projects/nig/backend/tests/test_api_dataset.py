@@ -1,12 +1,13 @@
 import os
 
-from nig.endpoints import GROUP_DIR, PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND
+from faker import Faker
+from nig.endpoints import GROUP_DIR
 from nig.tests.setup_tests import create_test_env, delete_test_env
-from restapi.tests import API_URI, BaseTests
+from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
 class TestApp(BaseTests):
-    def test_api_dataset(self, client, faker):
+    def test_api_dataset(self, client: FlaskClient, faker: Faker) -> None:
         # setup the test env
         (
             admin_headers,
