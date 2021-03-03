@@ -1,8 +1,9 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
+from restapi.rest.definition import Response
 
 # from restapi.utilities.logs import log
 
@@ -371,16 +372,14 @@ class Search(NIGEndpoint):
 
         return "({} {{{}}})".format(node, ", ".join(apply_filters))
 
-    def getAutocomplete(
-        self, data: Optional[Union[str, Dict[str, str]]], label: str = "label"
-    ) -> Optional[Union[str, Dict[str, str]]]:
-        if data is None:
-            return data
-        if data == "":
-            return data
-        if label not in data:
-            return data
-        return data[label]
+    # def getAutocomplete(self, data, label = "label"):
+    #     if data is None:
+    #         return data
+    #     if data == "":
+    #         return data
+    #     if label not in data:
+    #         return data
+    #     return data[label]
 
     @decorators.auth.require()
     @decorators.endpoint(
@@ -390,7 +389,7 @@ class Search(NIGEndpoint):
             200: "Variants successfully retrieved",
         },
     )
-    def post(self):
+    def post(self) -> Response:
 
         graph = neo4j.get_instance()
         filters = self.get_input()
@@ -416,9 +415,9 @@ class Search(NIGEndpoint):
         variant_filters["ref"] = filters.get("ref", "")
         variant_filters["alt"] = filters.get("alt", "")
 
-        variant_filters["MainEffect"] = self.getAutocomplete(
-            filters.get("main_effect", "")
-        )
+        # variant_filters["MainEffect"] = self.getAutocomplete(
+        #     filters.get("main_effect", "")
+        # )
 
         gene_filters["geneName"] = filters.get("geneName", "").upper()
         geo_filters["macroarea"] = filters.get("macroarea", "")

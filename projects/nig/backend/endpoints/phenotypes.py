@@ -99,7 +99,7 @@ class Phenotypes(NIGEndpoint):
     labels = ["phenotype"]
 
     def link_hpo(
-        self, graph: neo4j.Neomodel, phenotype: Any, hpo_ids: List[str]
+        self, graph: neo4j.NeoModel, phenotype: Any, hpo_ids: List[str]
     ) -> List[str]:
         # if the hpo list is empty it means "disconnect all phenotypes"
         for p in phenotype.hpo.all():
@@ -113,8 +113,8 @@ class Phenotypes(NIGEndpoint):
         return connected_hpo
 
     def link_geodata(
-        self, graph: neo4j.Neomodel, phenotype: Any, geodata_uuid: List[str]
-    ) -> List[str]:
+        self, graph: neo4j.NeoModel, phenotype: Any, geodata_uuid: str
+    ) -> None:
         if previous := phenotype.birth_place.single():
             phenotype.birth_place.disconnect(previous)
 
