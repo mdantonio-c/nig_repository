@@ -8,7 +8,7 @@ from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
 
 
-def count_alleles(datasets: Optional[Dict[str, str]], probands: Dict[str, bool]):
+def count_alleles(datasets: Optional[Dict[str, str]], probands: Dict[str, bool]) -> int:
     if datasets is None:
         return 0
 
@@ -77,7 +77,7 @@ REMOVE v:ToBeUpdated
 
 
 @CeleryExt.task()
-def update_annotations(self: CeleryExt.TaskType):
+def update_annotations(self: CeleryExt.TaskType) -> str:
     graph = neo4j.get_instance()
 
     """

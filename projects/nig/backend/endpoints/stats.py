@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union
 
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
@@ -130,7 +130,7 @@ class PrivateStats(NIGEndpoint):
 
         result = graph.cypher(query)
         for row in result:
-            return row[0]
+            return int(row[0])
 
         return 0
 
@@ -268,7 +268,7 @@ return i.fullname, count(d)
         num_genes = "MATCH (n:Gene) return count(n)"
         num_variants = "MATCH (n:Variant) return count(n)"
 
-        data = {}
+        data: Dict[str, Union[int, Dict[str, int]]] = {}
         data["num_users"] = self.get_count(graph, num_users)
         data["num_studies"] = self.get_count(graph, num_studies)
 

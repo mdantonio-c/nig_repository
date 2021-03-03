@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
@@ -330,7 +330,8 @@ class Search(NIGEndpoint):
         return self.response(schema)
     """
 
-    def cleanFilters(self, filters):
+    @staticmethod
+    def cleanFilters(filters: Dict[str, str]) -> Dict[str, str]:
         clean_filters = {}
         for k in filters:
             v = filters[k]
@@ -341,7 +342,10 @@ class Search(NIGEndpoint):
             clean_filters[k] = v
         return clean_filters
 
-    def queryNode(self, node, filters, schema=None):
+    @staticmethod
+    def queryNode(
+        node: str, filters: Dict[str, str], schema: Optional[Any] = None
+    ) -> str:
 
         import neomodel
 
@@ -367,7 +371,9 @@ class Search(NIGEndpoint):
 
         return "({} {{{}}})".format(node, ", ".join(apply_filters))
 
-    def getAutocomplete(self, data, label="label"):
+    def getAutocomplete(
+        self, data: Dict[str, str], label: str = "label"
+    ) -> Dict[str, str]:
         if data is None:
             return data
         if data == "":
