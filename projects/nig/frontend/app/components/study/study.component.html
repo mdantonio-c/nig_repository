@@ -1,36 +1,53 @@
 <div class="container-fluid py-0">
-    <div class="row no-gutters" *ngIf="study">
-        <div class="col-3 px-1 position-fixed nav-sidebar" id="sticky-sidebar">
-        	<div class="px-3 mt-4 mb-2 border-bottom">
-						<h4 class="mb-0">Study: {{study?.name}}</h4>
-						<p class='text-muted'>{{study?.description}}</p>
-					</div>
-          <div class="nav-sidebar-inner-scroll">
-						<ul ngbNav #nav="ngbNav" class="nav flex-column"
-						  [(activeId)]="active" (navChange)="onNavChange($event)">
-						  <ng-container *ngFor="let link of links">
-							  <li [ngbNavItem]="link.fragment">
-							    <a ngbNavLink>
-							    	<div class="nav-icon-container">
-							    		<i class="fas" [ngClass]="link.icon"></i>
-							    	</div>
-							    	<span>{{ link.title }}</span>
-							    	<span class="badge badge-secondary float-right">{{link?.count}}</span>
-							    </a>
-							    <ng-template ngbNavContent>
-							    	<container-element [ngSwitch]="link.fragment">
-							    		<nig-datasets *ngSwitchCase="'datasets'" [studyUUID]="study.uuid"></nig-datasets>
-							    		<nig-technicals *ngSwitchCase="'technicals'" [studyUUID]="study.uuid"></nig-technicals>
-							    		<nig-phenotypes *ngSwitchCase="'phenotypes'" [studyUUID]="study.uuid"></nig-phenotypes>
-							    	</container-element>
-							    </ng-template>
-							  </li>
-							</ng-container>
-						</ul>
-          </div>
-        </div>
-        <div class="col offset-3" id="main">
-            <div [ngbNavOutlet]="nav"></div>
-        </div>
+  <div class="row no-gutters" *ngIf="study">
+    <div class="col-3 px-1 position-fixed nav-sidebar" id="sticky-sidebar">
+      <div class="px-3 mt-4 mb-2 border-bottom">
+        <h4 class="mb-0">Study: {{ study?.name }}</h4>
+        <p class="text-muted">{{ study?.description }}</p>
+      </div>
+
+      <div class="nav-sidebar-inner-scroll">
+        <ul
+          ngbNav
+          #nav="ngbNav"
+          class="nav flex-column"
+          [(activeId)]="active"
+          (navChange)="onNavChange($event)"
+        >
+          <ng-container *ngFor="let link of links">
+            <li [ngbNavItem]="link.fragment">
+              <a ngbNavLink>
+                <div class="nav-icon-container">
+                  <i class="fas" [ngClass]="link.icon"></i>
+                </div>
+                <span>{{ link.title }}</span>
+                <span class="badge badge-secondary float-right">{{
+                  link?.count
+                }}</span>
+              </a>
+              <ng-template ngbNavContent>
+                <container-element [ngSwitch]="link.fragment">
+                  <nig-datasets
+                    *ngSwitchCase="'datasets'"
+                    [studyUUID]="study.uuid"
+                  ></nig-datasets>
+                  <nig-technicals
+                    *ngSwitchCase="'technicals'"
+                    [studyUUID]="study.uuid"
+                  ></nig-technicals>
+                  <nig-phenotypes
+                    *ngSwitchCase="'phenotypes'"
+                    [studyUUID]="study.uuid"
+                  ></nig-phenotypes>
+                </container-element>
+              </ng-template>
+            </li>
+          </ng-container>
+        </ul>
+      </div>
     </div>
+    <div class="col offset-3" id="main">
+      <div [ngbNavOutlet]="nav"></div>
+    </div>
+  </div>
 </div>

@@ -1,11 +1,11 @@
 import json
 import os
 import re
+from datetime import datetime
 
+import dateutil.parser
+import pytz
 from nig.endpoints import NIGEndpoint
-from nig.time import date_from_string
-from restapi.connectors import neo4j
-from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
 
 FILE_TYPE = "File"
@@ -277,6 +277,23 @@ def get_value(key, header, line):
     if value == "N/A":
         return None
     return value
+
+
+def date_from_string(date: str, fmt: str = "%d/%m/%Y") -> datetime:
+
+    if date == "":
+        return ""
+    # datetime.now(pytz.utc)
+    try:
+        return_date = datetime.strptime(date, fmt)
+    except BaseException:
+        return_date = dateutil.parser.parse(date)
+
+    # TODO: test me with: 2017-09-22T07:10:35.822772835Z
+    if return_date.tzinfo is None:
+        return pytz.utc.localize(return_date)
+
+    return return_date
 
 
 def parse_file_ped(self, graph, filename, reimport=False):

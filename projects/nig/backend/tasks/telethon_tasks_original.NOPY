@@ -9,7 +9,6 @@ from restapi.connectors.celery import CeleryExt
 from restapi.connectors import neo4j
 from nig.endpoints import NIGEndpoint
 
-from nig.time import date_from_string
 from restapi.utilities.logs import log
 
 FILE_TYPE = 'File'
