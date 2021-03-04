@@ -67,7 +67,7 @@ class HPO(NIGEndpoint):
         for row in result:
             hpo = graph.HPO.inflate(row[0])
             name = f"{hpo.hpo_id} ({hpo.label})"
-            data.append({"hpo_id": hpo.hpo_id, "label": name})
+            data.append({"value": hpo.hpo_id, "label": name})
 
         return self.response(data)
 
