@@ -50,7 +50,7 @@ class PhenotypeInputSchema(Schema):
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
     birth_place_uuid = fields.Str()
-    hpo = fields.List(fields.Str(), metadata={"autocomplete": "hpo"})
+    hpo = fields.List(fields.Str(), metadata={"label": "HPO", "autocomplete": "hpo"})
 
 
 class PhenotypePutSchema(Schema):
