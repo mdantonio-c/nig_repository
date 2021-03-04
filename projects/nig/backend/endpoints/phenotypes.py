@@ -13,6 +13,7 @@ from restapi.models import (
     Schema,
     fields,
     validate,
+    AdvancedList
 )
 from restapi.rest.definition import Response
 
@@ -50,7 +51,11 @@ class PhenotypeInputSchema(Schema):
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
     birth_place_uuid = fields.Str()
-    hpo_ids = fields.List(fields.Str())
+    hpo_ids = AdvancedList(
+        fields.Str(),
+        multiple=True,
+        autocomplete='hpo',
+        label="HPO")
 
 
 class PhenotypePutSchema(Schema):
