@@ -54,9 +54,7 @@ class Customizer(BaseCustomizer):
                 'custom_field': fields.Int(
                     required=required,
                     # validate=validate.Range(min=0, max=???),
-                    validate=validate.Range(min=0),
-                    label="CustomField",
-                    description="This is a custom field"
+                    validate=validate.Range(min=0)
                 )
             }
         # these are editable fields in profile
