@@ -76,6 +76,7 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
 
         attributes["phenotype"] = fields.Str(
             required=False,
+            allow_none=True,
             default=default_phenotype,
             validate=validate.OneOf(choices=phenotype_keys, labels=phenotype_labels),
         )
@@ -99,6 +100,7 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
 
         attributes["technical"] = fields.Str(
             required=False,
+            allow_none=True,
             default=default_techmeta,
             validate=validate.OneOf(choices=techmeta_keys, labels=techmeta_labels),
         )
