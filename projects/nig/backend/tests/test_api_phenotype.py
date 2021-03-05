@@ -182,14 +182,16 @@ class TestApp(BaseTests):
         # add a new hpo and change the previous geodata
         hpo3_id = hpo_nodes[2].hpo_id
         geodata2_uuid = geodata_nodes[1].uuid
-        data: Dict[str, Any] = {}
-        data["name"] = faker.pystr()
-        data["sex"] = "male"
-        data["birth_place_uuid"] = geodata2_uuid
-        data["hpo"] = [hpo3_id]
-        data["hpo"] = json.dumps(data["hpo"])
+        new_data: Dict[str, Any] = {}
+        new_data["name"] = faker.pystr()
+        new_data["sex"] = "male"
+        new_data["birth_place_uuid"] = geodata2_uuid
+        new_data["hpo"] = [hpo3_id]
+        new_data["hpo"] = json.dumps(new_data["hpo"])
         r = client.put(
-            f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B1_headers, data=data
+            f"{API_URI}/phenotype/{phenotype2_uuid}",
+            headers=user_B1_headers,
+            data=new_data,
         )
         assert r.status_code == 204
         r = client.get(

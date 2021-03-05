@@ -1,4 +1,5 @@
 import csv
+from typing import List, Optional
 
 from restapi.connectors import neo4j
 from restapi.utilities.logs import log
@@ -7,7 +8,7 @@ from restapi.utilities.logs import log
 class Initializer:
     def __init__(self) -> None:
         # enter GeoData in neo4j
-        attributes = None
+        attributes: Optional[List[str]] = None
         graph = neo4j.get_instance()
         with open("/data/geodata.tsv") as fd:
             rd = csv.reader(fd, delimiter="\t", quotechar='"')
