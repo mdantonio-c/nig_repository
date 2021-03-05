@@ -157,7 +157,11 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_B2_headers,
-            data={"technical": technical_uuid, "phenotype": phenotype_uuid},
+            data={
+                "name": faker.pystr(),
+                "technical": technical_uuid,
+                "phenotype": phenotype_uuid,
+            },
         )
         assert r.status_code == 204
         # check technical was correctly assigned

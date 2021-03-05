@@ -1,6 +1,11 @@
+import json
+from typing import Any, Dict
+
 from faker import Faker
 from nig.tests.setup_tests import create_test_env, delete_test_env
+from restapi.connectors import neo4j
 from restapi.tests import API_URI, BaseTests, FlaskClient
+from restapi.utilities.logs import log
 
 
 class TestApp(BaseTests):
@@ -57,6 +62,17 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 404
 
+        # create a phenotype with a geodata and a list of hpo
+        graph = neo4j.get_instance()
+        geodata_nodes = graph.GeoData.nodes
+        geodata_uuid = geodata_nodes[0].uuid
+        hpo_nodes = graph.HPO.nodes
+        hpo1_id = hpo_nodes[0].hpo_id
+        hpo2_id = hpo_nodes[1].hpo_id
+        phenotype2["birth_place_uuid"] = geodata_uuid
+        phenotype2["hpo"] = [hpo1_id, hpo2_id]
+        phenotype2["hpo"] = json.dumps(phenotype2["hpo"])
+
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
             headers=user_B1_headers,
@@ -103,9 +119,19 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         # same group of the study owner
         r = client.get(
-            f"{API_URI}/phenotype/{phenotype1_uuid}", headers=user_B2_headers
+            f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B2_headers
         )
         assert r.status_code == 200
+        # check hpo and geodata were correctly linked
+        response = self.get_content(r)
+        assert response["birth_place"]["uuid"] == geodata_uuid
+        assert len(response["hpo"]) == 2
+        hpo_list = []
+        for el in response["hpo"]:
+            hpo_list.append(el["hpo_id"])
+        assert hpo1_id in hpo_list
+        assert hpo2_id in hpo_list
+
         # phenotype owned by an other group
         r = client.get(
             f"{API_URI}/phenotype/{phenotype1_uuid}", headers=user_A1_headers
@@ -150,6 +176,50 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=admin_headers,
             data={"name": faker.pystr()},
+        )
+        assert r.status_code == 404
+
+        # add a new hpo and change the previous geodata
+        hpo3_id = hpo_nodes[2].hpo_id
+        geodata2_uuid = geodata_nodes[1].uuid
+        data: Dict[str, Any] = {}
+        data["name"] = faker.pystr()
+        data["sex"] = "male"
+        data["birth_place_uuid"] = geodata2_uuid
+        data["hpo"] = [hpo3_id]
+        data["hpo"] = json.dumps(data["hpo"])
+        r = client.put(
+            f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B1_headers, data=data
+        )
+        assert r.status_code == 204
+        r = client.get(
+            f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B2_headers
+        )
+        res = self.get_content(r)
+        assert res["birth_place"]["uuid"] == geodata2_uuid
+        assert len(res["hpo"]) == 3
+
+        # delete all hpo and geodata
+        data: Dict[str, Any] = {}
+        data["birth_place_uuid"] = "-1"
+        data["hpo"] = ["-1"]
+        data["hpo"] = json.dumps(data["hpo"])
+        r = client.put(
+            f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B1_headers, data=data
+        )
+        assert r.status_code == 204
+        r = client.get(
+            f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B2_headers
+        )
+        response = self.get_content(r)
+        assert not response["birth_place"]
+        assert not response["hpo"]
+
+        # add a no existing geodata
+        r = client.put(
+            f"{API_URI}/phenotype/{phenotype2_uuid}",
+            headers=user_B1_headers,
+            data={"birth_place_uuid": faker.pystr()},
         )
         assert r.status_code == 404
 

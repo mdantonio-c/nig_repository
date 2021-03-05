@@ -21,6 +21,7 @@ class Hpo(Schema):
 
 
 class GeoData(Schema):
+    uuid = fields.Str(required=True)
     country = fields.Str(required=True)
     region = fields.Str(required=True)
     province = fields.Str(required=True)
@@ -51,7 +52,7 @@ class PhenotypePutSchema(Schema):
     birthday = fields.DateTime(format=ISO8601UTC)
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=False, validate=validate.OneOf(SEX))
-    birth_place_uuids = fields.List(fields.Str())
+    birth_place_uuid = fields.Str()
     hpo = fields.List(fields.Str(), autocomplete="hpo")
 
 
@@ -94,9 +95,10 @@ class Phenotypes(NIGEndpoint):
     def link_hpo(
         self, graph: neo4j.NeoModel, phenotype: Any, hpo: List[str]
     ) -> List[str]:
-        # if the hpo list is empty it means "disconnect all phenotypes"
-        for p in phenotype.hpo.all():
-            phenotype.hpo.disconnect(p)
+        # if the only element in hpo list is -1 it means "disconnect all phenotypes"
+        if "-1" in hpo:
+            for p in phenotype.hpo.all():
+                phenotype.hpo.disconnect(p)
         connected_hpo = []
         for id in hpo:
             hpo = graph.HPO.nodes.get_or_none(hpo_id=id)
@@ -253,13 +255,14 @@ class Phenotypes(NIGEndpoint):
             phenotype.sex = sex
             kwargs["sex"] = sex
 
-        phenotype.save()
         if birth_place_uuid:
             self.link_geodata(graph, phenotype, birth_place_uuid)
             kwargs["birth_place"] = birth_place_uuid
         if hpo:
             connected_hpo = self.link_hpo(graph, phenotype, hpo)
             kwargs["hpo"] = connected_hpo
+
+        phenotype.save()
 
         # c = celery.get_instance()
         # c.celery_app.send_task(
