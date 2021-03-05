@@ -6,7 +6,7 @@ from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import Conflict
-from restapi.models import Neo4jRelationshipToCount, Schema, fields
+from restapi.models import Schema, fields
 from restapi.rest.definition import Response
 
 # from restapi.utilities.logs import log
@@ -18,9 +18,9 @@ class StudyOutput(Schema):
     name = fields.Str(required=True)
     description = fields.Str(required=True)
     # Number of related datasets
-    datasets = Neo4jRelationshipToCount()
-    phenotypes = Neo4jRelationshipToCount()
-    technicals = Neo4jRelationshipToCount()
+    datasets = fields.Neo4jRelationshipToCount()
+    phenotypes = fields.Neo4jRelationshipToCount()
+    technicals = fields.Neo4jRelationshipToCount()
 
 
 class StudyInputSchema(Schema):

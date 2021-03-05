@@ -6,14 +6,7 @@ from nig.endpoints import PHENOTYPE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import NotFound
-from restapi.models import (
-    ISO8601UTC,
-    Neo4jRelationshipToMany,
-    Neo4jRelationshipToSingle,
-    Schema,
-    fields,
-    validate,
-)
+from restapi.models import ISO8601UTC, Schema, fields, validate
 from restapi.rest.definition import Response
 
 # from restapi.connectors import celery
@@ -40,8 +33,8 @@ class PhenotypeOutputSchema(Schema):
     birthday = fields.DateTime(format=ISO8601UTC)
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
-    hpo = Neo4jRelationshipToMany(Hpo)
-    birth_place = Neo4jRelationshipToSingle(GeoData)
+    hpo = fields.Neo4jRelationshipToMany(Hpo)
+    birth_place = fields.Neo4jRelationshipToSingle(GeoData)
 
 
 class PhenotypeInputSchema(Schema):
@@ -50,7 +43,7 @@ class PhenotypeInputSchema(Schema):
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
     birth_place_uuid = fields.Str()
-    hpo = fields.List(fields.Str(), metadata={"label": "HPO", "autocomplete": "hpo"})
+    hpo = fields.List(fields.Str(), label="HPO", autocomplete="hpo")
 
 
 class PhenotypePutSchema(Schema):
@@ -59,7 +52,7 @@ class PhenotypePutSchema(Schema):
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=False, validate=validate.OneOf(SEX))
     birth_place_uuids = fields.List(fields.Str())
-    hpo = fields.List(fields.Str(), metadata={"autocomplete": "hpo"})
+    hpo = fields.List(fields.Str(), autocomplete="hpo")
 
 
 class PhenotypeList(NIGEndpoint):

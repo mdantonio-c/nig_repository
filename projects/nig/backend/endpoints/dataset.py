@@ -7,13 +7,7 @@ from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.customizer import FlaskRequest
 from restapi.exceptions import Conflict, NotFound
-from restapi.models import (
-    Neo4jRelationshipToCount,
-    Neo4jRelationshipToSingle,
-    Schema,
-    fields,
-    validate,
-)
+from restapi.models import Schema, fields, validate
 from restapi.rest.definition import Response
 
 # from restapi.utilities.logs import log
@@ -34,10 +28,11 @@ class DatasetOutput(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
     description = fields.Str(required=False)
-    technical = Neo4jRelationshipToSingle(TechnicalMetadata)
-    phenotype = Neo4jRelationshipToSingle(Phenotype)
-    files = Neo4jRelationshipToCount()
-    # for now only the number of related files, can be useful also a list of some files metadata?
+    technical = fields.Neo4jRelationshipToSingle(TechnicalMetadata)
+    phenotype = fields.Neo4jRelationshipToSingle(Phenotype)
+    files = fields.Neo4jRelationshipToCount()
+    # for now only the number of related files,
+    # can be useful also a list of some files metadata?
     # virtual files?
 
 
