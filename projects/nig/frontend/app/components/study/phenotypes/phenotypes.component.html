@@ -65,7 +65,11 @@
 					<!-- HPO -->
 					<ngx-datatable-column prop="hpo" name="HPO" [flexGrow]="1" [sortable]="false">
 						<ng-template let-value="value" ngx-datatable-cell-template>
-							{{ value }}
+							<ng-container *ngIf="value && value.length > 0; else noValue">
+								<span class="badge badge-secondary" *ngFor="let hpo of value">
+								{{ hpo.label }}
+							  </span>
+							</ng-container>
 						</ng-template>
 					</ngx-datatable-column>
 					<!-- Controls -->

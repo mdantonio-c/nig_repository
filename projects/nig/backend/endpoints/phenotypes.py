@@ -44,7 +44,11 @@ class PhenotypeInputSchema(Schema):
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
     birth_place_uuid = fields.Str()
-    hpo = fields.List(fields.Str(), label="HPO", autocomplete="hpo")
+    hpo = fields.List(fields.Str(), label="HPO",
+        autocomplete_endpoint="hpo",
+        autocomplete_show_id=True,
+        autocomplete_id_bind='hpo_id',
+        autocomplete_label_bind='label')
 
 
 class PhenotypePutSchema(Schema):
@@ -53,7 +57,11 @@ class PhenotypePutSchema(Schema):
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=False, validate=validate.OneOf(SEX))
     birth_place_uuid = fields.Str()
-    hpo = fields.List(fields.Str(), autocomplete="hpo")
+    hpo = fields.List(fields.Str(), label="HPO",
+        autocomplete_endpoint="hpo",
+        autocomplete_show_id=True,
+        autocomplete_id_bind='hpo_id',
+        autocomplete_label_bind='label')
 
 
 class PhenotypeList(NIGEndpoint):

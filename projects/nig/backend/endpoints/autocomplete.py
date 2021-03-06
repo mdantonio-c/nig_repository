@@ -66,8 +66,8 @@ class HPO(NIGEndpoint):
         result = graph.cypher(cypher)
         for row in result:
             hpo = graph.HPO.inflate(row[0])
-            name = f"{hpo.hpo_id} ({hpo.label})"
-            data.append({"value": hpo.hpo_id, "label": name})
+            # name = f"{hpo.hpo_id} ({hpo.label})"
+            data.append({"hpo_id": hpo.hpo_id, "label": hpo.label})
 
         return self.response(data)
 
