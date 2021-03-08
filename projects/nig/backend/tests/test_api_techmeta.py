@@ -1,6 +1,6 @@
 from faker import Faker
 from nig.tests.setup_tests import create_test_env, delete_test_env
-from restapi.tests import API_URI, AUTH_URI, BaseTests, FlaskClient
+from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
 class TestApp(BaseTests):
@@ -19,10 +19,6 @@ class TestApp(BaseTests):
             study1_uuid,
             study2_uuid,
         ) = create_test_env(client, faker, study=True)
-
-        # Debug code
-        r = client.get(f"{AUTH_URI}/status", headers=admin_headers)
-        assert r.status_code == 200
 
         # create a new techmeta
         techmeta1 = {
@@ -45,10 +41,6 @@ class TestApp(BaseTests):
             data=techmeta1,
         )
         assert r.status_code == 404
-
-        # Debug code
-        r = client.get(f"{AUTH_URI}/status", headers=admin_headers)
-        assert r.status_code == 200
 
         # create a new technical as admin not belonging to study group
         techmeta2 = {
