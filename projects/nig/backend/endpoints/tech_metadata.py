@@ -82,7 +82,6 @@ class TechnicalMetadata(NIGEndpoint):
             date = pytz.utc.localize(date)
         return date
 
-    # schema_expose = True
     labels = ["technicals"]
 
     @decorators.auth.require()
@@ -110,7 +109,6 @@ class TechnicalMetadata(NIGEndpoint):
         return self.response(techmeta)
 
     @decorators.auth.require()
-    # {'custom_parameters': ['Technical']}
     @decorators.endpoint(
         path="/study/<uuid>/technicals",
         summary="Create a new set of technical metadata in a study",
@@ -145,7 +143,6 @@ class TechnicalMetadata(NIGEndpoint):
         return self.response(techmeta.uuid)
 
     @decorators.auth.require()
-    # {'custom_parameters': ['Technical']}
     @decorators.endpoint(
         path="/technical/<uuid>",
         summary="Modify a set of technical metadata",
