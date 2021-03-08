@@ -17,7 +17,7 @@ class Family(NIGEndpoint):
         path="/phenotype/<uuid1>/relationships/<uuid2>",
         summary="Create a new relationship between two phenotypes",
         responses={
-            200: "Relationship successfully created",
+            204: "Relationship successfully created",
             400: "Cannot set relationship between the requested phenotypes",
             404: "This phenotype cannot be found or you are not authorized to access",
         },
@@ -43,14 +43,14 @@ class Family(NIGEndpoint):
             raise NotFound(PHENOTYPE_NOT_FOUND)
 
         study = phenotype1.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype", read=True)
+        self.verifyStudyAccess(study, error_type="Phenotype", read=False)
 
         phenotype2 = graph.Phenotype.nodes.get_or_none(uuid=uuid2)
         if phenotype2 is None:
             raise NotFound(PHENOTYPE_NOT_FOUND)
 
         study = phenotype2.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype", read=True)
+        self.verifyStudyAccess(study, error_type="Phenotype", read=False)
 
         if relationship == "father":
             phenotype2.son.connect(phenotype1)
@@ -72,7 +72,7 @@ class Family(NIGEndpoint):
         path="/phenotype/<uuid1>/relationships/<uuid2>",
         summary="Delete a relationship between two phenotypes",
         responses={
-            200: "Relationship successfully deleted",
+            204: "Relationship successfully deleted",
             404: "This phenotype cannot be found or you are not authorized to access",
         },
     )
@@ -94,14 +94,14 @@ class Family(NIGEndpoint):
             raise NotFound(PHENOTYPE_NOT_FOUND)
 
         study = phenotype1.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype", read=True)
+        self.verifyStudyAccess(study, error_type="Phenotype", read=False)
 
         phenotype2 = graph.Phenotype.nodes.get_or_none(uuid=uuid2)
         if phenotype2 is None:
             raise NotFound(PHENOTYPE_NOT_FOUND)
 
         study = phenotype2.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype", read=True)
+        self.verifyStudyAccess(study, error_type="Phenotype", read=False)
 
         # [1] - FATHER -> [2]
         if relationship == "father":
