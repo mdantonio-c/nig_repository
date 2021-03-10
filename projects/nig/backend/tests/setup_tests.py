@@ -9,7 +9,6 @@ from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
 def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> Any:
-    admin_headers, _ = BaseTests.do_login(client, None, None)
 
     # create a group with one user
     uuid_group_A, _ = BaseTests.create_group(client)
@@ -52,6 +51,9 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
         r = client.post(f"{API_URI}/study", headers=user_A1_headers, data=study2)
         assert r.status_code == 200
         study2_uuid = BaseTests.get_content(r)
+
+    admin_headers, _ = BaseTests.do_login(client, None, None)
+
     return (
         admin_headers,
         uuid_group_A,
@@ -69,7 +71,6 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
 
 def delete_test_env(
     client: FlaskClient,
-    admin_headers: Tuple[Optional[Dict[str, str]], str],
     user_A1_headers: Tuple[Optional[Dict[str, str]], str],
     user_B1_headers: Tuple[Optional[Dict[str, str]], str],
     user_B1_uuid: str,
@@ -81,6 +82,7 @@ def delete_test_env(
     study2_uuid: Optional[str] = None,
 ) -> None:
 
+    admin_headers, _ = BaseTests.do_login(client, None, None)
     # delete all the elements used by the test
     if study1_uuid:
         r = client.delete(f"{API_URI}/study/{study1_uuid}", headers=user_B1_headers)

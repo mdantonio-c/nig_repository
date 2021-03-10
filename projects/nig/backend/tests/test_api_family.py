@@ -286,7 +286,6 @@ class TestApp(BaseTests):
         # delete all the elements used by the test
         delete_test_env(
             client,
-            admin_headers,
             user_A1_headers,
             user_B1_headers,
             user_B1_uuid,
