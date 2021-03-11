@@ -26,14 +26,14 @@ SKIPM = "SKIP METADATA"
 
 
 # def export(export_counter, variants):
-#     f = "/jwt_tokens/export/export.variants.%s.json" % export_counter
+#     f = "/uploads/export/export.variants.%s.json" % export_counter
 #     log.info("Exporting variants to %s" % f)
 #     with open(f, "w+") as fp:
 #         json.dump(variants, fp)
 
 
 # def export_genes(genes):
-#     f = "/jwt_tokens/export/export.genes.json"
+#     f = "/uploads/export/export.genes.json"
 #     log.info("Exporting genes to %s" % f)
 #     with open(f, "w+") as fp:
 #         json.dump(genes, fp)
