@@ -1,6 +1,7 @@
 import os
 import time
 from mimetypes import MimeTypes
+from typing import Any, Optional
 
 import requests
 import typer
@@ -16,7 +17,7 @@ def upload(
     totp: str = typer.Option(None, prompt=True),
     env: str = typer.Option("local", help="choose between local and dev"),
     dataset: str = typer.Option(None, help="dataset uuid"),
-):
+) -> Optional[Any]:
     if env == "local":
         url = "http://localhost:8080/"
     elif env == "dev":

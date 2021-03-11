@@ -95,6 +95,29 @@ class TestApp(BaseTests):
         dataset_uuid = self.get_content(r)
         dataset_path = os.path.join(dir_path, dataset_uuid)
         assert os.path.isdir(dir_path)
+        # create a new file to test if it's deleted with the study
+        filename = faker.pystr()
+        file_data = {
+            "name": f"{filename}.gz",
+            "mimeType": "application/gzip",
+            "size": faker.pyint(),
+            "lastModified": faker.pyint(),
+        }
+        r = client.post(
+            f"{API_URI}/dataset/{dataset_uuid}/files/upload",
+            headers=user_A1_headers,
+            data=file_data,
+        )
+        assert r.status_code == 201
+        # get the file uuid
+        r = client.get(
+            f"{API_URI}/dataset/{dataset_uuid}/files",
+            headers=user_A1_headers,
+        )
+        assert r.status_code == 200
+        file_list = self.get_content(r)
+        file_uuid = file_list[0]["uuid"]
+
         # create a new technical to test if it's deleted with the study
         techmeta = {"name": faker.pystr()}
         r = client.post(
@@ -121,6 +144,10 @@ class TestApp(BaseTests):
         # check the dataset was deleted
         r = client.get(f"{API_URI}/dataset/{dataset_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
+        # check the file was deleted
+        r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_A1_headers)
+        assert r.status_code == 404
+
         # check the technical was deleted
         r = client.get(f"{API_URI}/technical/{techmeta_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
