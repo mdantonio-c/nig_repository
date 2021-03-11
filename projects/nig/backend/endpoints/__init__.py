@@ -43,6 +43,12 @@ class NIGEndpoint(EndpointResource):
         if dataset:
             study = dataset.parent_study.single()
             path = os.path.join(GROUP_DIR, group.uuid, study.uuid, dataset.uuid)
+        if file:
+            dataset = file.dataset.single()
+            study = dataset.parent_study.single()
+            path = os.path.join(
+                GROUP_DIR, group.uuid, study.uuid, dataset.uuid, file.name
+            )
         return path
 
     @staticmethod

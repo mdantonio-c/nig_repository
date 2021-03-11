@@ -1,15 +1,25 @@
 import os
-from typing import Optional
+import pathlib
+from typing import Any
 
-from flask import request
 from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import celery, neo4j
-from restapi.exceptions import NotFound
+from restapi.exceptions import BadRequest, NotFound, ServerError
+from restapi.models import Schema, fields
 from restapi.rest.definition import Response
 from restapi.services.uploader import Uploader
 
 # from restapi.utilities.logs import log
+
+
+class FileOutput(Schema):
+    uuid = fields.Str(required=True)
+    name = fields.Str(required=True)
+    type = fields.Str(required=False)
+    size = fields.Integer(required=False)
+    status = fields.Str(required=False)
+    # metadata?
 
 
 class Files(NIGEndpoint):
@@ -18,83 +28,79 @@ class Files(NIGEndpoint):
 
     @decorators.auth.require()
     @decorators.endpoint(
-        path="/dataset/<dataset_uuid>/files",
+        path="/dataset/<uuid>/files",
         summary="Obtain information on a single file",
         responses={
             200: "File information successfully retrieved",
             404: "This file cannot be found or you are not authorized to access",
         },
     )
-    @decorators.endpoint(
-        path="/file/<file_uuid>",
-        summary="Obtain information on a single file",
-        responses={
-            200: "File information successfully retrieved",
-            404: "This file cannot be found or you are not authorized to access",
-        },
-    )
-    def get(
-        self, dataset_uuid: Optional[str] = None, file_uuid: Optional[str] = None
-    ) -> Response:
+    @decorators.marshal_with(FileOutput(many=True), code=200)
+    def get(self, uuid: str) -> Response:
 
         graph = neo4j.get_instance()
-        # celery = self.get_service_instance('celery')
+        dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
+        self.verifyDatasetAccess(dataset, read=True)
 
-        if dataset_uuid is not None:
-            dataset = graph.Dataset.nodes.get_or_none(uuid=dataset_uuid)
-            self.verifyDatasetAccess(dataset, read=True)
+        study = dataset.parent_study.single()
 
-            study = self.getSingleLinkedNode(dataset.parent_study)
-            self.verifyStudyAccess(study, error_type="Dataset", read=True)
+        self.verifyStudyAccess(study, error_type="Dataset", read=True)
 
-        elif file_uuid is not None:
-            file = graph.File.nodes.get_or_none(uuid=file_uuid)
-            if file is None:
-                raise NotFound(FILE_NOT_FOUND)
+        path = self.getPath(dataset=dataset)
 
-            dataset = self.getSingleLinkedNode(file.dataset)
-            self.verifyDatasetAccess(dataset, error_type="File", read=True)
-
-            study = self.getSingleLinkedNode(dataset.parent_study)
-            self.verifyStudyAccess(study, error_type="File", read=True)
-
-        path = self.getPath(study=study.uuid, dataset=dataset.uuid)
-
-        irods_data = self.user_icom.list(path=path, detailed=True)
+        directory_data = os.listdir(path)
 
         data = []
-        # task = None
+
         for file in dataset.files.all():
-            if file.name not in irods_data:
-                continue
-
-            # row = irods_data[file.name]
-            row = self.getJsonResponse({})
-            row["attributes"] = irods_data[file.name]
-            row["attributes"]["type"] = file.type
-            # already obtained live from irods
-            # row['attributes']['size'] = file.size
-            if file.status == "completed" or file.status == "SUCCESS":
-                row["attributes"]["status"] = file.status
-
-            # To be re-evaluated
-            # else:
-            #     if file.task_id is None:
-            #         task = None
-            #     else:
-            #         task = celery.AsyncResult(file.task_id)
-            #     if task is not None and str(task) != "None":
-            #         row["attributes"]["status"] = task.status
-            #     elif file.status is None:
-            #         row["attributes"]["status"] = "SUCCESS"
-            #     else:
-            #         row["attributes"]["status"] = file.status
-
-            if file.metadata:
-                row["attributes"]["metadata"] = file.metadata
-            data.append(row)
+            if file.name not in directory_data:
+                file.status = "unknown"
+                file.save()
+            else:
+                # check if the status is correct
+                if file.status == "unknown":
+                    filepath = self.getPath(file=file)
+                    if not os.path.getsize(filepath) == file.size:
+                        file.status = "importing"
+                    else:
+                        file.status = "uploaded"
+                    file.save()
+            data.append(file)
 
         return self.response(data)
+
+
+class SingleFile(NIGEndpoint):
+
+    labels = ["file"]
+
+    @decorators.auth.require()
+    @decorators.endpoint(
+        path="/file/<uuid>",
+        summary="Obtain information on a single file",
+        responses={
+            200: "File information successfully retrieved",
+            404: "This file cannot be found or you are not authorized to access",
+        },
+    )
+    @decorators.marshal_with(FileOutput, code=200)
+    def get(self, uuid: str) -> Response:
+
+        graph = neo4j.get_instance()
+
+        file = graph.File.nodes.get_or_none(uuid=uuid)
+        if file is None:
+            raise NotFound(FILE_NOT_FOUND)
+
+        dataset = file.dataset.single()
+        self.verifyDatasetAccess(dataset, error_type="File", read=True)
+
+        study = dataset.parent_study.single()
+        self.verifyStudyAccess(study, error_type="File", read=True)
+
+        self.log_event(self.events.access, file)
+
+        return self.response(file)
 
     @decorators.auth.require()
     @decorators.endpoint(
@@ -103,7 +109,6 @@ class Files(NIGEndpoint):
         responses={
             200: "File successfully deleted",
             404: "This file cannot be found or you are not authorized to access",
-            403: "You are not authorized to perform actions on this file",
         },
     )
     @decorators.database_transaction
@@ -111,19 +116,21 @@ class Files(NIGEndpoint):
 
         graph = neo4j.get_instance()
 
-        # INIT #
         file = graph.File.nodes.get_or_none(uuid=uuid)
         if file is None:
             raise NotFound(FILE_NOT_FOUND)
-        dataset = self.getSingleLinkedNode(file.dataset)
+        dataset = file.dataset.single()
         self.verifyDatasetAccess(dataset, error_type="File")
-        study = self.getSingleLinkedNode(dataset.parent_study)
+        study = dataset.parent_study.single()
         self.verifyDatasetAccess(study, error_type="File")
-        path = self.getPath(study=study.uuid, dataset=dataset.uuid, file=file.name)
+        path = self.getPath(file=file)
 
         file.delete()
 
-        self.admin_icom.remove(path, recursive=True)
+        if os.path.exists(path):
+            os.remove(path)
+
+        self.log_event(self.events.delete, file)
 
         return self.empty_response()
 
@@ -133,80 +140,90 @@ class FileUpload(Uploader, NIGEndpoint):
     labels = ["file"]
 
     @decorators.auth.require()
-    # {'parameters': [
-    #     {'name': 'flowFilename', 'required': True, 'in': 'query', 'type': 'string'},
-    #     {'name': 'flowChunkNumber', 'required': True, 'in': 'query', 'type': 'integer'},
-    #     {'name': 'flowTotalChunks', 'required': True, 'in': 'query', 'type': 'integer'},
-    #     {'name': 'flowChunkSize', 'required': True, 'in': 'query', 'type': 'integer'}
-    # ]}
+    @decorators.endpoint(
+        path="/dataset/<uuid>/files/upload/<filename>",
+        summary="Upload a file into a dataset",
+        responses={200: "File uploaded succesfully", 500: "Fail in uploading file"},
+    )
+    @decorators.database_transaction
+    def put(self, uuid: str, filename: str) -> Response:
+
+        graph = neo4j.get_instance()
+        # check permission
+        dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
+        self.verifyDatasetAccess(dataset)
+
+        study = dataset.parent_study.single()
+        self.verifyStudyAccess(study, error_type="Dataset")
+
+        # get the file
+        file = graph.File.nodes.get_or_none(name=filename)
+        file.status = "importing"
+        file.save()
+
+        path = self.getPath(dataset=dataset)
+        completed, response = self.chunk_upload(pathlib.Path(path), filename)
+
+        if completed:
+            # check the final size
+            filepath = self.getPath(file=file)
+            if not os.path.getsize(filepath) == file.size:
+                file.delete()
+                os.remove(filepath)
+                raise ServerError(
+                    "File has not been uploaded correctly: final size does not correspond to total size. Please try a new upload"
+                )
+            file.status = "uploaded"
+            file.save()
+            specs = f"Completed upload for {filename} file in {uuid} dataset"
+
+            self.log_event(self.events.create, file, specs)
+
+        return response
+
+    @decorators.auth.require()
+    @decorators.init_chunk_upload
     @decorators.endpoint(
         path="/dataset/<uuid>/files/upload",
         summary="Upload a file into a dataset",
-        responses={
-            200: "File successfully uploaded",
-        },
+        responses={201: "Upload initialized", 400: "File already exists"},
     )
     @decorators.database_transaction
-    def post(self, uuid: str) -> Response:
+    def post(self, uuid: str, name: str, **kwargs: Any) -> Response:
 
+        # check permissions
         graph = neo4j.get_instance()
+        dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
+        self.verifyDatasetAccess(dataset)
 
-        chunk_number = int(self.get_input(single_parameter="flowChunkNumber"))
-        chunk_total = int(self.get_input(single_parameter="flowTotalChunks"))
-        chunk_size = int(self.get_input(single_parameter="flowChunkSize"))
-        filename = self.get_input(single_parameter="flowFilename")
+        study = dataset.parent_study.single()
+        self.verifyStudyAccess(study, error_type="Dataset")
 
-        abs_fname, secure_name = self.ngflow_upload(
-            filename,
-            "/uploads",
-            request.files["file"],
-            chunk_number,
-            chunk_size,
-            chunk_total,
-            overwrite=True,
-        )
+        path = self.getPath(dataset=dataset)
 
-        # TO FIX: what happens if last chunk doesn't arrive as last?
-        if chunk_number == chunk_total:
+        # set the allowed file format
+        self.set_allowed_exts(["gz"])
 
-            dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
-            self.verifyDatasetAccess(dataset)
+        filebase, fileext = os.path.splitext(name)
 
-            study = self.getSingleLinkedNode(dataset.parent_study)
-            self.verifyStudyAccess(study, error_type="Dataset")
+        # check if a file with the same name alresdy exists in the db
+        file = graph.File.nodes.get_or_none(name=name)
+        if file:
+            raise BadRequest("A file with the same name already exists")
 
-            name = filename
-            name = os.path.basename(name)
+        properties = {
+            "name": name,
+            "size": kwargs["size"],
+            "type": fileext.strip("."),
+            "status": "init",
+        }
 
-            properties = {"name": name, "status": "init"}
-            file = graph.File(**properties).save()
+        file = graph.File(**properties).save()
 
-            file.dataset.connect(dataset)
+        file.dataset.connect(dataset)
 
-            path = self.getPath(study=study.uuid, dataset=dataset.uuid, file=file.name)
+        specs = f"Accepted upload for {name} file in {uuid} dataset"
 
-            stage_path = "???"  # no longer used
-            irods_groups = "???"  # no longer used
-            dataPath = "???"  # => file path?
-            c = celery.get_instance()
-            task = c.celery_app.send_task(
-                "import_file",
-                args=[
-                    file.uuid,
-                    stage_path,
-                    path,
-                    "File",
-                    abs_fname,
-                    self.irods_user,
-                    irods_groups,
-                    dataPath,
-                ],
-                countdown=10,
-            )
-            file.task_id = task.id
-            file.status = "importing"
-            file.save()
+        self.log_event(self.events.create, file, specs)
 
-            return self.response(file.uuid)
-
-        return self.response("", code=202)
+        return self.init_chunk_upload(pathlib.Path(path), name)
