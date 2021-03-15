@@ -69,6 +69,11 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
     else:
         default_geodata = None
 
+    if not is_post:
+        # add option to remove the birth place
+        geodata_keys.append("-1")
+        geodata_labels.append(" - ")
+
     attributes["birth_place_uuid"] = fields.Str(
         required=False,
         allow_none=True,

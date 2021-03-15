@@ -223,7 +223,7 @@ class TestApp(BaseTests):
             headers=user_B1_headers,
             data={"birth_place_uuid": faker.pystr()},
         )
-        assert r.status_code == 404
+        assert r.status_code == 400
 
         # delete a phenotype
         # delete a phenotype that does not exists
