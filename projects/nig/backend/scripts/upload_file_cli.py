@@ -16,7 +16,7 @@ def upload(
     totp: str = typer.Option(None, prompt=True),
     env: str = typer.Option("local", help="choose between local and dev"),
     dataset: str = typer.Option(None, help="dataset uuid"),
-):
+) -> None:
     if env == "local":
         url = "http://localhost:8080/"
     elif env == "dev":
@@ -37,15 +37,15 @@ def upload(
         f"{url}auth/login", {"username": username, "password": pwd, "totp_code": totp}
     )
 
-    if r.status_code == 200:
-        token = r.json()
-        headers = {"Authorization": f"Bearer {token}"}
-        typer.echo("Logged in succesfully")
-    else:
+    if r.status_code != 200:
         typer.echo(
             f"ERROR: fail to login. Status code: {r.status_code}, response content: {r.json()}"
         )
         return
+
+    token = r.json()
+    headers = {"Authorization": f"Bearer {token}"}
+    typer.echo("Logged in succesfully")
 
     # get the data for the upload request
     filename = os.path.basename(input)
@@ -65,16 +65,16 @@ def upload(
     r = requests.post(
         f"{url}api/dataset/{dataset}/files/upload", headers=headers, data=data
     )
-    if r.status_code == 201:
-        typer.echo("Upload initialized succesfully")
-    else:
+    if r.status_code != 201:
         typer.echo(
             f"ERROR: fail to initialize the upload. Status code: {r.status_code}, response content: {r.json()}"
         )
         return
 
+    typer.echo("Upload initialized succesfully")
+
     chunksize = 100000  # 1kb
-    range = 0
+    range_start = 0
 
     with open(input, "rb") as f:
         with typer.progressbar(length=filesize, label="Uploading") as progress:
@@ -82,12 +82,12 @@ def upload(
                 read_data = f.read(chunksize)
                 if not read_data:
                     break  # done
-                if range != 0:
-                    range += 1
-                range_max = range + chunksize
+                if range_start != 0:
+                    range_start += 1
+                range_max = range_start + chunksize
                 if range_max > filesize:
                     range_max = filesize
-                headers["Content-Range"] = f"bytes {range}-{range_max}/{filesize}"
+                headers["Content-Range"] = f"bytes {range_start}-{range_max}/{filesize}"
                 r = requests.put(
                     url + f"api/dataset/{dataset}/files/upload/{filename}",
                     headers=headers,
@@ -108,7 +108,7 @@ def upload(
                 time.sleep(1)
                 progress.update(chunksize)
                 # update the range variable
-                range += chunksize
+                range_start += chunksize
         if r.status_code == 200:
             typer.echo("Upload finished succesfully")
         else:
@@ -117,6 +117,8 @@ def upload(
                     r.status_code, r.json()
                 )
             )
+
+    return None
 
 
 if __name__ == "__main__":
