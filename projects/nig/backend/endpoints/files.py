@@ -4,13 +4,12 @@ from typing import Any
 
 from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
-from restapi.connectors import celery, neo4j
+from restapi.connectors import neo4j
 from restapi.exceptions import BadRequest, NotFound, ServerError
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
 from restapi.services.uploader import Uploader
-
-# from restapi.utilities.logs import log
+from restapi.utilities.logs import log
 
 
 class FileOutput(Schema):
@@ -46,7 +45,7 @@ class Files(NIGEndpoint):
 
         self.verifyStudyAccess(study, error_type="Dataset", read=True)
 
-        path = self.getPath(dataset=dataset)
+        path = self.getPath(dataset=dataset, read=True)
 
         directory_data = os.listdir(path)
 
@@ -59,7 +58,7 @@ class Files(NIGEndpoint):
             else:
                 # check if the status is correct
                 if file.status == "unknown":
-                    filepath = self.getPath(file=file)
+                    filepath = self.getPath(file=file, read=True)
                     if not os.path.getsize(filepath) == file.size:
                         file.status = "importing"
                     else:
@@ -97,6 +96,24 @@ class SingleFile(NIGEndpoint):
 
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, error_type="File", read=True)
+
+        # check if file exists in the folder
+        path = self.getPath(dataset=dataset, read=True)
+
+        directory_data = os.listdir(path)
+
+        if file.name not in directory_data:
+            file.status = "unknown"
+            file.save()
+        else:
+            # check if the status is correct
+            if file.status == "unknown":
+                filepath = self.getPath(file=file, read=True)
+                if not os.path.getsize(filepath) == file.size:
+                    file.status = "importing"
+                else:
+                    file.status = "uploaded"
+                file.save()
 
         self.log_event(self.events.access, file)
 
@@ -161,7 +178,10 @@ class FileUpload(Uploader, NIGEndpoint):
         self.verifyStudyAccess(study, error_type="Dataset")
 
         # get the file
-        file = graph.File.nodes.get_or_none(name=filename)
+        file = None
+        for f in dataset.files.all():
+            if f.name == filename:
+                file = f
         if not file:
             raise NotFound(FILE_NOT_FOUND)
         file.status = "importing"
@@ -169,15 +189,23 @@ class FileUpload(Uploader, NIGEndpoint):
 
         path = self.getPath(dataset=dataset)
         completed, response = self.chunk_upload(pathlib.Path(path), filename)
+        log.debug("check {}", response)
 
         if completed:
             # check the final size
             filepath = self.getPath(file=file)
             if not os.path.getsize(filepath) == file.size:
+                log.debug(
+                    "size expected: {},actual size: {}",
+                    file.size,
+                    os.path.getsize(filepath),
+                )
                 file.delete()
                 os.remove(filepath)
-                raise ServerError(
-                    "File has not been uploaded correctly: final size does not correspond to total size. Please try a new upload"
+                # in this case we return the response and not raise the exception to not have the database rollback due to database_transaction decorator (i want the file database entry to be deleted and the rollback will prevent that)
+                return self.response(
+                    "File has not been uploaded correctly: final size does not correspond to total size. Please try a new upload",
+                    code=500,
                 )
             file.status = "uploaded"
             file.save()
@@ -196,7 +224,11 @@ class FileUpload(Uploader, NIGEndpoint):
     @decorators.endpoint(
         path="/dataset/<uuid>/files/upload",
         summary="Upload a file into a dataset",
-        responses={201: "Upload initialized", 400: "File already exists"},
+        responses={
+            201: "Upload initialized",
+            400: "File extension not allowed",
+            409: "File already exists",
+        },
     )
     @decorators.database_transaction
     def post(self, uuid: str, name: str, **kwargs: Any) -> Response:
@@ -216,11 +248,6 @@ class FileUpload(Uploader, NIGEndpoint):
 
         filebase, fileext = os.path.splitext(name)
 
-        # check if a file with the same name alresdy exists in the db
-        file = graph.File.nodes.get_or_none(name=name)
-        if file:
-            raise BadRequest("A file with the same name already exists")
-
         properties = {
             "name": name,
             "size": kwargs["size"],
@@ -238,4 +265,4 @@ class FileUpload(Uploader, NIGEndpoint):
             {"operation": f"Accepted upload for {name} file in {uuid} dataset"},
         )
 
-        return self.init_chunk_upload(pathlib.Path(path), name)
+        return self.init_chunk_upload(pathlib.Path(path), name, force=False)

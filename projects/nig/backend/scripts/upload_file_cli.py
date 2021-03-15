@@ -25,12 +25,12 @@ def upload(
         typer.echo(
             "ERROR: the specified environment is not valid. Please choose between dev and local"
         )
-        return
+        return None
 
     # check if the input file exists
     if not os.path.exists(input):
         typer.echo("ERROR: the specified input path does not exists")
-        return
+        return None
 
     # do login
     r = requests.post(
@@ -41,7 +41,7 @@ def upload(
         typer.echo(
             f"ERROR: fail to login. Status code: {r.status_code}, response content: {r.json()}"
         )
-        return
+        return None
 
     token = r.json()
     headers = {"Authorization": f"Bearer {token}"}
@@ -69,7 +69,7 @@ def upload(
         typer.echo(
             f"ERROR: fail to initialize the upload. Status code: {r.status_code}, response content: {r.json()}"
         )
-        return
+        return None
 
     typer.echo("Upload initialized succesfully")
 
@@ -89,7 +89,7 @@ def upload(
                     range_max = filesize
                 headers["Content-Range"] = f"bytes {range_start}-{range_max}/{filesize}"
                 r = requests.put(
-                    url + f"api/dataset/{dataset}/files/upload/{filename}",
+                    f"{url}api/dataset/{dataset}/files/upload/{filename}",
                     headers=headers,
                     data=read_data,
                 )
@@ -103,7 +103,7 @@ def upload(
                             r.status_code, r.json()
                         )
                     )
-                    return
+                    return None
                 # update the typer progress bar
                 time.sleep(1)
                 progress.update(chunksize)
@@ -117,7 +117,6 @@ def upload(
                     r.status_code, r.json()
                 )
             )
-
     return None
 
 

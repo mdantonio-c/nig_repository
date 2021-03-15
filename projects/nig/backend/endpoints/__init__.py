@@ -30,6 +30,7 @@ class NIGEndpoint(EndpointResource):
         study: Optional[Study] = None,
         dataset: Optional[Dataset] = None,
         file: Optional[File] = None,
+        read: bool = False,
     ) -> str:
         current_user = self.get_user()
         if not current_user:  # pragma: no cover
@@ -42,10 +43,18 @@ class NIGEndpoint(EndpointResource):
             path = os.path.join(GROUP_DIR, group.uuid, study.uuid)
         if dataset:
             study = dataset.parent_study.single()
+            if read:
+                # it can be an admin so i have to get the group uuid of the dataset
+                owner = dataset.ownership.single()
+                group = owner.belongs_to.single()
             path = os.path.join(GROUP_DIR, group.uuid, study.uuid, dataset.uuid)
         if file:
             dataset = file.dataset.single()
             study = dataset.parent_study.single()
+            if read:
+                # it can be an admin so i have to get the group uuid of the dataset
+                owner = dataset.ownership.single()
+                group = owner.belongs_to.single()
             path = os.path.join(
                 GROUP_DIR, group.uuid, study.uuid, dataset.uuid, file.name
             )
@@ -146,8 +155,8 @@ class NIGEndpoint(EndpointResource):
         if owner == current_user:
             return True
 
-        # An admin has always access
-        if self.verify_admin():
+        # An admin has always access for readonly
+        if read and self.verify_admin():
             return True
 
         # A member of the some group of the owner, has always access
