@@ -1,6 +1,6 @@
 import os
 from subprocess import check_call
-from typing import Dict
+from typing import Any, Dict
 
 from faker import Faker
 from nig.endpoints import GROUP_DIR
@@ -17,7 +17,7 @@ class TestApp(BaseTests):
         input: str,
         dataset_uuid: str,
         stream: bool = True,
-    ) -> Response:
+    ) -> Any:
         # get the data for the upload request
         filename = os.path.basename(input)
         filesize = os.path.getsize(input)

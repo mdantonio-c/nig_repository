@@ -1,10 +1,11 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type, Union
 
 import pytz
 from nig.endpoints import PHENOTYPE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
+from restapi.customizer import FlaskRequest
 from restapi.exceptions import NotFound
 from restapi.models import ISO8601UTC, Schema, fields, validate
 from restapi.rest.definition import Response
@@ -38,30 +39,52 @@ class PhenotypeOutputSchema(Schema):
     birth_place = fields.Neo4jRelationshipToSingle(GeoData)
 
 
-class PhenotypeInputSchema(Schema):
-    name = fields.Str(required=True)
-    birthday = fields.DateTime(format=ISO8601UTC)
-    deathday = fields.DateTime(format=ISO8601UTC)
-    sex = fields.Str(required=True, validate=validate.OneOf(SEX))
-    birth_place_uuid = fields.Str()
-    hpo = fields.List(fields.Str(), label="HPO",
+def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
+    graph = neo4j.get_instance()
+    # as defined in Marshmallow.schema.from_dict
+    attributes: Dict[str, Union[fields.Field, type]] = {}
+
+    attributes["name"] = fields.Str(required=is_post)
+    attributes["birthday"] = fields.DateTime(format=ISO8601UTC)
+    attributes["deathday"] = fields.DateTime(format=ISO8601UTC)
+    attributes["sex"] = fields.Str(required=is_post, validate=validate.OneOf(SEX))
+    attributes["hpo"] = fields.List(
+        fields.Str(),
+        label="HPO",
         autocomplete_endpoint="hpo",
         autocomplete_show_id=True,
-        autocomplete_id_bind='hpo_id',
-        autocomplete_label_bind='label')
+        autocomplete_id_bind="hpo_id",
+        autocomplete_label_bind="label",
+    )
+
+    geodata_keys = []
+    geodata_labels = []
+
+    for g in graph.GeoData.nodes.all():
+        geodata_keys.append(g.uuid)
+        geodata_labels.append(g.province)
+
+    if len(geodata_keys) == 1:
+        default_geodata = geodata_keys[0]
+    else:
+        default_geodata = None
+
+    attributes["birth_place_uuid"] = fields.Str(
+        required=False,
+        allow_none=True,
+        default=default_geodata,
+        validate=validate.OneOf(choices=geodata_keys, labels=geodata_labels),
+    )
+
+    return Schema.from_dict(attributes, name="PhenotypeDefinition")
 
 
-class PhenotypePutSchema(Schema):
-    name = fields.Str(required=False)
-    birthday = fields.DateTime(format=ISO8601UTC)
-    deathday = fields.DateTime(format=ISO8601UTC)
-    sex = fields.Str(required=False, validate=validate.OneOf(SEX))
-    birth_place_uuid = fields.Str()
-    hpo = fields.List(fields.Str(), label="HPO",
-        autocomplete_endpoint="hpo",
-        autocomplete_show_id=True,
-        autocomplete_id_bind='hpo_id',
-        autocomplete_label_bind='label')
+def getPOSTInputSchema(request: FlaskRequest) -> Type[Schema]:
+    return getInputSchema(request, True)
+
+
+def getPUTInputSchema(request: FlaskRequest) -> Type[Schema]:
+    return getInputSchema(request, False)
 
 
 class PhenotypeList(NIGEndpoint):
@@ -167,7 +190,7 @@ class Phenotypes(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    @decorators.use_kwargs(PhenotypeInputSchema)
+    @decorators.use_kwargs(getPOSTInputSchema)
     def post(
         self,
         uuid: str,
@@ -226,7 +249,7 @@ class Phenotypes(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    @decorators.use_kwargs(PhenotypePutSchema)
+    @decorators.use_kwargs(getPUTInputSchema)
     def put(
         self,
         uuid: str,
