@@ -143,7 +143,11 @@ class FileUpload(Uploader, NIGEndpoint):
     @decorators.endpoint(
         path="/dataset/<uuid>/files/upload/<filename>",
         summary="Upload a file into a dataset",
-        responses={200: "File uploaded succesfully", 500: "Fail in uploading file"},
+        responses={
+            200: "File uploaded succesfully",
+            404: "File not found",
+            500: "Fail in uploading file",
+        },
     )
     @decorators.database_transaction
     def put(self, uuid: str, filename: str) -> Response:
@@ -158,6 +162,8 @@ class FileUpload(Uploader, NIGEndpoint):
 
         # get the file
         file = graph.File.nodes.get_or_none(name=filename)
+        if not file:
+            raise NotFound(FILE_NOT_FOUND)
         file.status = "importing"
         file.save()
 
@@ -175,9 +181,13 @@ class FileUpload(Uploader, NIGEndpoint):
                 )
             file.status = "uploaded"
             file.save()
-            specs = f"Completed upload for {filename} file in {uuid} dataset"
-
-            self.log_event(self.events.create, file, specs)
+            self.log_event(
+                self.events.create,
+                file,
+                {
+                    "operation": f"Completed upload for {filename} file in {uuid} dataset"
+                },
+            )
 
         return response
 
@@ -222,8 +232,10 @@ class FileUpload(Uploader, NIGEndpoint):
 
         file.dataset.connect(dataset)
 
-        specs = f"Accepted upload for {name} file in {uuid} dataset"
-
-        self.log_event(self.events.create, file, specs)
+        self.log_event(
+            self.events.create,
+            file,
+            {"operation": f"Accepted upload for {name} file in {uuid} dataset"},
+        )
 
         return self.init_chunk_upload(pathlib.Path(path), name)
