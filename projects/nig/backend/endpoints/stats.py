@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union, cast
 
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
@@ -104,7 +104,7 @@ def count_nodes(graph: neo4j.NeoModel, key: str) -> int:
                 query += m
             else:
                 query += filter_group
-        query += query_dictionary[key]["count"]
+        query += cast(str, query_dictionary[key]["count"])
     else:
         query = f"{query_dictionary[key]['match']} {filter_group} {query_dictionary[key]['count']}"
 
@@ -130,7 +130,7 @@ def count_by_group(graph: neo4j.NeoModel, key: str) -> Dict[str, int]:
                 query += m
             else:
                 query += filter_group
-        query += query_dictionary[key]["count_per_group"]
+        query += cast(str, query_dictionary[key]["count_per_group"])
     else:
         query = f"{query_dictionary[key]['match']} {filter_group} {query_dictionary[key]['count_per_group']}"
 
@@ -138,8 +138,8 @@ def count_by_group(graph: neo4j.NeoModel, key: str) -> Dict[str, int]:
     data: Dict[str, int] = {}
     for row in result:
         key = row[0]
-        if key is None:  # type: ignore
-            continue
+        if key is None:
+            continue  # type: ignore
         data[key] = int(row[1])
 
     return data

@@ -28,11 +28,11 @@ class TestApp(BaseTests):
             "lastModified": int(os.path.getmtime(input)),
         }
 
-        r: Response = client.post(
+        r_post: Response = client.post(
             f"{API_URI}/dataset/{dataset_uuid}/files/upload", headers=headers, data=data
         )
-        if r.status_code != 201:
-            return r
+        if r_post.status_code != 201:
+            return r_post
 
         chunksize = int(filesize / 2) + 1
         range_start = 0

@@ -1,5 +1,5 @@
 import os
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from restapi.exceptions import NotFound
 from restapi.rest.definition import EndpointResource
@@ -26,7 +26,7 @@ File = Any
 
 class NIGEndpoint(EndpointResource):
     # group used for test or, in general, groups we don't want to be counted in stats
-    GROUPS_TO_FILTER = []
+    GROUPS_TO_FILTER: List[str] = []
 
     def getPath(
         self,

@@ -63,6 +63,8 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 201
 
+        # exclude test group
+        NIGEndpoint.GROUPS_TO_FILTER = ["Default group"]
         # test public stats
         r = client.get(
             f"{API_URI}/stats/public",
@@ -100,7 +102,7 @@ class TestApp(BaseTests):
         assert private_stats["num_datasets_per_group"][group_B_fullname] == 1
 
         # test stats excluding a group
-        NIGEndpoint.GROUPS_TO_FILTER = ["Default group", group_A_fullname]
+        NIGEndpoint.GROUPS_TO_FILTER.append(group_A_fullname)
         # public
         r = client.get(
             f"{API_URI}/stats/public",
