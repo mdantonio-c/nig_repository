@@ -3,9 +3,9 @@ from subprocess import check_call
 from typing import Any, Dict
 
 from faker import Faker
+from flask.wrappers import Response
 from nig.endpoints import GROUP_DIR
 from nig.tests.setup_tests import create_test_env, delete_test_env
-from requests import Response
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
@@ -56,7 +56,7 @@ class TestApp(BaseTests):
                     )
                 else:
                     # do not read data to test final size!=expected size
-                    r: Response = client.put(
+                    r = client.put(
                         f"{API_URI}/dataset/{dataset_uuid}/files/upload/{filename}",
                         headers=headers,
                     )
