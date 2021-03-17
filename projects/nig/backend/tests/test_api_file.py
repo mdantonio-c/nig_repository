@@ -5,7 +5,7 @@ from typing import Any, Dict
 from faker import Faker
 from nig.endpoints import GROUP_DIR
 from nig.tests.setup_tests import create_test_env, delete_test_env
-from restapi.rest.definition import Response
+from requests import Response
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
@@ -17,7 +17,7 @@ class TestApp(BaseTests):
         input: str,
         dataset_uuid: str,
         stream: bool = True,
-    ) -> Any:
+    ) -> Response:
         # get the data for the upload request
         filename = os.path.basename(input)
         filesize = os.path.getsize(input)
