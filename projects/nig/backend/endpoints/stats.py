@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
@@ -35,12 +35,10 @@ class PrivateStatsOutput(Schema):
     num_files = fields.Integer(required=False)
 
 
-def get_filter_by_group() -> Optional[str]:
-    # group used for test or, in general, groups we don't want to be counted in stats
-    group_to_filter = []
-    filter_group = ""
-    if group_to_filter:
-        for g in group_to_filter:
+def get_filter_by_group() -> str:
+    filter_group: str = ""
+    if NIGEndpoint.GROUPS_TO_FILTER:
+        for g in NIGEndpoint.GROUPS_TO_FILTER:
             if not filter_group:
                 filter_group = f"WHERE g.fullname <> '{g}' "
             else:
@@ -49,7 +47,7 @@ def get_filter_by_group() -> Optional[str]:
     return filter_group
 
 
-query_dictionary = {
+query_dictionary: Dict[str, Dict[str, Union[str, List[str]]]] = {
     "count_users": {
         "match": "MATCH(u: User)-[: BELONGS_TO]->(g:Group)",
         "count": "RETURN count(u)",
@@ -140,7 +138,7 @@ def count_by_group(graph: neo4j.NeoModel, key: str) -> Dict[str, int]:
     data: Dict[str, int] = {}
     for row in result:
         key = row[0]
-        if key is None:
+        if key is None:  # type: ignore
             continue
         data[key] = int(row[1])
 

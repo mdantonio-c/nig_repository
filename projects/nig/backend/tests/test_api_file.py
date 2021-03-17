@@ -28,7 +28,7 @@ class TestApp(BaseTests):
             "lastModified": int(os.path.getmtime(input)),
         }
 
-        r = client.post(
+        r: Response = client.post(
             f"{API_URI}/dataset/{dataset_uuid}/files/upload", headers=headers, data=data
         )
         if r.status_code != 201:
@@ -49,14 +49,14 @@ class TestApp(BaseTests):
                     range_max = filesize
                 headers["Content-Range"] = f"bytes {range_start}-{range_max}/{filesize}"
                 if stream:
-                    r = client.put(
+                    r: Response = client.put(
                         f"{API_URI}/dataset/{dataset_uuid}/files/upload/{filename}",
                         headers=headers,
                         data=read_data,
                     )
                 else:
                     # do not read data to test final size!=expected size
-                    r = client.put(
+                    r: Response = client.put(
                         f"{API_URI}/dataset/{dataset_uuid}/files/upload/{filename}",
                         headers=headers,
                     )

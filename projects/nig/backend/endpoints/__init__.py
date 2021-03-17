@@ -25,6 +25,9 @@ File = Any
 
 
 class NIGEndpoint(EndpointResource):
+    # group used for test or, in general, groups we don't want to be counted in stats
+    GROUPS_TO_FILTER = []
+
     def getPath(
         self,
         study: Optional[Study] = None,
