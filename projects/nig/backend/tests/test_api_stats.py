@@ -63,6 +63,30 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 201
 
+        # test without group filter
+        # public stats
+        NIGEndpoint.GROUPS_TO_FILTER = []
+        r = client.get(
+            f"{API_URI}/stats/public",
+        )
+        assert r.status_code == 200
+        full_public_stats = self.get_content(r)
+        assert full_public_stats["num_users"] > 0
+        assert full_public_stats["num_studies"] > 0
+        assert full_public_stats["num_datasets"] > 0
+        assert full_public_stats["num_files"] > 0
+
+        # private stats
+        r = client.get(
+            f"{API_URI}/stats/private",
+            headers=user_B1_headers,
+        )
+        private_stats = self.get_content(r)
+        assert private_stats["num_users"] > 0
+        assert private_stats["num_studies"] > 0
+        assert private_stats["num_datasets"] > 0
+        assert private_stats["num_files"] > 0
+
         # exclude test group
         NIGEndpoint.GROUPS_TO_FILTER = ["Default group"]
         # test public stats
@@ -100,31 +124,34 @@ class TestApp(BaseTests):
         group_B_fullname = group_B.fullname
         assert private_stats["num_datasets_per_group"][group_A_fullname] == 1
         assert private_stats["num_datasets_per_group"][group_B_fullname] == 1
+        # check the excluded group not in responses
+        assert "Default group" not in private_stats["num_datasets_per_group"]
 
-        # test stats excluding a group
+        # test empty stats
         NIGEndpoint.GROUPS_TO_FILTER.append(group_A_fullname)
+        NIGEndpoint.GROUPS_TO_FILTER.append(group_B_fullname)
         # public
         r = client.get(
             f"{API_URI}/stats/public",
         )
         assert r.status_code == 200
         public_stats = self.get_content(r)
-        assert public_stats["num_users"] == 2
-        assert public_stats["num_studies"] == 1
-        assert public_stats["num_datasets"] == 1
-        assert public_stats["num_files"] == 1
+        assert public_stats["num_users"] == 0
+        assert public_stats["num_studies"] == 0
+        assert public_stats["num_datasets"] == 0
+        assert public_stats["num_files"] == 0
         # private
         r = client.get(
             f"{API_URI}/stats/private",
             headers=user_B1_headers,
         )
         private_stats = self.get_content(r)
-        assert private_stats["num_users"] == 2
-        assert private_stats["num_studies"] == 1
-        assert private_stats["num_datasets"] == 1
-        assert private_stats["num_files"] == 1
+        assert private_stats["num_users"] == 0
+        assert private_stats["num_studies"] == 0
+        assert private_stats["num_datasets"] == 0
+        assert private_stats["num_files"] == 0
         assert group_A_fullname not in private_stats["num_datasets_per_group"]
-        assert group_B_fullname in private_stats["num_datasets_per_group"]
+        assert group_B_fullname not in private_stats["num_datasets_per_group"]
 
         # delete all the elements used by the test
         delete_test_env(
