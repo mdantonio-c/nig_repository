@@ -116,7 +116,7 @@ class NIGEndpoint(EndpointResource):
             return True
 
         # An admin has always access for readonly
-        if read and self.verify_admin():
+        if read and self.auth.is_admin(current_user):
             return True
 
         # A member of the some group of the owner, has always access
@@ -159,7 +159,7 @@ class NIGEndpoint(EndpointResource):
             return True
 
         # An admin has always access for readonly
-        if read and self.verify_admin():
+        if read and self.auth.is_admin(current_user):
             return True
 
         # A member of the some group of the owner, has always access

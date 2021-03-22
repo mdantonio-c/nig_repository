@@ -1,95 +1,106 @@
 <div class="card mt-2">
-	<div class="card-header">
-		<h4 class="mb-0">
-		<i class="fas fa-database"></i> Datasets
-		<span class="float-right"
-			><i
-			class="fas fa-sync-alt clickable fa-sm"
-			ngbTooltip="Reload the list of datasets"
-			(click)="list();"
-			></i
-		></span>
-		</h4>
-	</div>
-	<div class="card-block">
-		<div class="table-responsive">
-			<div class="table-wrapper" #tableWrapper>
-				<ngx-spinner [fullScreen]="false"></ngx-spinner>
-				<ngx-datatable
-					#datasetsTable
-					class="bootstrap expandable"
-					[rows]="data"
-					[columns]="columns"
-					[columnMode]="ColumnMode.flex"
-					[headerHeight]="40"
-					[footerHeight]="40"
-					[externalPaging]="true"
-					[count]="paging.dataLength"
-					[limit]="paging.itemsPerPage"
-					[offset]="paging.page"
-					[rowHeight]="'auto'"
-				>
-					<!-- Column Templates -->
-					<!-- Name -->
-					<ngx-datatable-column prop="name" [flexGrow]="1">
-						<ng-template let-value="value" ngx-datatable-cell-template>
-							{{value}}
-						</ng-template>
-					</ngx-datatable-column>
-					<!-- Description -->
-					<ngx-datatable-column prop="description" [flexGrow]="2">
-						<ng-template let-value="value" ngx-datatable-cell-template>
-							{{value}}
-						</ng-template>
-					</ngx-datatable-column>
-					<!-- Files -->
-					<ngx-datatable-column prop="files" [flexGrow]="0.5" [sortable]="false">
-						<ng-template let-value="value" ngx-datatable-cell-template>
-							{{value}}
-						</ng-template>
-					</ngx-datatable-column>
-					<!-- Metadata -->
-					<ngx-datatable-column prop="technicals" name="Metadata" [flexGrow]="0.5" [sortable]="false">
-						<ng-template let-value="value" ngx-datatable-cell-template>
-							{{value}}
-						</ng-template>
-					</ngx-datatable-column>
-					<!-- Controls -->
-			    <ngx-datatable-column
-			      width="60"
-			      headerClass="px-0"
-			      [resizeable]="false"
-			      [sortable]="false"
-			      [draggable]="false"
-			      [canAutoResize]="false"
-			    >
-				    <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
-			        <div class="btn-toolbar justify-content-end" role="toolbar">
-			          <div class="btn-group mr-1" role="group">
-			            <button
-			              class="btn p-0 mr-1"
-			              (click)="update(row)"
-			            >
-			              <i class="fa fa-edit"></i>
-			            </button>
-			            <!-- <button
+  <div class="card-header">
+    <h4 class="mb-0">
+      <i class="fas fa-database"></i> Datasets
+      <span class="float-right"
+        ><i
+          class="fas fa-sync-alt clickable fa-sm"
+          ngbTooltip="Reload the list of datasets"
+          (click)="list()"
+        ></i
+      ></span>
+    </h4>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <div class="table-wrapper" #tableWrapper>
+        <ngx-spinner [fullScreen]="false"></ngx-spinner>
+        <ngx-datatable
+          #datasetsTable
+          class="bootstrap expandable"
+          [rows]="data"
+          [columns]="columns"
+          [columnMode]="ColumnMode.flex"
+          [headerHeight]="40"
+          [footerHeight]="40"
+          [externalPaging]="true"
+          [count]="paging.dataLength"
+          [limit]="paging.itemsPerPage"
+          [offset]="paging.page"
+          [rowHeight]="'auto'"
+        >
+          <!-- Column Templates -->
+          <!-- Name -->
+          <ngx-datatable-column prop="name" [flexGrow]="1">
+            <ng-template let-value="value" ngx-datatable-cell-template>
+              {{ value }}
+            </ng-template>
+          </ngx-datatable-column>
+          <!-- Description -->
+          <ngx-datatable-column prop="description" [flexGrow]="2">
+            <ng-template let-value="value" ngx-datatable-cell-template>
+              {{ value }}
+            </ng-template>
+          </ngx-datatable-column>
+          <!-- Files -->
+          <ngx-datatable-column
+            prop="files"
+            [flexGrow]="0.5"
+            [sortable]="false"
+          >
+            <ng-template let-value="value" ngx-datatable-cell-template>
+              {{ value }}
+            </ng-template>
+          </ngx-datatable-column>
+          <!-- Metadata -->
+          <ngx-datatable-column
+            prop="technicals"
+            name="Metadata"
+            [flexGrow]="0.5"
+            [sortable]="false"
+          >
+            <ng-template let-value="value" ngx-datatable-cell-template>
+              {{ value }}
+            </ng-template>
+          </ngx-datatable-column>
+          <!-- Controls -->
+          <ngx-datatable-column
+            width="60"
+            headerClass="px-0"
+            [resizeable]="false"
+            [sortable]="false"
+            [draggable]="false"
+            [canAutoResize]="false"
+          >
+            <ng-template
+              let-value="value"
+              let-row="row"
+              ngx-datatable-cell-template
+            >
+              <div class="btn-toolbar justify-content-end" role="toolbar">
+                <div class="btn-group mr-1" role="group">
+                  <button class="btn p-0 mr-1" (click)="update(row)">
+                    <i class="fa fa-edit"></i>
+                  </button>
+                  <!-- <button
 			              class="btn p-0"
 			              (click)="delete(row.uuid)"
 			            >
 			              <i class="fa fa-trash red"></i>
 			            </button> -->
-			          </div>
-			        </div>
-			      </ng-template>
-			  	</ngx-datatable-column>
-				</ngx-datatable>
-			</div>
-		</div>
-	</div>
-	<div class="card-footer text-muted">
+                </div>
+              </div>
+            </ng-template>
+          </ngx-datatable-column>
+        </ngx-datatable>
+      </div>
+    </div>
+  </div>
+  <div class="card-footer text-muted">
     <div class="col-12 text-right">
       <button class="btn btn-info" (click)="create()">
-        <!-- <i class="fas fa-plus"></i> --> Add {{resource_name}}
+        <!-- <i class="fas fa-plus"></i> -->
+        Add {{ resource_name }}
       </button>
     </div>
   </div>
