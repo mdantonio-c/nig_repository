@@ -45,8 +45,8 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
     attributes: Dict[str, Union[fields.Field, type]] = {}
 
     attributes["name"] = fields.Str(required=is_post)
-    attributes["birthday"] = fields.DateTime(format=ISO8601UTC)
-    attributes["deathday"] = fields.DateTime(format=ISO8601UTC)
+    attributes["birthday"] = fields.DateTime(format=ISO8601UTC, allow_none=True)
+    attributes["deathday"] = fields.DateTime(format=ISO8601UTC, allow_none=True)
     attributes["sex"] = fields.Str(required=is_post, validate=validate.OneOf(SEX))
     attributes["hpo"] = fields.List(
         fields.Str(),
