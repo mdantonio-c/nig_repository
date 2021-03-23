@@ -59,7 +59,9 @@
             [flexGrow]="1"
           >
             <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value | amFromUtc | date: "dd-MM-yyyy" }}
+              <span *ngIf="value; else noValue">{{
+                value | amFromUtc | date: "dd-MM-yyyy"
+              }}</span>
             </ng-template>
           </ngx-datatable-column>
           <!-- Deathday -->

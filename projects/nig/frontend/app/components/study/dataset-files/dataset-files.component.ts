@@ -75,7 +75,7 @@ export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile>{
     }
 	}
 
-  delete_confirmation_callback(fileId: string) {
+  protected delete_confirmation_callback(fileId: string) {
     this.notify.showSuccess(
       `Confirmation: ${this.resource_name} successfully deleted`
     );
