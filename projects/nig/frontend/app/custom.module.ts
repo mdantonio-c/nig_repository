@@ -9,6 +9,7 @@ import { StudyComponent } from "./components/study/study.component";
 import { DatasetsComponent } from "./components/study/datasets/datasets.component";
 import { TechnicalsComponent } from "./components/study/technicals/technicals.component";
 import { PhenotypesComponent } from "./components/study/phenotypes/phenotypes.component";
+import { DatasetFilesComponent } from "./components/study/dataset-files/dataset-files.component";
 
 const routes: Routes = [
   {
@@ -151,6 +152,7 @@ const routes: Routes = [
     StudiesComponent,
     StudyComponent,
     DatasetsComponent,
+    DatasetFilesComponent,
     TechnicalsComponent,
     PhenotypesComponent
   ],

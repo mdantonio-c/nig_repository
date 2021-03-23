@@ -2,9 +2,12 @@
 // Put here custom User properties, if any... or keep it empty
 export interface CustomUser {}
 
-export interface Study {
+export interface ResourceIdentity {
   uuid: string;
   name: string;
+}
+
+export interface Study extends ResourceIdentity {
   description: string;
   /** counter for existing relationships */
   /** @nullable */
@@ -28,10 +31,13 @@ export interface Dataset extends ResourceIdentity {
 
 export interface Datasets extends Array<Dataset> {}
 
-export interface ResourceIdentity {
-  uuid: string;
-  name: string;
+export interface DatasetFile extends ResourceIdentity {
+  size: number; 
+  status: string;
+  type: string;
 }
+
+export interface DatasetFiles extends Array<DatasetFile> {}
 
 export interface Phenotype extends ResourceIdentity {
   /** @nullable */
