@@ -5,22 +5,19 @@ import { Phenotype } from "@app/types";
 
 @Component({
   selector: "nig-phenotypes",
-  templateUrl: "./phenotypes.component.html"
+  templateUrl: "./phenotypes.component.html",
 })
 export class PhenotypesComponent extends BasePaginationComponent<Phenotype> {
-	@Input() studyUUID;
+  @Input() studyUUID;
 
-	constructor(
-		protected injector: Injector
-	) {
-		super(injector);
-	}
+  constructor(protected injector: Injector) {
+    super(injector);
+  }
 
-	ngOnInit() {
-		this.init("phenotype", `study/${this.studyUUID}/phenotypes`, "Phenotypes");
-		this.set_resource_endpoint("phenotype");
-	    this.initPaging(20, false);
-	    this.list();
-	}
-
+  ngOnInit() {
+    this.init("phenotype", `study/${this.studyUUID}/phenotypes`, "Phenotypes");
+    this.set_resource_endpoint("phenotype");
+    this.initPaging(20, false);
+    this.list();
+  }
 }
