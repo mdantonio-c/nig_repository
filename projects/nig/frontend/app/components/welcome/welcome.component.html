@@ -7,52 +7,64 @@
         </div>
       </ng-template>
     </ngb-carousel>-->
-    <img src="/app/custom/assets/images/header_nig_big-2.png" alt="NIG Logo">
+    <img src="/app/custom/assets/images/header_nig_big-2.png" alt="NIG Logo" />
   </div>
   <div class="col-lg-8 col-lg-offset-2">
     <div class="card mx-2">
       <div class="card-body">
-        <p>The NIG (Network for Italian Genomes) fosters genetics and genomics research in broad sense with special
-          reference to Italian population. The main aim is the definition of an Italian Reference Genome for the
-          identification of genes responsible for genetic diseases and susceptibility genes for complex diseases in both
-          basic and translational researches, genetic variants responsible for interindividual differences in drug
-          response in the Italian population but also useful for population and forensic purposes and new target for
-          diagnosis and treatment of genetic diseases. In collaboration with CINECA, NIG is creating a shared database
-          (NIG Repository) containing data from nucleic acids sequencing of Italian subjects. The NIG Repository will
-          only publish aggregate variant frequencies from a pool of data provided by the submitters.</p>
+        <p>
+          The NIG (Network for Italian Genomes) fosters genetics and genomics
+          research in broad sense with special reference to Italian population.
+          The main aim is the definition of an Italian Reference Genome for the
+          identification of genes responsible for genetic diseases and
+          susceptibility genes for complex diseases in both basic and
+          translational researches, genetic variants responsible for
+          interindividual differences in drug response in the Italian population
+          but also useful for population and forensic purposes and new target
+          for diagnosis and treatment of genetic diseases. In collaboration with
+          CINECA, NIG is creating a shared database (NIG Repository) containing
+          data from nucleic acids sequencing of Italian subjects. The NIG
+          Repository will only publish aggregate variant frequencies from a pool
+          of data provided by the submitters.
+        </p>
 
         <h3>Main repository stats</h3>
         <div class="stats-detail" *ngIf="stats$ | async">
           <table class="table table-hover table-condensed">
             <tbody>
-            <tr>
-              <th>Number of contributors</th>
-              <td class="ng-binding">{{(stats$ | async)?.num_users}}</td>
-            </tr>
-            <tr>
-              <th>Number of datasets</th>
-              <td>{{(stats$ | async)?.num_datasets}}</td>
-            </tr>
-            <tr>
-              <th>Number of studies</th>
-              <td class="ng-binding">{{(stats$ | async)?.num_studies}}</td>
-            </tr>
-            <tr>
-              <th>Number of samples with genetic data</th>
-              <td class="ng-binding">{{(stats$ | async)?.num_datasets_with_vcf}}</td>
-            </tr>
-            <tr>
-              <th>Number of files</th>
-              <td class="ng-binding">{{(stats$ | async)?.num_files}}</td>
-            </tr>
+              <tr>
+                <th>Number of contributors</th>
+                <td class="ng-binding">{{ (stats$ | async)?.num_users }}</td>
+              </tr>
+              <tr>
+                <th>Number of datasets</th>
+                <td>{{ (stats$ | async)?.num_datasets }}</td>
+              </tr>
+              <tr>
+                <th>Number of studies</th>
+                <td class="ng-binding">{{ (stats$ | async)?.num_studies }}</td>
+              </tr>
+              <tr>
+                <th>Number of samples with genetic data</th>
+                <td class="ng-binding">
+                  {{ (stats$ | async)?.num_datasets_with_vcf }}
+                </td>
+              </tr>
+              <tr>
+                <th>Number of files</th>
+                <td class="ng-binding">{{ (stats$ | async)?.num_files }}</td>
+              </tr>
             </tbody>
           </table>
         </div>
 
         <div class="col-xs-12 text-center">
-          <img width="130" src="/app/custom/assets/images/CINECALOGO2008.jpg">
+          <img
+            width="130"
+            src="/app/custom/assets/images/CINECALOGO2008.jpg"
+            alt="CINECA logo"
+          />
         </div>
-
       </div>
     </div>
   </div>
