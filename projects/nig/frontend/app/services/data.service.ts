@@ -3,7 +3,7 @@ import { HttpClient } from "@angular/common/http";
 import { Observable, of } from "rxjs";
 import { map, share } from "rxjs/operators";
 import { ApiService } from "@rapydo/services/api";
-import { Study } from "@app/types";
+import { Study, Stats } from "@app/types";
 
 @Injectable({
   providedIn: "root",
@@ -19,5 +19,9 @@ export class DataService {
 
   getStudy(uuid: string): Observable<Study> {
   	return this.api.get<Study>(`study/${uuid}`);
+  }
+
+  getStats(): Observable<Stats> {
+    return this.api.get<Stats>('stats/public');
   }
 }

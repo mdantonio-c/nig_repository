@@ -67,3 +67,11 @@ export interface TechnicalMetadata extends ResourceIdentity {
 }
 
 export interface Technicals extends Array<TechnicalMetadata> {}
+
+export interface Stats {
+  num_datasets: number;
+  num_datasets_with_vcf: number;
+  num_files: number;
+  num_studies: number;
+  num_users: number;
+}

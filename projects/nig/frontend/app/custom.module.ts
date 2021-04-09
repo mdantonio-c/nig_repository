@@ -10,6 +10,7 @@ import { DatasetsComponent } from "./components/study/datasets/datasets.componen
 import { TechnicalsComponent } from "./components/study/technicals/technicals.component";
 import { PhenotypesComponent } from "./components/study/phenotypes/phenotypes.component";
 import { DatasetFilesComponent } from "./components/study/dataset-files/dataset-files.component";
+import { WelcomeComponent } from "./components/welcome/welcome.component";
 
 const routes: Routes = [
   {
@@ -24,15 +25,18 @@ const routes: Routes = [
     canActivate: [AuthGuard],
     runGuardsAndResolvers: "always",
   },
-  
+  {
+    path: "app/welcome",
+    component: WelcomeComponent
+  },
   {
     path: "",
-    redirectTo: "/app/studies",
+    redirectTo: "/app/welcome",
     pathMatch: "full",
   },
   {
     path: "app",
-    redirectTo: "/app/studies",
+    redirectTo: "/app/welcome",
     pathMatch: "full",
   },
 
@@ -147,18 +151,20 @@ const routes: Routes = [
 ];
 
 @NgModule({
-  imports: [SharedModule, RouterModule.forChild(routes)],
+  imports: [
+    SharedModule,
+    RouterModule.forChild(routes)
+  ],
   declarations: [
     StudiesComponent,
     StudyComponent,
     DatasetsComponent,
     DatasetFilesComponent,
     TechnicalsComponent,
-    PhenotypesComponent
+    PhenotypesComponent,
+    WelcomeComponent
   ],
-
   providers: [],
-
   exports: [RouterModule],
 })
 export class CustomModule {}
