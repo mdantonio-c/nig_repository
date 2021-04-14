@@ -13,10 +13,16 @@ export class CustomFooterComponent {
   // public to_year: number;
 
   constructor() {
-    var t = environment.projectDescription;
+    let title = environment.projectTitle;
+    title = title.replace(/^'/, "");
+    title = title.replace(/'$/, "");
+
+    let t = environment.projectDescription;
     t = t.replace(/^'/, "");
     t = t.replace(/'$/, "");
-    this.project = t;
+
+    this.project = `${title}: ${description}`;
+
     this.version = environment.projectVersion;
     // let m = moment();
     // this.from_year = m.year();
