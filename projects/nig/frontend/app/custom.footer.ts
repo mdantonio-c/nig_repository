@@ -17,9 +17,9 @@ export class CustomFooterComponent {
     title = title.replace(/^'/, "");
     title = title.replace(/'$/, "");
 
-    let t = environment.projectDescription;
-    t = t.replace(/^'/, "");
-    t = t.replace(/'$/, "");
+    let description = environment.projectDescription;
+    description = description.replace(/^'/, "");
+    description = description.replace(/'$/, "");
 
     this.project = `${title}: ${description}`;
 
