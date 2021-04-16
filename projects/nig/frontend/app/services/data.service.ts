@@ -4,6 +4,7 @@ import { Observable, of } from "rxjs";
 import { map, share } from "rxjs/operators";
 import { ApiService } from "@rapydo/services/api";
 import { Study, Stats } from "@app/types";
+import {ExtendedStats} from "../types";
 
 @Injectable({
   providedIn: "root",
@@ -21,7 +22,8 @@ export class DataService {
   	return this.api.get<Study>(`study/${uuid}`);
   }
 
-  getStats(): Observable<Stats> {
-    return this.api.get<Stats>('stats/public');
+  getStats(extended?: boolean): Observable<Stats | ExtendedStats> {
+    const accessor = extended ? 'private' : 'public';
+    return this.api.get<Stats>(`stats/${accessor}`);
   }
 }

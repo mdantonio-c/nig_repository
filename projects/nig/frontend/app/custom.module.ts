@@ -11,6 +11,8 @@ import { TechnicalsComponent } from "./components/study/technicals/technicals.co
 import { PhenotypesComponent } from "./components/study/phenotypes/phenotypes.component";
 import { DatasetFilesComponent } from "./components/study/dataset-files/dataset-files.component";
 import { WelcomeComponent } from "./components/welcome/welcome.component";
+import { StatsComponent } from "./components/stats/stats.component";
+import { StatsDetailsComponent } from "./components/stats-details/stats-details.component";
 
 const routes: Routes = [
   {
@@ -22,6 +24,12 @@ const routes: Routes = [
   {
     path: "app/studies/:study_uuid",
     component: StudyComponent,
+    canActivate: [AuthGuard],
+    runGuardsAndResolvers: "always",
+  },
+  {
+    path: "app/stats",
+    component: StatsComponent,
     canActivate: [AuthGuard],
     runGuardsAndResolvers: "always",
   },
@@ -162,7 +170,9 @@ const routes: Routes = [
     DatasetFilesComponent,
     TechnicalsComponent,
     PhenotypesComponent,
-    WelcomeComponent
+    WelcomeComponent,
+    StatsComponent,
+    StatsDetailsComponent
   ],
   providers: [],
   exports: [RouterModule],
