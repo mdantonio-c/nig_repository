@@ -75,3 +75,14 @@ export interface Stats {
   num_studies: number;
   num_users: number;
 }
+
+export interface KeyNumberPairs {
+  [key: string]: number;
+}
+
+export interface ExtendedStats extends Stats {
+  num_datasets_per_group: KeyNumberPairs;
+  num_datasets_with_vcf_per_group: KeyNumberPairs;
+  num_datasets_with_gvcf: number;
+  num_datasets_with_gvcf_per_group: KeyNumberPairs;
+}
