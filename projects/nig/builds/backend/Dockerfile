@@ -9,7 +9,7 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     && mkdir /root/.conda \
     && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
     && rm -f Miniconda3-latest-Linux-x86_64.sh \
-    && chgrp -R developer /opt/miniconda3
+    && chgrp -R developer /opt/miniconda3 \
     && chmod g+rx /opt/miniconda3/bin/*
 
 ENV PATH=$PATH:/opt/miniconda3/bin
