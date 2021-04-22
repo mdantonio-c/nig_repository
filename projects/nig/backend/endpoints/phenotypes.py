@@ -74,9 +74,10 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
         geodata_keys.append("-1")
         geodata_labels.append(" - ")
 
-    attributes["birth_place_uuid"] = fields.Str(
+    attributes["birth_place"] = fields.Str(
         required=False,
         allow_none=True,
+        label="Birth Place",
         default=default_geodata,
         validate=validate.OneOf(choices=geodata_keys, labels=geodata_labels),
     )
@@ -203,7 +204,7 @@ class Phenotypes(NIGEndpoint):
         sex: str,
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
-        birth_place_uuid: Optional[str] = None,
+        birth_place: Optional[str] = None,
         hpo: Optional[List[str]] = None,
     ) -> Response:
 
@@ -229,9 +230,9 @@ class Phenotypes(NIGEndpoint):
         phenotype = graph.Phenotype(**kwargs).save()
 
         phenotype.defined_in.connect(study)
-        if birth_place_uuid:
-            self.link_geodata(graph, phenotype, birth_place_uuid)
-            kwargs["birth_place"] = birth_place_uuid
+        if birth_place:
+            self.link_geodata(graph, phenotype, birth_place)
+            kwargs["birth_place"] = birth_place
         if hpo:
             connected_hpo = self.link_hpo(graph, phenotype, hpo)
             kwargs["hpo"] = connected_hpo
@@ -262,7 +263,7 @@ class Phenotypes(NIGEndpoint):
         sex: Optional[str] = None,
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
-        birth_place_uuid: Optional[str] = None,
+        birth_place: Optional[str] = None,
         hpo: Optional[List[str]] = None,
     ) -> Response:
 
@@ -291,9 +292,9 @@ class Phenotypes(NIGEndpoint):
             phenotype.sex = sex
             kwargs["sex"] = sex
 
-        if birth_place_uuid:
-            self.link_geodata(graph, phenotype, birth_place_uuid)
-            kwargs["birth_place"] = birth_place_uuid
+        if birth_place:
+            self.link_geodata(graph, phenotype, birth_place)
+            kwargs["birth_place"] = birth_place
         if hpo:
             connected_hpo = self.link_hpo(graph, phenotype, hpo)
             kwargs["hpo"] = connected_hpo
