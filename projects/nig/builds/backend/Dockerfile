@@ -13,13 +13,15 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     && chmod g+rx /opt/miniconda3/bin/*
 
 ENV PATH=$PATH:/opt/miniconda3/bin
+ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.8/site-packages
 
 # Mamba was installed with conda and is needed for SNAKEMAKE installation
 # Installing snakemake directly with conda creates conflicts
 # Last packages are installed with mamba because conda installation creates conflics for them
 
 RUN conda update -n base -c defaults conda && \
-    conda install --yes --freeze-installed -c conda-forge mamba && \
+    conda install --yes --freeze-installed python=3.9.0 && \
+    conda install --yes --freeze-installed -c conda-forge mamba stopit && \
     mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake && \
     conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk && \
     conda install --yes --freeze-installed -c daler sratoolkit && \
