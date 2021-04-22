@@ -13,7 +13,7 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     && chmod g+rx /opt/miniconda3/bin/*
 
 ENV PATH=$PATH:/opt/miniconda3/bin
-ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.8/site-packages
+ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.9/site-packages
 
 # Mamba was installed with conda and is needed for SNAKEMAKE installation
 # Installing snakemake directly with conda creates conflicts
