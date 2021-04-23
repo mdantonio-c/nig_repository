@@ -69,7 +69,7 @@ class TestApp(BaseTests):
         hpo_nodes = graph.HPO.nodes
         hpo1_id = hpo_nodes[0].hpo_id
         hpo2_id = hpo_nodes[1].hpo_id
-        phenotype2["birth_place_uuid"] = geodata_uuid
+        phenotype2["birth_place"] = geodata_uuid
         phenotype2["hpo"] = [hpo1_id, hpo2_id]
         phenotype2["hpo"] = json.dumps(phenotype2["hpo"])
 
@@ -150,24 +150,23 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/phenotype/{random_phenotype}",
             headers=user_A1_headers,
-            data={"name": faker.pystr()},
+            data={"name": faker.pystr(),"sex": "female"},
         )
         assert r.status_code == 404
         # modify a phenotype you do not own
         r = client.put(
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=user_A1_headers,
-            data={"name": faker.pystr()},
+            data={"name": faker.pystr(),"sex": "female"},
         )
         assert r.status_code == 404
         # modify a phenotype you own
+        phenotype1["deathday"] = f"{faker.iso8601()}.000Z"
+        phenotype1["birthday"] = f"{faker.iso8601()}.000Z"
         r = client.put(
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=user_B1_headers,
-            data={
-                "deathday": f"{faker.iso8601()}.000Z",
-                "birthday": f"{faker.iso8601()}.000Z",
-            },
+            data=phenotype1,
         )
         assert r.status_code == 204
 
@@ -175,23 +174,22 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=admin_headers,
-            data={"name": faker.pystr()},
+            data={"name": faker.pystr(),"sex": "female"},
         )
         assert r.status_code == 404
 
         # add a new hpo and change the previous geodata
         hpo3_id = hpo_nodes[2].hpo_id
         geodata2_uuid = geodata_nodes[1].uuid
-        new_data: Dict[str, Any] = {}
-        new_data["name"] = faker.pystr()
-        new_data["sex"] = "male"
-        new_data["birth_place_uuid"] = geodata2_uuid
-        new_data["hpo"] = [hpo3_id]
-        new_data["hpo"] = json.dumps(new_data["hpo"])
+        phenotype2["name"] = faker.pystr()
+        phenotype2["sex"] = "male"
+        phenotype2["birth_place"] = geodata2_uuid
+        phenotype2["hpo"]=[hpo1_id, hpo2_id,hpo3_id]
+        phenotype2["hpo"] = json.dumps(phenotype2["hpo"])
         r = client.put(
             f"{API_URI}/phenotype/{phenotype2_uuid}",
             headers=user_B1_headers,
-            data=new_data,
+            data=phenotype2,
         )
         assert r.status_code == 204
         r = client.get(
@@ -202,10 +200,9 @@ class TestApp(BaseTests):
         assert len(res["hpo"]) == 3
 
         # delete all hpo and geodata
-        data: Dict[str, Any] = {}
-        data["birth_place_uuid"] = "-1"
-        data["hpo"] = ["-1"]
-        data["hpo"] = json.dumps(data["hpo"])
+        data: Dict[str, Any] = {**phenotype2}
+        data.pop('birth_place', None)
+        data.pop('hpo', None)
         r = client.put(
             f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B1_headers, data=data
         )
@@ -218,10 +215,11 @@ class TestApp(BaseTests):
         assert not response["hpo"]
 
         # add a no existing geodata
+        phenotype2["birth_place"] = faker.pystr()
         r = client.put(
             f"{API_URI}/phenotype/{phenotype2_uuid}",
             headers=user_B1_headers,
-            data={"birth_place_uuid": faker.pystr()},
+            data=phenotype2,
         )
         assert r.status_code == 400
 

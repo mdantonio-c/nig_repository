@@ -44,10 +44,10 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
     # as defined in Marshmallow.schema.from_dict
     attributes: Dict[str, Union[fields.Field, type]] = {}
 
-    attributes["name"] = fields.Str(required=is_post)
+    attributes["name"] = fields.Str(required=True)
     attributes["birthday"] = fields.DateTime(format=ISO8601UTC, allow_none=True)
     attributes["deathday"] = fields.DateTime(format=ISO8601UTC, allow_none=True)
-    attributes["sex"] = fields.Str(required=is_post, validate=validate.OneOf(SEX))
+    attributes["sex"] = fields.Str(required=True, validate=validate.OneOf(SEX))
     attributes["hpo"] = fields.List(
         fields.Str(),
         label="HPO",
@@ -68,11 +68,6 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
         default_geodata = geodata_keys[0]
     else:
         default_geodata = None
-
-    if not is_post:
-        # add option to remove the birth place
-        geodata_keys.append("-1")
-        geodata_labels.append(" - ")
 
     attributes["birth_place"] = fields.Str(
         required=False,
@@ -132,10 +127,10 @@ class Phenotypes(NIGEndpoint):
     def link_hpo(
         self, graph: neo4j.NeoModel, phenotype: Any, hpo: List[str]
     ) -> List[str]:
-        # if the only element in hpo list is -1 it means "disconnect all phenotypes"
-        if "-1" in hpo:
-            for p in phenotype.hpo.all():
-                phenotype.hpo.disconnect(p)
+        # disconnect all previous hpo
+        for p in phenotype.hpo.all():
+            phenotype.hpo.disconnect(p)
+
         connected_hpo = []
         for id in hpo:
             hpo = graph.HPO.nodes.get_or_none(hpo_id=id)
@@ -150,12 +145,11 @@ class Phenotypes(NIGEndpoint):
         if previous := phenotype.birth_place.single():
             phenotype.birth_place.disconnect(previous)
 
-        if geodata_uuid != "-1":
-            geodata = graph.GeoData.nodes.get_or_none(uuid=geodata_uuid)
-            if geodata is None:
-                raise NotFound("This birth place cannot be found")
+        geodata = graph.GeoData.nodes.get_or_none(uuid=geodata_uuid)
+        if geodata is None:
+            raise NotFound("This birth place cannot be found")
 
-            phenotype.birth_place.connect(geodata)
+        phenotype.birth_place.connect(geodata)
 
     def check_timezone(self, date: datetime) -> datetime:
         if date.tzinfo is None:
@@ -259,8 +253,8 @@ class Phenotypes(NIGEndpoint):
     def put(
         self,
         uuid: str,
-        name: Optional[str] = None,
-        sex: Optional[str] = None,
+        name: str,
+        sex: str,
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
         birth_place: Optional[str] = None,
@@ -277,27 +271,37 @@ class Phenotypes(NIGEndpoint):
         kwargs: Dict[str, Optional[Any]] = {}
         if birthday:
             birthday = self.check_timezone(birthday)
-            phenotype.birthday = birthday
-            kwargs["birthday"] = birthday
+
+        phenotype.birthday = birthday
+        kwargs["birthday"] = birthday
 
         if deathday:
             deathday = self.check_timezone(deathday)
-            phenotype.deathday = deathday
-            kwargs["deathday"] = deathday
 
-        if name:
-            phenotype.name = name
-            kwargs["name"] = name
-        if sex:
-            phenotype.sex = sex
-            kwargs["sex"] = sex
+        phenotype.deathday = deathday
+        kwargs["deathday"] = deathday
+
+        phenotype.name = name
+        kwargs["name"] = name
+
+        phenotype.sex = sex
+        kwargs["sex"] = sex
 
         if birth_place:
             self.link_geodata(graph, phenotype, birth_place)
             kwargs["birth_place"] = birth_place
+        else:
+            # check if there is a birth place and if yes disconnect the node
+            if previous := phenotype.birth_place.single():
+                phenotype.birth_place.disconnect(previous)
+
         if hpo:
             connected_hpo = self.link_hpo(graph, phenotype, hpo)
             kwargs["hpo"] = connected_hpo
+        else:
+            # disconnect all hpo if any
+            for p in phenotype.hpo.all():
+                phenotype.hpo.disconnect(p)
 
         phenotype.save()
 
