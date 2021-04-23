@@ -22,16 +22,9 @@ class Family(NIGEndpoint):
             404: "This phenotype cannot be found or you are not authorized to access",
         },
     )
-    @decorators.use_kwargs(
-        {
-            "relationship": fields.Str(
-                required=True, validate=validate.OneOf(["father", "mother"])
-            )
-        },
-        location="body",
-    )
+
     @decorators.database_transaction
-    def post(self, uuid1: str, uuid2: str, relationship: str) -> Response:
+    def post(self, uuid1: str, uuid2: str) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -52,11 +45,15 @@ class Family(NIGEndpoint):
         study = phenotype2.defined_in.single()
         self.verifyStudyAccess(study, error_type="Phenotype", read=False)
 
-        if relationship == "father":
+        # check parent sex
+
+        if phenotype2.sex == 'male':
+            relationship = "father"
             phenotype2.son.connect(phenotype1)
             phenotype1.father.connect(phenotype2)
 
-        if relationship == "mother":
+        elif phenotype2.sex == 'female':
+            relationship = "mother"
             phenotype2.son.connect(phenotype1)
             phenotype1.mother.connect(phenotype2)
 
@@ -76,16 +73,9 @@ class Family(NIGEndpoint):
             404: "This phenotype cannot be found or you are not authorized to access",
         },
     )
-    @decorators.use_kwargs(
-        {
-            "relationship": fields.Str(
-                required=True, validate=validate.OneOf(["father", "mother", "son"])
-            )
-        },
-        location="body",
-    )
+
     @decorators.database_transaction
-    def delete(self, uuid1: str, uuid2: str, relationship: str) -> Response:
+    def delete(self, uuid1: str, uuid2: str) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -104,23 +94,20 @@ class Family(NIGEndpoint):
         self.verifyStudyAccess(study, error_type="Phenotype", read=False)
 
         # [1] - FATHER -> [2]
-        if relationship == "father":
-            if phenotype1.father.is_connected(phenotype2):
-                phenotype1.father.disconnect(phenotype2)
-            if phenotype2.son.is_connected(phenotype1):
-                phenotype2.son.disconnect(phenotype1)
-
-        # [1] - MOTHER -> [2]
-        if relationship == "mother":
-            if phenotype1.mother.is_connected(phenotype2):
-                phenotype1.mother.disconnect(phenotype2)
-            if phenotype2.son.is_connected(phenotype1):
-                phenotype2.son.disconnect(phenotype1)
+        if phenotype1.father.is_connected(phenotype2):
+            phenotype1.father.disconnect(phenotype2)
+            # delete son relationship
+            phenotype2.son.disconnect(phenotype1)
+        # [] - MOTHER -> [2]
+        elif phenotype1.mother.is_connected(phenotype2):
+            phenotype1.mother.disconnect(phenotype2)
+            # delete son relationship
+            phenotype2.son.disconnect(phenotype1)
 
         # [1] <- FATHER - [2]  _or_  [1] <- MOTHER - [2]
-        if relationship == "son":
-            if phenotype1.son.is_connected(phenotype2):
-                phenotype1.son.disconnect(phenotype2)
+        elif phenotype1.son.is_connected(phenotype2):
+            phenotype1.son.disconnect(phenotype2)
+            # delete mother or father relationship
             if phenotype2.mother.is_connected(phenotype1):
                 phenotype2.mother.disconnect(phenotype1)
             if phenotype2.father.is_connected(phenotype1):

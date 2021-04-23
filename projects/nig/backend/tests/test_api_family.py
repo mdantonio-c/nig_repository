@@ -80,10 +80,10 @@ class TestApp(BaseTests):
         phenotype_son_A_uuid = self.get_content(r)
 
         # create a relationship
+        # father case
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "father"},
         )
         assert r.status_code == 204
         graph = neo4j.get_instance()
@@ -100,7 +100,6 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
             headers=user_A1_headers,
-            data={"relationship": "mother"},
         )
         assert r.status_code == 404
 
@@ -108,15 +107,14 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
             headers=admin_headers,
-            data={"relationship": "mother"},
         )
         assert r.status_code == 404
 
         # a user of the same group of the owner create a relationship
+        # mother case
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
             headers=user_B2_headers,
-            data={"relationship": "mother"},
         )
         assert r.status_code == 204
         graph = neo4j.get_instance()
@@ -133,7 +131,6 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_son_A_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "father"},
         )
         assert r.status_code == 404
 
@@ -142,7 +139,6 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/phenotype/{random_phenotype_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "father"},
         )
         assert r.status_code == 404
 
@@ -150,7 +146,6 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{random_phenotype_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "father"},
         )
         assert r.status_code == 404
 
@@ -158,15 +153,14 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_father_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "father"},
         )
         assert r.status_code == 400
 
         # delete a relationship
+        # father case
         r = client.delete(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "father"},
         )
         assert r.status_code == 204
         graph = neo4j.get_instance()
@@ -183,7 +177,6 @@ class TestApp(BaseTests):
         r = client.delete(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
             headers=user_A1_headers,
-            data={"relationship": "mother"},
         )
         assert r.status_code == 404
 
@@ -191,15 +184,14 @@ class TestApp(BaseTests):
         r = client.delete(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
             headers=admin_headers,
-            data={"relationship": "mother"},
         )
         assert r.status_code == 404
 
         # a user of the same group of the owner delete a relationship
+        # mother case
         r = client.delete(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
             headers=user_B2_headers,
-            data={"relationship": "mother"},
         )
         assert r.status_code == 204
         graph = neo4j.get_instance()
@@ -216,7 +208,6 @@ class TestApp(BaseTests):
         r = client.delete(
             f"{API_URI}/phenotype/{phenotype_son_A_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "father"},
         )
         assert r.status_code == 404
 
@@ -224,7 +215,6 @@ class TestApp(BaseTests):
         r = client.delete(
             f"{API_URI}/phenotype/{random_phenotype_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "father"},
         )
         assert r.status_code == 404
 
@@ -232,21 +222,18 @@ class TestApp(BaseTests):
         r = client.delete(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{random_phenotype_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "father"},
         )
         assert r.status_code == 404
 
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "father"},
         )
         assert r.status_code == 204
 
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "mother"},
         )
         assert r.status_code == 204
 
@@ -254,7 +241,6 @@ class TestApp(BaseTests):
         r = client.delete(
             f"{API_URI}/phenotype/{phenotype_mother_uuid}/relationships/{phenotype_son_B_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "son"},
         )
         assert r.status_code == 204
         graph = neo4j.get_instance()
@@ -270,7 +256,6 @@ class TestApp(BaseTests):
         r = client.delete(
             f"{API_URI}/phenotype/{phenotype_father_uuid}/relationships/{phenotype_son_B_uuid}",
             headers=user_B1_headers,
-            data={"relationship": "son"},
         )
         assert r.status_code == 204
         graph = neo4j.get_instance()
