@@ -1,9 +1,13 @@
+:host {
+  height: 100% !important;
+}
+
 #wrapper {
   overflow-x: hidden;
+  height: 100%;
 }
 
 #sidebar-wrapper {
-  min-height: 82vh;
   margin-left: -15rem;
   -webkit-transition: margin 0.25s ease-out;
   -moz-transition: margin 0.25s ease-out;
