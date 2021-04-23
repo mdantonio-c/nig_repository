@@ -49,7 +49,7 @@
             [flexGrow]="1"
           >
             <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value || "-" }}
+              {{ value.province || "-" }}
             </ng-template>
           </ngx-datatable-column>
           <!-- Birthday -->
@@ -91,6 +91,12 @@
               </ng-container>
             </ng-template>
           </ngx-datatable-column>
+          <!-- Relationships -->
+          <ngx-datatable-column
+            name="Relationships"
+            [flexGrow]="1"
+            [sortable]="false"
+          ></ngx-datatable-column>
           <!-- Controls -->
           <ngx-datatable-column
             width="60"

@@ -41,13 +41,21 @@ export interface DatasetFiles extends Array<DatasetFile> {}
 
 export interface Phenotype extends ResourceIdentity {
   /** @nullable */
-  birth_place?: string;
+  birth_place?: Place;
   /** @nullable */
   birthday?: string;
   /** @nullable */
   deathday?: string;
   hpo: HPO[];
   sex: string;
+}
+
+export interface Place {
+  uuid: string;
+  code: string;
+  country: string;
+  province: string;
+  region: string;
 }
 
 export interface Phenotypes extends Array<Phenotype> {}
