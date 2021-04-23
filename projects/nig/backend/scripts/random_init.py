@@ -38,7 +38,7 @@ for i in range(0, 5):
             name=faker.license_plate(),
             description=faker.pystr(),
             birthday=datetime.fromtimestamp(faker.unix_time(), pytz.utc),
-            sex=random.choice(("M", "F")),
+            sex=random.choice(("male", "female")),
             # birth_place=faker.city(),
             unique_name=faker.pystr(),
         ).save()
