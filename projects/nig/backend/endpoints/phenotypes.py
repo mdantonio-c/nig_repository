@@ -47,7 +47,9 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
     attributes["name"] = fields.Str(required=True)
     attributes["birthday"] = fields.DateTime(format=ISO8601UTC, allow_none=True)
     attributes["deathday"] = fields.DateTime(format=ISO8601UTC, allow_none=True)
-    attributes["sex"] = fields.Str(required=True, validate=validate.OneOf(SEX))
+    attributes["sex"] = fields.Str(
+        required=True, description="", validate=validate.OneOf(SEX)
+    )
     attributes["hpo"] = fields.List(
         fields.Str(),
         label="HPO",
@@ -73,6 +75,7 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
         required=False,
         allow_none=True,
         label="Birth Place",
+        description="",
         default=default_geodata,
         validate=validate.OneOf(choices=geodata_keys, labels=geodata_labels),
     )
