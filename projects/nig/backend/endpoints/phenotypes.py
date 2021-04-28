@@ -29,10 +29,15 @@ class GeoData(Schema):
     code = fields.Str(required=True)
 
 
+class FamilyMembers(Schema):
+    uuid = fields.Str(required=False)
+    name = fields.Str(required=False)
+
+
 class Relationships(Schema):
-    mother = fields.Str(required=False)
-    father = fields.Str(required=False)
-    sons = fields.List(fields.Str(), required=False)
+    mother = fields.Nested(FamilyMembers, required=False)
+    father = fields.Nested(FamilyMembers, required=False)
+    sons = fields.List(fields.Nested(FamilyMembers, required=False), required=False)
 
 
 class PhenotypeOutputSchema(Schema):
@@ -160,14 +165,28 @@ class PhenotypeList(NIGEndpoint):
 
             phenotype_el["relationships"] = {}
             if phenotype.father:
-                phenotype_el["relationships"]["father"] = phenotype.father.single().uuid
+                phenotype_el["relationships"]["father"] = {}
+                phenotype_el["relationships"]["father"][
+                    "uuid"
+                ] = phenotype.father.single().uuid
+                phenotype_el["relationships"]["father"][
+                    "name"
+                ] = phenotype.father.single().name
             if phenotype.mother:
-                phenotype_el["relationships"]["mother"] = phenotype.mother.single().uuid
+                phenotype_el["relationships"]["mother"] = {}
+                phenotype_el["relationships"]["mother"][
+                    "uuid"
+                ] = phenotype.mother.single().uuid
+                phenotype_el["relationships"]["mother"][
+                    "name"
+                ] = phenotype.mother.single().name
             if phenotype.son:
-                log.debug("check son {}", phenotype.son.all())
                 phenotype_el["relationships"]["sons"] = []
                 for son in phenotype.son.all():
-                    phenotype_el["relationships"]["sons"].append(son.uuid)
+                    son_el = {}
+                    son_el["uuid"] = son.uuid
+                    son_el["name"] = son.name
+                    phenotype_el["relationships"]["sons"].append(son_el)
             data.append(phenotype_el)
 
         return self.response(data)
@@ -263,14 +282,28 @@ class Phenotypes(NIGEndpoint):
 
         phenotype_el["relationships"] = {}
         if phenotype.father:
-            phenotype_el["relationships"]["father"] = phenotype.father.single().uuid
+            phenotype_el["relationships"]["father"] = {}
+            phenotype_el["relationships"]["father"][
+                "uuid"
+            ] = phenotype.father.single().uuid
+            phenotype_el["relationships"]["father"][
+                "name"
+            ] = phenotype.father.single().name
         if phenotype.mother:
-            phenotype_el["relationships"]["mother"] = phenotype.mother.single().uuid
+            phenotype_el["relationships"]["mother"] = {}
+            phenotype_el["relationships"]["mother"][
+                "uuid"
+            ] = phenotype.mother.single().uuid
+            phenotype_el["relationships"]["mother"][
+                "name"
+            ] = phenotype.mother.single().name
         if phenotype.son:
-            log.debug("check son {}", phenotype.son.all())
             phenotype_el["relationships"]["sons"] = []
             for son in phenotype.son.all():
-                phenotype_el["relationships"]["sons"].append(son.uuid)
+                son_el = {}
+                son_el["uuid"] = son.uuid
+                son_el["name"] = son.name
+                phenotype_el["relationships"]["sons"].append(son_el)
 
         return self.response(phenotype_el)
 

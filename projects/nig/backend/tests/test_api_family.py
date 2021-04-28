@@ -104,9 +104,9 @@ class TestApp(BaseTests):
         response = self.get_content(r)
         for el in response:
             if el["uuid"] == phenotype_son_B_uuid:
-                assert el["relationships"]["father"] == phenotype_father_uuid
+                assert el["relationships"]["father"]["uuid"] == phenotype_father_uuid
             if el["uuid"] == phenotype_father_uuid:
-                assert phenotype_son_B_uuid in el["relationships"]["sons"]
+                assert el["relationships"]["sons"][0]["uuid"] == phenotype_son_B_uuid
 
         # test relationships in get single phenotype response
         r = client.get(
@@ -114,14 +114,14 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
-        assert response["relationships"]["father"] == phenotype_father_uuid
+        assert response["relationships"]["father"]["uuid"] == phenotype_father_uuid
 
         r = client.get(
             f"{API_URI}/phenotype/{phenotype_father_uuid}", headers=user_B1_headers
         )
         assert r.status_code == 200
         response = self.get_content(r)
-        assert phenotype_son_B_uuid in response["relationships"]["sons"]
+        assert response["relationships"]["sons"][0]["uuid"] == phenotype_son_B_uuid
 
         # create a relationship for two phenotypes in an other study
         r = client.post(
@@ -162,9 +162,9 @@ class TestApp(BaseTests):
         response = self.get_content(r)
         for el in response:
             if el["uuid"] == phenotype_son_B_uuid:
-                assert el["relationships"]["mother"] == phenotype_mother_uuid
+                assert el["relationships"]["mother"]["uuid"] == phenotype_mother_uuid
             if el["uuid"] == phenotype_mother_uuid:
-                assert phenotype_son_B_uuid in el["relationships"]["sons"]
+                assert el["relationships"]["sons"][0]["uuid"] == phenotype_son_B_uuid
 
         # test relationships in get single phenotype response
         r = client.get(
@@ -172,7 +172,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
-        assert response["relationships"]["mother"] == phenotype_mother_uuid
+        assert response["relationships"]["mother"]["uuid"] == phenotype_mother_uuid
 
         # relationship between phenotype from different studies
         r = client.post(

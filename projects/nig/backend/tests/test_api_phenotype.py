@@ -150,14 +150,14 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/phenotype/{random_phenotype}",
             headers=user_A1_headers,
-            data={"name": faker.pystr(),"sex": "female"},
+            data={"name": faker.pystr(), "sex": "female"},
         )
         assert r.status_code == 404
         # modify a phenotype you do not own
         r = client.put(
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=user_A1_headers,
-            data={"name": faker.pystr(),"sex": "female"},
+            data={"name": faker.pystr(), "sex": "female"},
         )
         assert r.status_code == 404
         # modify a phenotype you own
@@ -174,7 +174,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=admin_headers,
-            data={"name": faker.pystr(),"sex": "female"},
+            data={"name": faker.pystr(), "sex": "female"},
         )
         assert r.status_code == 404
 
@@ -184,7 +184,7 @@ class TestApp(BaseTests):
         phenotype2["name"] = faker.pystr()
         phenotype2["sex"] = "male"
         phenotype2["birth_place"] = geodata2_uuid
-        phenotype2["hpo"]=[hpo1_id, hpo2_id,hpo3_id]
+        phenotype2["hpo"] = [hpo1_id, hpo2_id, hpo3_id]
         phenotype2["hpo"] = json.dumps(phenotype2["hpo"])
         r = client.put(
             f"{API_URI}/phenotype/{phenotype2_uuid}",
@@ -201,8 +201,8 @@ class TestApp(BaseTests):
 
         # delete all hpo and geodata
         data: Dict[str, Any] = {**phenotype2}
-        data.pop('birth_place', None)
-        data.pop('hpo', None)
+        data.pop("birth_place", None)
+        data.pop("hpo", None)
         r = client.put(
             f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B1_headers, data=data
         )
@@ -211,7 +211,7 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B2_headers
         )
         response = self.get_content(r)
-        assert not response["birth_place"]
+        assert "birth_place" not in response
         assert not response["hpo"]
 
         # add a no existing geodata
