@@ -96,6 +96,33 @@ class TestApp(BaseTests):
         assert phenotype_father_node.son.is_connected(phenotype_son_node)
         assert phenotype_son_node.father.is_connected(phenotype_father_node)
 
+        # test relationships in get phenotype list response
+        r = client.get(
+            f"{API_URI}/study/{study1_uuid}/phenotypes", headers=user_B1_headers
+        )
+        assert r.status_code == 200
+        response = self.get_content(r)
+        for el in response:
+            if el["uuid"] == phenotype_son_B_uuid:
+                assert el["relationships"]["father"] == phenotype_father_uuid
+            if el["uuid"] == phenotype_father_uuid:
+                assert phenotype_son_B_uuid in el["relationships"]["sons"]
+
+        # test relationships in get single phenotype response
+        r = client.get(
+            f"{API_URI}/phenotype/{phenotype_son_B_uuid}", headers=user_B1_headers
+        )
+        assert r.status_code == 200
+        response = self.get_content(r)
+        assert response["relationships"]["father"] == phenotype_father_uuid
+
+        r = client.get(
+            f"{API_URI}/phenotype/{phenotype_father_uuid}", headers=user_B1_headers
+        )
+        assert r.status_code == 200
+        response = self.get_content(r)
+        assert phenotype_son_B_uuid in response["relationships"]["sons"]
+
         # create a relationship for two phenotypes in an other study
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
@@ -126,6 +153,26 @@ class TestApp(BaseTests):
         )
         assert phenotype_mother_node.son.is_connected(phenotype_son_node)
         assert phenotype_son_node.mother.is_connected(phenotype_mother_node)
+
+        # test relationships in get phenotype list response
+        r = client.get(
+            f"{API_URI}/study/{study1_uuid}/phenotypes", headers=user_B1_headers
+        )
+        assert r.status_code == 200
+        response = self.get_content(r)
+        for el in response:
+            if el["uuid"] == phenotype_son_B_uuid:
+                assert el["relationships"]["mother"] == phenotype_mother_uuid
+            if el["uuid"] == phenotype_mother_uuid:
+                assert phenotype_son_B_uuid in el["relationships"]["sons"]
+
+        # test relationships in get single phenotype response
+        r = client.get(
+            f"{API_URI}/phenotype/{phenotype_son_B_uuid}", headers=user_B1_headers
+        )
+        assert r.status_code == 200
+        response = self.get_content(r)
+        assert response["relationships"]["mother"] == phenotype_mother_uuid
 
         # relationship between phenotype from different studies
         r = client.post(

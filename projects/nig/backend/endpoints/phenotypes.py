@@ -9,10 +9,10 @@ from restapi.customizer import FlaskRequest
 from restapi.exceptions import NotFound
 from restapi.models import ISO8601UTC, Schema, fields, validate
 from restapi.rest.definition import Response
+from restapi.utilities.logs import log
 
 # from restapi.connectors import celery
 
-# from restapi.utilities.logs import log
 SEX = ["male", "female"]
 
 
@@ -29,14 +29,23 @@ class GeoData(Schema):
     code = fields.Str(required=True)
 
 
+class Relationships(Schema):
+    mother = fields.Str(required=False)
+    father = fields.Str(required=False)
+    sons = fields.List(fields.Str(), required=False)
+
+
 class PhenotypeOutputSchema(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
     birthday = fields.DateTime(format=ISO8601UTC)
     deathday = fields.DateTime(format=ISO8601UTC)
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
-    hpo = fields.Neo4jRelationshipToMany(Hpo)
-    birth_place = fields.Neo4jRelationshipToSingle(GeoData)
+    hpo = fields.List(fields.Nested(Hpo), required=False)
+    birth_place = fields.Nested(GeoData, required=False)
+    relationships = fields.Nested(
+        Relationships, description="family relationships between phenotypes"
+    )
 
 
 def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
@@ -116,8 +125,48 @@ class PhenotypeList(NIGEndpoint):
 
         data = []
         for phenotype in nodeset.all():
+            phenotype_el = {}
+            phenotype_el["uuid"] = phenotype.uuid
+            phenotype_el["name"] = phenotype.name
+            phenotype_el["birthday"] = phenotype.birthday
+            phenotype_el["deathday"] = phenotype.deathday
+            phenotype_el["sex"] = phenotype.sex
+            phenotype_el["hpo"] = []
+            for hpo in phenotype.hpo:
+                hpo_el = {}
+                hpo_el["hpo_id"] = hpo.hpo_id
+                hpo_el["label"] = hpo.label
+                phenotype_el["hpo"].append(hpo_el)
 
-            data.append(phenotype)
+            phenotype_el["birth_place"] = {}
+            if phenotype.birth_place.single():
+                phenotype_el["birth_place"][
+                    "uuid"
+                ] = phenotype.birth_place.single().uuid
+                phenotype_el["birth_place"][
+                    "country"
+                ] = phenotype.birth_place.single().country
+                phenotype_el["birth_place"][
+                    "region"
+                ] = phenotype.birth_place.single().region
+                phenotype_el["birth_place"][
+                    "province"
+                ] = phenotype.birth_place.single().province
+                phenotype_el["birth_place"][
+                    "code"
+                ] = phenotype.birth_place.single().code
+
+            phenotype_el["relationships"] = {}
+            if phenotype.father:
+                phenotype_el["relationships"]["father"] = phenotype.father.single().uuid
+            if phenotype.mother:
+                phenotype_el["relationships"]["mother"] = phenotype.mother.single().uuid
+            if phenotype.son:
+                log.debug("check son {}", phenotype.son.all())
+                phenotype_el["relationships"]["sons"] = []
+                for son in phenotype.son.all():
+                    phenotype_el["relationships"]["sons"].append(son.uuid)
+            data.append(phenotype_el)
 
         return self.response(data)
 
@@ -181,7 +230,45 @@ class Phenotypes(NIGEndpoint):
 
         self.log_event(self.events.access, phenotype)
 
-        return self.response(phenotype)
+        phenotype_el = {}
+        phenotype_el["uuid"] = phenotype.uuid
+        phenotype_el["name"] = phenotype.name
+        phenotype_el["birthday"] = phenotype.birthday
+        phenotype_el["deathday"] = phenotype.deathday
+        phenotype_el["sex"] = phenotype.sex
+        phenotype_el["hpo"] = []
+        for hpo in phenotype.hpo:
+            hpo_el = {}
+            hpo_el["hpo_id"] = hpo.hpo_id
+            hpo_el["label"] = hpo.label
+            phenotype_el["hpo"].append(hpo_el)
+
+        phenotype_el["birth_place"] = {}
+        if phenotype.birth_place.single():
+            phenotype_el["birth_place"]["uuid"] = phenotype.birth_place.single().uuid
+            phenotype_el["birth_place"][
+                "country"
+            ] = phenotype.birth_place.single().country
+            phenotype_el["birth_place"][
+                "region"
+            ] = phenotype.birth_place.single().region
+            phenotype_el["birth_place"][
+                "province"
+            ] = phenotype.birth_place.single().province
+            phenotype_el["birth_place"]["code"] = phenotype.birth_place.single().code
+
+        phenotype_el["relationships"] = {}
+        if phenotype.father:
+            phenotype_el["relationships"]["father"] = phenotype.father.single().uuid
+        if phenotype.mother:
+            phenotype_el["relationships"]["mother"] = phenotype.mother.single().uuid
+        if phenotype.son:
+            log.debug("check son {}", phenotype.son.all())
+            phenotype_el["relationships"]["sons"] = []
+            for son in phenotype.son.all():
+                phenotype_el["relationships"]["sons"].append(son.uuid)
+
+        return self.response(phenotype_el)
 
     @decorators.auth.require()
     @decorators.endpoint(
