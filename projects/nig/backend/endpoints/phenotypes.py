@@ -128,8 +128,10 @@ class PhenotypeList(NIGEndpoint):
             phenotype_el = {}
             phenotype_el["uuid"] = phenotype.uuid
             phenotype_el["name"] = phenotype.name
-            phenotype_el["birthday"] = phenotype.birthday
-            phenotype_el["deathday"] = phenotype.deathday
+            if phenotype.birthday:
+                phenotype_el["birthday"] = phenotype.birthday
+            if phenotype.deathday:
+                phenotype_el["deathday"] = phenotype.deathday
             phenotype_el["sex"] = phenotype.sex
             phenotype_el["hpo"] = []
             for hpo in phenotype.hpo:
@@ -233,8 +235,10 @@ class Phenotypes(NIGEndpoint):
         phenotype_el = {}
         phenotype_el["uuid"] = phenotype.uuid
         phenotype_el["name"] = phenotype.name
-        phenotype_el["birthday"] = phenotype.birthday
-        phenotype_el["deathday"] = phenotype.deathday
+        if phenotype.birthday:
+            phenotype_el["birthday"] = phenotype.birthday
+        if phenotype.deathday:
+            phenotype_el["deathday"] = phenotype.deathday
         phenotype_el["sex"] = phenotype.sex
         phenotype_el["hpo"] = []
         for hpo in phenotype.hpo:
