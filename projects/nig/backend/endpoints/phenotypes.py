@@ -138,8 +138,8 @@ class PhenotypeList(NIGEndpoint):
                 hpo_el["label"] = hpo.label
                 phenotype_el["hpo"].append(hpo_el)
 
-            phenotype_el["birth_place"] = {}
             if phenotype.birth_place.single():
+                phenotype_el["birth_place"] = {}
                 phenotype_el["birth_place"][
                     "uuid"
                 ] = phenotype.birth_place.single().uuid
@@ -243,8 +243,8 @@ class Phenotypes(NIGEndpoint):
             hpo_el["label"] = hpo.label
             phenotype_el["hpo"].append(hpo_el)
 
-        phenotype_el["birth_place"] = {}
         if phenotype.birth_place.single():
+            phenotype_el["birth_place"] = {}
             phenotype_el["birth_place"]["uuid"] = phenotype.birth_place.single().uuid
             phenotype_el["birth_place"][
                 "country"
