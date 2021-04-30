@@ -75,12 +75,11 @@ class Family(NIGEndpoint):
         path="/phenotype/<uuid1>/relationships/<uuid2>",
         summary="Delete a relationship between two phenotypes",
         responses={
-            200: "Relationship successfully deleted",
+            204: "Relationship successfully deleted",
             404: "This phenotype cannot be found or you are not authorized to access",
         },
     )
     @decorators.database_transaction
-    @decorators.marshal_with(Parent, code=200)
     def delete(self, uuid1: str, uuid2: str) -> Response:
 
         graph = neo4j.get_instance()
@@ -124,5 +123,4 @@ class Family(NIGEndpoint):
             phenotype1,
             {"relationship": "removed", "target": phenotype2.uuid},
         )
-        res = {"uuid": phenotype2.uuid, "name": phenotype2.name}
-        return self.response(res)
+        return self.empty_response()
