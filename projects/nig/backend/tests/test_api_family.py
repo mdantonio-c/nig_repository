@@ -85,7 +85,7 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
         )
-        assert r.status_code == 204
+        assert r.status_code == 200
         graph = neo4j.get_instance()
         phenotype_father_node = graph.Phenotype.nodes.get_or_none(
             uuid=phenotype_father_uuid
@@ -143,7 +143,7 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
             headers=user_B2_headers,
         )
-        assert r.status_code == 204
+        assert r.status_code == 200
         graph = neo4j.get_instance()
         phenotype_mother_node = graph.Phenotype.nodes.get_or_none(
             uuid=phenotype_mother_uuid
@@ -209,7 +209,7 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
         )
-        assert r.status_code == 204
+        assert r.status_code == 200
         graph = neo4j.get_instance()
         phenotype_father_node = graph.Phenotype.nodes.get_or_none(
             uuid=phenotype_father_uuid
@@ -240,7 +240,7 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
             headers=user_B2_headers,
         )
-        assert r.status_code == 204
+        assert r.status_code == 200
         graph = neo4j.get_instance()
         phenotype_mother_node = graph.Phenotype.nodes.get_or_none(
             uuid=phenotype_mother_uuid
@@ -276,20 +276,20 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_father_uuid}",
             headers=user_B1_headers,
         )
-        assert r.status_code == 204
+        assert r.status_code == 200
 
         r = client.post(
             f"{API_URI}/phenotype/{phenotype_son_B_uuid}/relationships/{phenotype_mother_uuid}",
             headers=user_B1_headers,
         )
-        assert r.status_code == 204
+        assert r.status_code == 200
 
         # delete a son relationship
         r = client.delete(
             f"{API_URI}/phenotype/{phenotype_mother_uuid}/relationships/{phenotype_son_B_uuid}",
             headers=user_B1_headers,
         )
-        assert r.status_code == 204
+        assert r.status_code == 200
         graph = neo4j.get_instance()
         phenotype_mother_node = graph.Phenotype.nodes.get_or_none(
             uuid=phenotype_mother_uuid
@@ -304,7 +304,7 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype_father_uuid}/relationships/{phenotype_son_B_uuid}",
             headers=user_B1_headers,
         )
-        assert r.status_code == 204
+        assert r.status_code == 200
         graph = neo4j.get_instance()
         phenotype_father_node = graph.Phenotype.nodes.get_or_none(
             uuid=phenotype_father_uuid
