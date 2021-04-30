@@ -11,7 +11,7 @@
       ></span>
     </h4>
   </div>
-  <div class="card-body">
+  <div class="card-body px-2">
     <div class="table-responsive">
       <div class="table-wrapper" #tableWrapper>
         <ngx-spinner [fullScreen]="false"></ngx-spinner>
@@ -30,14 +30,25 @@
           [rowHeight]="'auto'"
         >
           <!-- Column Templates -->
-          <!-- Name -->
-          <ngx-datatable-column prop="name" [flexGrow]="1">
+          <!-- Sex -->
+          <ngx-datatable-column
+            prop="sex"
+            [width]="20"
+            [resizeable]="false"
+            [sortable]="false"
+            [draggable]="false"
+            [canAutoResize]="false"
+          >
+            <ng-template
+              let-column="column"
+              ngx-datatable-header-template
+            ></ng-template>
             <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value }}
+              <i class="fas fa-{{ value }} fa-lg"></i>
             </ng-template>
           </ngx-datatable-column>
-          <!-- Sex -->
-          <ngx-datatable-column prop="sex" [flexGrow]="0.5" [sortable]="false">
+          <!-- Name -->
+          <ngx-datatable-column prop="name" [flexGrow]="1">
             <ng-template let-value="value" ngx-datatable-cell-template>
               {{ value }}
             </ng-template>
@@ -46,7 +57,7 @@
           <ngx-datatable-column
             prop="birth_place"
             name="Birth Place"
-            [flexGrow]="1"
+            [flexGrow]="0.6"
           >
             <ng-template let-value="value" ngx-datatable-cell-template>
               {{ value.province || "-" }}
@@ -96,10 +107,28 @@
             name="Relationships"
             [flexGrow]="1"
             [sortable]="false"
-          ></ngx-datatable-column>
+          >
+            <ng-template let-value="value" ngx-datatable-cell-template>
+              <ng-container *ngFor="let rel of value | keyvalue">
+                <span
+                  class="badge badge-secondary"
+                  *ngIf="['mother', 'father'].includes(rel.key)"
+                >
+                  <i
+                    class="fas fa-lg mr-1"
+                    [ngClass]="{
+                      'fa-male': rel.key === 'father',
+                      'fa-female': rel.key === 'mother'
+                    }"
+                  ></i
+                  >{{ rel.value.name }}
+                </span>
+              </ng-container>
+            </ng-template>
+          </ngx-datatable-column>
           <!-- Controls -->
           <ngx-datatable-column
-            width="60"
+            width="80"
             headerClass="px-0"
             [resizeable]="false"
             [sortable]="false"
@@ -113,6 +142,9 @@
             >
               <div class="btn-toolbar justify-content-end" role="toolbar">
                 <div class="btn-group mr-1" role="group">
+                  <button class="btn p-0 mr-1" (click)="editRelationships(row)">
+                    <i class="fas fa-people-arrows"></i>
+                  </button>
                   <button class="btn p-0 mr-1" (click)="update(row)">
                     <i class="fa fa-edit"></i>
                   </button>

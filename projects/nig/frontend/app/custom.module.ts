@@ -13,6 +13,7 @@ import { DatasetFilesComponent } from "./components/study/dataset-files/dataset-
 import { WelcomeComponent } from "./components/welcome/welcome.component";
 import { StatsComponent } from "./components/stats/stats.component";
 import { StatsDetailsComponent } from "./components/stats-details/stats-details.component";
+import { RelationshipsModalComponent } from "./components/study/relationships-modal/relationships-modal.component";
 
 const routes: Routes = [
   {
@@ -35,7 +36,7 @@ const routes: Routes = [
   },
   {
     path: "app/welcome",
-    component: WelcomeComponent
+    component: WelcomeComponent,
   },
   {
     path: "",
@@ -159,10 +160,7 @@ const routes: Routes = [
 ];
 
 @NgModule({
-  imports: [
-    SharedModule,
-    RouterModule.forChild(routes)
-  ],
+  imports: [SharedModule, RouterModule.forChild(routes)],
   declarations: [
     StudiesComponent,
     StudyComponent,
@@ -172,7 +170,8 @@ const routes: Routes = [
     PhenotypesComponent,
     WelcomeComponent,
     StatsComponent,
-    StatsDetailsComponent
+    RelationshipsModalComponent,
+    StatsDetailsComponent,
   ],
   providers: [],
   exports: [RouterModule],

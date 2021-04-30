@@ -32,7 +32,7 @@ export interface Dataset extends ResourceIdentity {
 export interface Datasets extends Array<Dataset> {}
 
 export interface DatasetFile extends ResourceIdentity {
-  size: number; 
+  size: number;
   status: string;
   type: string;
 }
@@ -48,6 +48,16 @@ export interface Phenotype extends ResourceIdentity {
   deathday?: string;
   hpo: HPO[];
   sex: string;
+  relationships: FamilyRelationships;
+}
+
+/**
+ * Dictionary of generic relationships.
+ * For instance "mother": {UUID, name} or "sons": [...]
+ */
+export interface FamilyRelationships {
+  /** @nullable */
+  [key: string]: ResourceIdentity | ResourceIdentity[];
 }
 
 export interface Place {

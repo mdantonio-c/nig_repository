@@ -1,0 +1,50 @@
+<div class="modal-header">
+  <h4 class="modal-title">Edit Relationships</h4>
+  <button
+    type="button"
+    class="btn close"
+    aria-label="Close"
+    (click)="activeModal.dismiss()"
+  >
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div class="modal-body p-0 mb-4">
+  <div class="container mt-4">
+    <div class="row">
+      <div class="col">
+        <form #relForm="ngForm" (ngSubmit)="save()">
+          <div class="form-group">
+            <label><i class="fa fa-female fa-lg mr-2"></i>Mother</label>
+            <ng-select
+              [items]="females"
+              bindLabel="name"
+              bindValue="uuid"
+              [(ngModel)]="mother"
+              [ngModelOptions]="{ standalone: true }"
+            >
+            </ng-select>
+          </div>
+          <div class="form-group">
+            <label><i class="fa fa-male fa-lg mr-2"></i>Father</label>
+            <ng-select
+              [items]="males"
+              bindLabel="name"
+              bindValue="uuid"
+              [(ngModel)]="father"
+              [ngModelOptions]="{ standalone: true }"
+            >
+            </ng-select>
+          </div>
+          <button
+            type="submit"
+            class="btn btn-info float-right"
+            [disabled]="!hasChanged()"
+          >
+            Save
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
