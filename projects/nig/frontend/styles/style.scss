@@ -38,7 +38,7 @@ td.accession {
 .form-control:focus,
 .btn-reset:focus,
 .btn-reset:active,
-input[type=file]:focus {
+input[type="file"]:focus {
   outline: none !important;
   box-shadow: none;
 }
