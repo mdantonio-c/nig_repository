@@ -3,12 +3,12 @@ set -e
 
 pip3 install pronto
 
-if [[ -f "/data/hp.obo" ]];
+if [[ -f "${DATA_IMPORT_FOLDER}/hp.obo" ]];
 then
-    mv /data/hp.obo /data/hp.obo.bak
+    mv ${DATA_IMPORT_FOLDER}/hp.obo ${DATA_IMPORT_FOLDER}/hp.obo.bak
 fi
 
-wget --quiet http://purl.obolibrary.org/obo/hp.obo -O /data/hp.obo
+wget --quiet http://purl.obolibrary.org/obo/hp.obo -O ${DATA_IMPORT_FOLDER}/hp.obo
 
 cd /code/nig/scripts/
 
