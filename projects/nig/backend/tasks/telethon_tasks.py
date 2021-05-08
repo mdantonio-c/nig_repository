@@ -1019,7 +1019,7 @@ SET d.is_proband = true
                     variant_properties[field] = value
 
                 else:
-                    log.warning("Unknown type {} for {}".format(conf["type"], k))
+                    log.warning("Unknown type {} for {}", conf["type"], k)
                     continue
 
             if "alt" not in variant_properties:

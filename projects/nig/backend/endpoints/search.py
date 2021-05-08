@@ -370,7 +370,7 @@ class Search(NIGEndpoint):
             else:
                 apply_filters.append(f"{k}: '{v}'")
 
-        return "({} {{{}}})".format(node, ", ".join(apply_filters))
+        return f"({node} {{{', '.join(apply_filters)}}})"
 
     # def getAutocomplete(self, data, label = "label"):
     #     if data is None:
