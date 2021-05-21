@@ -56,3 +56,7 @@ jobs:
         if: failure()
         run: |
           rapydo logs
+
+      - name: Print backend logs on failure
+        if: failure()
+        run: cat data/logs/backend-server.log
