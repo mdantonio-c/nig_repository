@@ -6,6 +6,9 @@ project:
   rapydo: "1.2"
 
 variables:
+  roles:
+    staff_user: disabled
+
   env:
     FRONTEND_FRAMEWORK: angular
     AUTH_SERVICE: neo4j
