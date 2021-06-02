@@ -454,6 +454,7 @@ class Search(NIGEndpoint):
         returned_nodes = []
         returned_nodes.append("variant")
 
+        # BEWARE TO CYPHER INJECTION, USE QUERY PARAMETERS!
         cypher = "MATCH (file:File)"
         cypher += " WHERE ((file)<-[:OBSERVED_IN]-(:Variant))"
         cypher += " RETURN count(distinct file) as total"
