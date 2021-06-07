@@ -5,31 +5,28 @@ import { Dataset } from "@app/types";
 
 @Component({
   selector: "nig-datasets",
-  templateUrl: "./datasets.component.html"
+  templateUrl: "./datasets.component.html",
 })
 export class DatasetsComponent extends BasePaginationComponent<Dataset> {
-	@Input() studyUUID;
-	expanded: any = {};
+  @Input() studyUUID;
+  expanded: any = {};
 
-	constructor(
-		protected injector: Injector
-	) {
-		super(injector);
-	}
+  constructor(protected injector: Injector) {
+    super(injector);
+  }
 
-	ngOnInit() {
-		this.init("Dataset", `study/${this.studyUUID}/datasets`, "Datasets");
-		this.set_resource_endpoint("dataset");
-	  this.initPaging(20, false);
-	  this.list();
-	}
+  ngOnInit() {
+    this.init("Dataset", `/api/study/${this.studyUUID}/datasets`, "Datasets");
+    this.set_resource_endpoint("/api/dataset");
+    this.initPaging(20, false);
+    this.list();
+  }
 
-	toggleExpandRow(row) {
-	  this.table.rowDetail.toggleExpandRow(row);
-	}
+  toggleExpandRow(row) {
+    this.table.rowDetail.toggleExpandRow(row);
+  }
 
-	onDetailToggle(event) {
-	  // console.log('File Panel Toggled', event);
-	}
-
+  onDetailToggle(event) {
+    // console.log('File Panel Toggled', event);
+  }
 }

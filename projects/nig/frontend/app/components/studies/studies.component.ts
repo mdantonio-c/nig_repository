@@ -9,17 +9,14 @@ import { Study } from "@app/types";
   styleUrls: ["./studies.component.css"],
 })
 export class StudiesComponent extends BasePaginationComponent<Study> {
+  constructor(protected injector: Injector) {
+    super(injector);
+    this.init("study", "/api/study", "Studies");
+    this.initPaging(20, false);
+    this.list();
+  }
 
-	constructor(
-		protected injector: Injector
-	) {
-		super(injector);
-	    this.init("study", "study", "Studies");
-	    this.initPaging(20, false);
-	    this.list();
-	}
-
-	filter(data_filter) {
+  filter(data_filter) {
     return this.unfiltered_data.filter((d) => {
       if (d.name.toLowerCase().indexOf(data_filter) !== -1) {
         return true;
@@ -30,5 +27,4 @@ export class StudiesComponent extends BasePaginationComponent<Study> {
       return false;
     });
   }
-
 }
