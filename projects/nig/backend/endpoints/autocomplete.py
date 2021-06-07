@@ -1,4 +1,4 @@
-# import re
+import re
 
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
@@ -23,20 +23,24 @@ class HPO(NIGEndpoint):
         graph = neo4j.get_instance()
 
         data = []
+
+        # Chars whitelist: letters, numbers, colon and hyphen
+        if not re.match("^[a-zA-Z0-9:-]+$", query):
+            return self.response(data)
+
         cypher = "MATCH (hpo:HPO)"
 
-        # Beware to Cypher Injection, use query parameters!
+        regexp = f"(?i).*{query}.*"
         if query.startswith("HP:") and len(query) >= 4:
-            cypher += " WHERE hpo.hpo_id =~ '(?i).*%s.*'" % query
+            cypher += " WHERE hpo.hpo_id =~ $regexp"
         else:
-            cypher += " WHERE hpo.label =~ '(?i).*%s.*'" % query
+            cypher += " WHERE hpo.label =~ $regexp"
         cypher += " RETURN hpo ORDER BY hpo.hpo_id DESC"
         cypher += " LIMIT 50"
 
-        result = graph.cypher(cypher)
+        result = graph.cypher(cypher, regexp=regexp)
         for row in result:
             hpo = graph.HPO.inflate(row[0])
-            # name = f"{hpo.hpo_id} ({hpo.label})"
             data.append({"hpo_id": hpo.hpo_id, "label": hpo.label})
 
         return self.response(data)

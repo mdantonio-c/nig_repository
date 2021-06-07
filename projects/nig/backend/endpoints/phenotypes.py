@@ -67,7 +67,7 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
     attributes["hpo"] = fields.List(
         fields.Str(),
         label="HPO",
-        autocomplete_endpoint="hpo",
+        autocomplete_endpoint="/api/hpo",
         autocomplete_show_id=True,
         autocomplete_id_bind="hpo_id",
         autocomplete_label_bind="label",
