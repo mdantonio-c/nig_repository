@@ -14,23 +14,23 @@ export class DataService {
 
   // STUDIES
   getStudies(): Observable<Study[]> {
-    return this.api.get<Study[]>("study");
+    return this.api.get<Study[]>("/api/study");
   }
 
   getStudy(uuid: string): Observable<Study> {
-    return this.api.get<Study>(`study/${uuid}`);
+    return this.api.get<Study>(`/api/study/${uuid}`);
   }
 
   getStats(extended?: boolean): Observable<Stats | ExtendedStats> {
     const accessor = extended ? "private" : "public";
-    return this.api.get<Stats>(`stats/${accessor}`);
+    return this.api.get<Stats>(`/api/stats/${accessor}`);
   }
 
   saveRelationship(uuid: string, parent: string): Observable<any> {
-    return this.api.post(`phenotype/${uuid}/relationships/${parent}`);
+    return this.api.post(`/api/phenotype/${uuid}/relationships/${parent}`);
   }
 
   deleteRelationship(uuid: string, parent: string): Observable<any> {
-    return this.api.delete(`phenotype/${uuid}/relationships/${parent}`);
+    return this.api.delete(`/api/phenotype/${uuid}/relationships/${parent}`);
   }
 }
