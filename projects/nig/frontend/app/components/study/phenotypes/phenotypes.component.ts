@@ -23,7 +23,7 @@ export class PhenotypesComponent extends BasePaginationComponent<Phenotype> {
       `/api/study/${this.studyUUID}/phenotypes`,
       "Phenotypes"
     );
-    this.set_resource_endpoint("phenotype");
+    this.set_resource_endpoint("/api/phenotype");
     this.initPaging(20, false);
     this.list();
   }

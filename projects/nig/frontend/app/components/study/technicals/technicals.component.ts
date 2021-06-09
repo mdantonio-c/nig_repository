@@ -5,22 +5,23 @@ import { TechnicalMetadata } from "@app/types";
 
 @Component({
   selector: "nig-technicals",
-  templateUrl: "./technicals.component.html"
+  templateUrl: "./technicals.component.html",
 })
 export class TechnicalsComponent extends BasePaginationComponent<TechnicalMetadata> {
-	@Input() studyUUID;
+  @Input() studyUUID;
 
-	constructor(
-		protected injector: Injector
-	) {
-		super(injector);
-	}
+  constructor(protected injector: Injector) {
+    super(injector);
+  }
 
-	ngOnInit() {
-		this.init("Technical Metadata", `study/${this.studyUUID}/technicals`, "Technicals");
-		this.set_resource_endpoint("technical");
-	    this.initPaging(20, false);
-	    this.list();
-	}
-
+  ngOnInit() {
+    this.init(
+      "Technical Metadata",
+      `/api/study/${this.studyUUID}/technicals`,
+      "Technicals"
+    );
+    this.set_resource_endpoint("/api/technical");
+    this.initPaging(20, false);
+    this.list();
+  }
 }
