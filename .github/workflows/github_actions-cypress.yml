@@ -33,19 +33,15 @@ jobs:
         run: |
 
           rapydo pull --quiet;
-          rapydo start;
+          rapydo -e API_AUTOSTART=1 start;
           rapydo shell --no-tty backend 'restapi wait';
-
-          sleep 20
           rapydo logs
 
           rapydo shell --no-tty backend "bash nig/scripts/init_hpo.sh"
 
-          rapydo shell --no-tty backend --detach "restapi launch"
           rapydo shell --no-tty frontend "yarn install"
           rapydo shell --no-tty frontend "reload-types"
 
-          sleep 60
           rapydo logs
 
           rapydo shell --no-tty frontend "yarn run cypress:start:full"
