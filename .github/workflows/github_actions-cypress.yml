@@ -42,9 +42,11 @@ jobs:
           rapydo shell --no-tty backend "bash nig/scripts/init_hpo.sh"
 
           rapydo shell --no-tty backend --detach "restapi launch"
-          rapydo -s frontend logs
           rapydo shell --no-tty frontend "yarn install"
           rapydo shell --no-tty frontend "reload-types"
+
+          sleep 10
+          rapydo logs
 
           rapydo shell --no-tty frontend "yarn run cypress:start:full"
 
