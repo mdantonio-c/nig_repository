@@ -19,10 +19,12 @@ ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.9/site-packages
 # Installing snakemake directly with conda creates conflicts
 # Last packages are installed with mamba because conda installation creates conflics for them
 
+# Plese remove Jinja2 after upgraded to flask 2.0
+
 RUN conda install --yes --freeze-installed python=3.9.0 && \
     conda update -n base -c defaults conda && \
     conda install --yes --freeze-installed -c conda-forge mamba stopit && \
-    mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake && \
+    mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake "Jinja2<3.0" && \
     conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk && \
     conda install --yes --freeze-installed -c daler sratoolkit && \
     conda install --yes --freeze-installed -c conda-forge yappi && \
