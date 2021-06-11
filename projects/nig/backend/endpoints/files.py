@@ -1,5 +1,6 @@
 import os
 import pathlib
+import re
 from typing import Any
 
 from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
@@ -242,6 +243,13 @@ class FileUpload(Uploader, NIGEndpoint):
         self.verifyStudyAccess(study, error_type="Dataset")
 
         path = self.getPath(dataset=dataset)
+
+        # check if the filename is correct
+        name_pattern = r"([a-zA-Z0-9]+)_(R[12]).fastq.gz"
+        if not re.search(name_pattern, name):
+            raise BadRequest(
+                "Filename should follow the correct nomenclature SampleName_R1/R2.fastq.gz"
+            )
 
         # set the allowed file format
         self.set_allowed_exts(["gz"])

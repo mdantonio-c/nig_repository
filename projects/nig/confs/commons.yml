@@ -7,6 +7,7 @@ services:
     volumes:
       - ${VANILLA_DIR}/data/data:/data
       - ${VANILLA_DIR}/data/resources:/resources
+      - ${VANILLA_DIR}/projects/${COMPOSE_PROJECT_NAME}/backend/snakemake:/snakemake
 
   celery:
     build: ${VANILLA_DIR}/projects/${COMPOSE_PROJECT_NAME}/builds/backend
@@ -14,6 +15,7 @@ services:
     volumes:
       - ${VANILLA_DIR}/data/data:/data
       - ${VANILLA_DIR}/data/resources:/resources
+      - ${VANILLA_DIR}/projects/${COMPOSE_PROJECT_NAME}/backend/snakemake:/snakemake
 
   neo4j:
     volumes:
