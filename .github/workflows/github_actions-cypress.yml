@@ -34,7 +34,8 @@ jobs:
 
           rapydo pull --quiet;
           rapydo -e API_AUTOSTART=1 start;
-          rapydo shell --no-tty backend 'restapi wait';
+
+          sleep 20
           rapydo logs
 
           rapydo shell --no-tty backend "bash nig/scripts/init_hpo.sh"
