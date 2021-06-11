@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Type, Union
 
 import pytz
+from flask import request
 from nig.endpoints import PHENOTYPE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
@@ -103,6 +104,25 @@ def getPOSTInputSchema(request: FlaskRequest) -> Type[Schema]:
 
 def getPUTInputSchema(request: FlaskRequest) -> Type[Schema]:
     return getInputSchema(request, False)
+
+
+def verify_study_access(endpoint: NIGEndpoint) -> Optional[Dict[str, Any]]:
+    graph = neo4j.get_instance()
+    study_uuid = request.view_args.get("uuid")
+    study = graph.Study.nodes.get_or_none(uuid=study_uuid)
+    endpoint.verifyStudyAccess(study)
+    return {"study": study}
+
+
+def verify_phenotype_access(endpoint: NIGEndpoint) -> Optional[Dict[str, Any]]:
+    graph = neo4j.get_instance()
+    phenotype_uuid = request.view_args.get("uuid")
+    phenotype = graph.Phenotype.nodes.get_or_none(uuid=phenotype_uuid)
+    if phenotype is None:
+        raise NotFound(PHENOTYPE_NOT_FOUND)
+    study = phenotype.defined_in.single()
+    endpoint.verifyStudyAccess(study, error_type="Phenotype")
+    return {"phenotype": phenotype, "study": study}
 
 
 class PhenotypeList(NIGEndpoint):
@@ -317,12 +337,14 @@ class Phenotypes(NIGEndpoint):
         },
     )
     @decorators.database_transaction
+    @decorators.preload(callback=verify_study_access)
     @decorators.use_kwargs(getPOSTInputSchema)
     def post(
         self,
         uuid: str,
         name: str,
         sex: str,
+        study: Optional[Dict[str, Any]],
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
         birth_place: Optional[str] = None,
@@ -330,9 +352,6 @@ class Phenotypes(NIGEndpoint):
     ) -> Response:
 
         graph = neo4j.get_instance()
-
-        study = graph.Study.nodes.get_or_none(uuid=uuid)
-        self.verifyStudyAccess(study)
 
         kwargs: Dict[str, Optional[Any]] = {}
         if birthday:
@@ -376,12 +395,15 @@ class Phenotypes(NIGEndpoint):
         },
     )
     @decorators.database_transaction
+    @decorators.preload(callback=verify_phenotype_access)
     @decorators.use_kwargs(getPUTInputSchema)
     def put(
         self,
         uuid: str,
         name: str,
         sex: str,
+        phenotype: Optional[Dict[str, Any]],
+        study: Optional[Dict[str, Any]],
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
         birth_place: Optional[str] = None,
@@ -390,11 +412,6 @@ class Phenotypes(NIGEndpoint):
 
         graph = neo4j.get_instance()
 
-        phenotype = graph.Phenotype.nodes.get_or_none(uuid=uuid)
-        if phenotype is None:
-            raise NotFound(PHENOTYPE_NOT_FOUND)
-        study = phenotype.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype")
         kwargs: Dict[str, Optional[Any]] = {}
         if birthday:
             birthday = self.check_timezone(birthday)
