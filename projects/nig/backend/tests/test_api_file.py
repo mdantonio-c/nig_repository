@@ -93,9 +93,9 @@ class TestApp(BaseTests):
 
         # check accesses for post request
         # upload a new file in a dataset of an other group
-        fake_filename = faker.pystr()
+        fake_filename = f"{faker.pystr()}_R1"
         fake_file = {
-            "name": f"{fake_filename}.gz",
+            "name": f"{fake_filename}.fastq.gz",
             "mimeType": "application/gzip",
             "size": faker.pyint(),
             "lastModified": faker.pyint(),
@@ -116,7 +116,7 @@ class TestApp(BaseTests):
         assert r.status_code == 404
 
         # try to upload a file with a no allowed format
-        fake_file = {
+        fake_format = {
             "name": f"{fake_filename}.txt",
             "mimeType": "text/plain",
             "size": faker.pyint(),
@@ -125,7 +125,21 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/dataset/{dataset_B_uuid}/files/upload",
             headers=user_B1_headers,
-            data=fake_file,
+            data=fake_format,
+        )
+        assert r.status_code == 400
+
+        # try to upload a file with a wrong nomenclature
+        fake_nomencl_file = {
+            "name": f"{faker.pystr()}.fastq.gz",
+            "mimeType": "text/plain",
+            "size": faker.pyint(),
+            "lastModified": faker.pyint(),
+        }
+        r = client.post(
+            f"{API_URI}/dataset/{dataset_B_uuid}/files/upload",
+            headers=user_B1_headers,
+            data=fake_nomencl_file,
         )
         assert r.status_code == 400
 
@@ -133,14 +147,14 @@ class TestApp(BaseTests):
         fcontent = faker.paragraph()
         # tmp_basepath=f"/tmp/{fake_filename}"
         # os.mkdir(tmp_basepath)
-        with open(f"/tmp/{fake_filename}.txt", "w") as f:
+        with open(f"/tmp/{fake_filename}.fastq", "w") as f:
             f.write(fcontent)
 
         # gzip the new file
-        check_call(["gzip", f"/tmp/{fake_filename}.txt"])
+        check_call(["gzip", f"/tmp/{fake_filename}.fastq"])
 
         # upload a file
-        input = f"/tmp/{fake_filename}.txt.gz"
+        input = f"/tmp/{fake_filename}.fastq.gz"
         response = self.upload_file(
             client, user_B1_headers, input, dataset_B_uuid, stream=True
         )
@@ -177,13 +191,13 @@ class TestApp(BaseTests):
 
         # check error if final file size is different from the one expected
         # rename the file to upload
-        fake_filename2 = faker.pystr()
-        os.rename(input, f"/tmp/{fake_filename2}.txt.gz")
+        fake_filename2 = f"{faker.pystr()}_R1"
+        os.rename(input, f"/tmp/{fake_filename2}.fastq.gz")
         # upload without streaming
         response = self.upload_file(
             client,
             user_B1_headers,
-            f"/tmp/{fake_filename2}.txt.gz",
+            f"/tmp/{fake_filename2}.fastq.gz",
             dataset_B_uuid,
             stream=False,
         )
@@ -199,7 +213,7 @@ class TestApp(BaseTests):
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
-            f"{fake_filename2}.txt.gz",
+            f"{fake_filename2}.fastq.gz",
         )
         assert not os.path.isfile(filepath2)
 
@@ -250,7 +264,7 @@ class TestApp(BaseTests):
 
         # check use case of file not in the folder
         # rename the file in the folder as it will not be found
-        os.rename(filepath, f"{filepath}.tmp")
+        os.rename(filepath, f"{filepath}.fastq.tmp")
         r = client.get(
             f"{API_URI}/dataset/{dataset_B_uuid}/files", headers=user_B1_headers
         )
@@ -273,7 +287,7 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         file_response = self.get_content(r)
         assert file_response["status"] == "unknown"
-        os.rename(f"{filepath}.tmp", filepath)
+        os.rename(f"{filepath}.fastq.tmp", filepath)
 
         r = client.get(
             f"{API_URI}/dataset/{dataset_B_uuid}/files", headers=user_B1_headers
@@ -299,7 +313,7 @@ class TestApp(BaseTests):
 
         # check use case of file not in the folder
         # rename the file in the folder as it will not be found
-        os.rename(filepath, f"{filepath}.tmp")
+        os.rename(filepath, f"{filepath}.fastq.tmp")
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
 
@@ -316,7 +330,7 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
 
-        os.rename(f"{filepath}.tmp", filepath)
+        os.rename(f"{filepath}.fastq.tmp", filepath)
 
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
@@ -354,7 +368,7 @@ class TestApp(BaseTests):
         assert not os.path.isfile(filepath)
 
         # delete the file created for the tests
-        os.remove(f"/tmp/{fake_filename2}.txt.gz")
+        os.remove(f"/tmp/{fake_filename2}.fastq.gz")
 
         # delete all the elements used by the test
         delete_test_env(
