@@ -1,7 +1,8 @@
 import os
 import shutil
-from typing import Dict, Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
+from flask import request
 from nig.endpoints import PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
@@ -111,6 +112,26 @@ def getPUTInputSchema(request: FlaskRequest) -> Type[Schema]:
     return getInputSchema(request, False)
 
 
+def verify_study_access(endpoint: NIGEndpoint) -> Optional[Dict[str, Any]]:
+    graph = neo4j.get_instance()
+    study_uuid = request.view_args.get("uuid")
+    study = graph.Study.nodes.get_or_none(uuid=study_uuid)
+    endpoint.verifyStudyAccess(study)
+    return {"study": study}
+
+
+def verify_dataset_access(endpoint: NIGEndpoint) -> Optional[Dict[str, Any]]:
+    graph = neo4j.get_instance()
+    dataset_uuid = request.view_args.get("uuid")
+    dataset = graph.Dataset.nodes.get_or_none(uuid=dataset_uuid)
+    endpoint.verifyDatasetAccess(dataset)
+
+    study = dataset.parent_study.single()
+    endpoint.verifyStudyAccess(study, error_type="Dataset")
+
+    return {"dataset": dataset, "study": study}
+
+
 class Datasets(NIGEndpoint):
     labels = ["dataset"]
 
@@ -179,20 +200,19 @@ class Dataset(NIGEndpoint):
         },
     )
     @decorators.database_transaction
+    @decorators.preload(callback=verify_study_access)
     @decorators.use_kwargs(getPOSTInputSchema)
     def post(
         self,
         uuid: str,
         name: str,
         description: str,
+        study: Optional[Dict[str, Any]],
         phenotype: Optional[str] = None,
         technical: Optional[str] = None,
     ) -> Response:
 
         graph = neo4j.get_instance()
-
-        study = graph.Study.nodes.get_or_none(uuid=uuid)
-        self.verifyStudyAccess(study)
 
         current_user = self.get_user()
 
@@ -236,24 +256,19 @@ class Dataset(NIGEndpoint):
             404: "This dataset cannot be found or you are not authorized to access",
         },
     )
+    @decorators.preload(callback=verify_dataset_access)
     @decorators.use_kwargs(getPUTInputSchema)
     @decorators.database_transaction
     def put(
         self,
         uuid: str,
+        study: Optional[Dict[str, Any]],
+        dataset: Optional[Dict[str, Any]],
         name: Optional[str] = None,
         description: Optional[str] = None,
         phenotype: Optional[str] = None,
         technical: Optional[str] = None,
     ) -> Response:
-
-        graph = neo4j.get_instance()
-
-        dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
-        self.verifyDatasetAccess(dataset)
-
-        study = dataset.parent_study.single()
-        self.verifyStudyAccess(study, error_type="Dataset")
 
         kwargs = {}
         if phenotype:
