@@ -45,7 +45,7 @@ jobs:
           rapydo shell --no-tty frontend "yarn install"
           rapydo shell --no-tty frontend "reload-types"
 
-          sleep 10
+          sleep 60
           rapydo logs
 
           rapydo shell --no-tty frontend "yarn run cypress:start:full"
