@@ -344,7 +344,9 @@ class Phenotypes(NIGEndpoint):
         uuid: str,
         name: str,
         sex: str,
-        study: Optional[Dict[str, Any]],
+        # should be an instance of neo4j.Study,
+        # but typing is still not working with neomodel
+        study: Any,
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
         birth_place: Optional[str] = None,
@@ -403,7 +405,9 @@ class Phenotypes(NIGEndpoint):
         name: str,
         sex: str,
         phenotype: Optional[Dict[str, Any]],
-        study: Optional[Dict[str, Any]],
+        # should be an instance of neo4j.Study,
+        # but typing is still not working with neomodel
+        study: Any,
         birthday: Optional[datetime] = None,
         deathday: Optional[datetime] = None,
         birth_place: Optional[str] = None,

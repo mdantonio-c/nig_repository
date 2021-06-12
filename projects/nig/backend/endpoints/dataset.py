@@ -207,7 +207,9 @@ class Dataset(NIGEndpoint):
         uuid: str,
         name: str,
         description: str,
-        study: Optional[Dict[str, Any]],
+        # should be an instance of neo4j.Study,
+        # but typing is still not working with neomodel
+        study: Any,
         phenotype: Optional[str] = None,
         technical: Optional[str] = None,
     ) -> Response:
@@ -262,8 +264,12 @@ class Dataset(NIGEndpoint):
     def put(
         self,
         uuid: str,
-        study: Optional[Dict[str, Any]],
-        dataset: Optional[Dict[str, Any]],
+        # should be an instance of neo4j.Study,
+        # but typing is still not working with neomodel
+        study: Any,
+        # should be an instance of neo4j.Dataset,
+        # but typing is still not working with neomodel
+        dataset: Any,
         name: Optional[str] = None,
         description: Optional[str] = None,
         phenotype: Optional[str] = None,
