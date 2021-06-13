@@ -11,10 +11,10 @@ from restapi.utilities.logs import log
 
 @CeleryExt.task()
 def launch_pipeline(
-    self,
+    self: CeleryExt.TaskType,
     file_list: List[str],
     # TO BE REMOVED
-    isnake: str,  # it's true or isnake is an optional param?
+    isnake: str,
     force: bool = False,
     dryrun: bool = False,
 ) -> None:
