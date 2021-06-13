@@ -25,8 +25,8 @@ jobs:
       - uses: rapydo/actions/mypy@v1
         with:
           project: ${PROJECT}
-          install: pronto typer
-          ignore: neo4j neomodel vcf faker
+          install: pronto typer pandas-stubs
+          ignore: neo4j neomodel vcf faker snakemake
       - name: Save Report
         uses: actions/upload-artifact@v2
         with:

@@ -404,7 +404,9 @@ class Phenotypes(NIGEndpoint):
         uuid: str,
         name: str,
         sex: str,
-        phenotype: Optional[Dict[str, Any]],
+        # should be an instance of neo4j.Phenotype,
+        # but typing is still not working with neomodel
+        phenotype: Any,
         # should be an instance of neo4j.Study,
         # but typing is still not working with neomodel
         study: Any,

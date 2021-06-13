@@ -1,6 +1,7 @@
 import os
 import re
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 import snakemake as smk
@@ -11,12 +12,12 @@ from restapi.utilities.logs import log
 @CeleryExt.task()
 def launch_pipeline(
     self,
-    file_list,
-    isnake,  # it's true or isnake is an optional param?
-    cores=None,
-    force=False,
-    dryrun=False,
-):
+    file_list: List[str],
+    # TO BE REMOVED
+    isnake: str,  # it's true or isnake is an optional param?
+    force: bool = False,
+    dryrun: bool = False,
+) -> None:
     log.info("Start task [{}:{}]", self.request.id, self.name)
     # create a list of fastq files as csv file: fastq.csv
     # create symlinks for fastq files
@@ -25,9 +26,8 @@ def launch_pipeline(
     wrkdir = Path("/snakemake")
     out_dir = Path("/data/output")
 
-    slinkdir = Path(
-        out_dir, "slinks"
-    )  # TODO what will be the directory for symlinks? it will be a single one?
+    # TODO what will be the directory for symlinks? it will be a single one?
+    slinkdir = Path(out_dir, "slinks")
     slinkdir.mkdir(parents=True, exist_ok=True)
 
     # the pattern is check also in the file upload endpoint. This is an additional check
@@ -42,9 +42,9 @@ def launch_pipeline(
             # create a symlink in workdir folder
             try:
                 symlink_path = Path(slinkdir, fname)
-                symlink_path.symlink_to(
-                    filepath
-                )  # TODO what will be the slinks dir? it is the same for all or different for the different datasets?
+                # TODO what will be the slinks dir?
+                # it is the same for all or different for the different datasets?
+                symlink_path.symlink_to(filepath)
             except FileExistsError:
                 log.warning("{} has already a symlink", filepath)
 
@@ -53,7 +53,8 @@ def launch_pipeline(
             fastq.append(fastq_row)
         else:
             log.info(
-                f"fastq: {fl} should follow correct nomenclature SampleName_R1/R2.fastq.gz"
+                "fastq {} should follow correct nomenclature SampleName_R1/R2.fastq.gz",
+                fl,
             )
 
     # A dataframe is created
@@ -65,17 +66,14 @@ def launch_pipeline(
     df.to_csv(fastq_csv_file, index=None)
     log.info("*************************************")
     log.info("New file `fastq.csv' is now created")
-    log.info(f"Total Number Of Fastq identified:{df.shape[0]}\n")
+    log.info("Total Number Of Fastq identified:{}\n", df.shape[0])
 
     # Launch snakemake
-    config = [
-        Path(wrkdir, "config.yaml")
-    ]  # TODO it will be static or it has to be passed from the celery function?
+    # TODO it will be static or it has to be passed from the celery function?
+    config = [Path(wrkdir, "config.yaml")]
 
-    if not cores:
-        cores = os.cpu_count()
-
-    print(f"Calling Snakemake With {cores} cores")
+    cores = os.cpu_count()
+    log.info("Calling Snakemake with {} cores", cores)
 
     smk.snakemake(
         isnake,
@@ -85,3 +83,5 @@ def launch_pipeline(
         configfiles=config,
         forceall=force,
     )
+
+    return None
