@@ -96,9 +96,9 @@ class TestApp(BaseTests):
         dataset_path = os.path.join(dir_path, dataset_uuid)
         assert os.path.isdir(dir_path)
         # create a new file to test if it's deleted with the study
-        filename = faker.pystr()
+        filename = f"{faker.pystr()}_R1"
         file_data = {
-            "name": f"{filename}.gz",
+            "name": f"{filename}.fastq.gz",
             "mimeType": "application/gzip",
             "size": faker.pyint(),
             "lastModified": faker.pyint(),
