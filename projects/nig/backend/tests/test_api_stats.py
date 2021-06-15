@@ -41,9 +41,9 @@ class TestApp(BaseTests):
         dataset_B_uuid = self.get_content(r)
 
         # init an upload in dataset A
-        fake_filename = faker.pystr()
+        fake_filename = f"{faker.pystr()}_R1"
         fake_file = {
-            "name": f"{fake_filename}.gz",
+            "name": f"{fake_filename}.fastq.gz",
             "mimeType": "application/gzip",
             "size": faker.pyint(),
             "lastModified": faker.pyint(),

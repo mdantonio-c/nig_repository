@@ -53,7 +53,7 @@ def launch_pipeline(
             fastq.append(fastq_row)
         else:
             log.info(
-                "fastq {} should follow correct nomenclature SampleName_R1/R2.fastq.gz",
+                "fastq {} should follow correct naming convention SampleName_R1/R2.fastq.gz",
                 fl,
             )
 
@@ -63,7 +63,7 @@ def launch_pipeline(
     df.loc[df.Frag == "R2", "Reverse"] = "Yes"
     # fastq_csv_file = '/data/snakemake/NIG/fastq.csv'
     fastq_csv_file = Path(out_dir, "fastq.csv")
-    df.to_csv(fastq_csv_file, index=None)
+    df.to_csv(fastq_csv_file, index=False)
     log.info("*************************************")
     log.info("New file `fastq.csv' is now created")
     log.info("Total Number Of Fastq identified:{}\n", df.shape[0])
