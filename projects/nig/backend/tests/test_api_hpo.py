@@ -61,5 +61,7 @@ class TestApp(BaseTests):
         r = client.get(f'{endpoint}/a"a', headers=headers)
         assert r.status_code == 400
 
+        # the hash symbol is stripped off by flask and ignored
+        # (it is interprented as anchor in the URL)
         r = client.get(f"{endpoint}/a#a", headers=headers)
-        assert r.status_code == 400
+        assert r.status_code == 200
