@@ -4,6 +4,7 @@ from typing import Dict, List
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
+from restapi.exceptions import BadRequest
 from restapi.rest.definition import Response
 
 
@@ -21,13 +22,9 @@ class HPO(NIGEndpoint):
     )
     def get(self, query: str) -> Response:
 
-        graph = neo4j.get_instance()
-
-        data: List[Dict[str, str]] = []
-
         # Chars whitelist: letters, numbers, colon and hyphen
         if not re.match("^[a-zA-Z0-9:-]+$", query):
-            return self.response(data)
+            raise BadRequest("Invalid HPO query")
 
         cypher = "MATCH (hpo:HPO)"
 
@@ -39,7 +36,10 @@ class HPO(NIGEndpoint):
         cypher += " RETURN hpo ORDER BY hpo.hpo_id DESC"
         cypher += " LIMIT 50"
 
+        graph = neo4j.get_instance()
         result = graph.cypher(cypher, regexp=regexp)
+
+        data: List[Dict[str, str]] = []
         for row in result:
             hpo = graph.HPO.inflate(row[0])
             data.append({"hpo_id": hpo.hpo_id, "label": hpo.label})
