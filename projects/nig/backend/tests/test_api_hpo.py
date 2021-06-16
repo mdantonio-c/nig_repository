@@ -15,7 +15,7 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         content = self.get_content(r)
         assert isinstance(content, list)
-        assert len(list) > 0
+        assert len(content) > 0
         assert isinstance(content[0], dict)
         assert "hpo_id" in content[0]
         assert "label" in content[0]
