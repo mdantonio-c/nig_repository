@@ -22,8 +22,8 @@ class HPO(NIGEndpoint):
     )
     def get(self, query: str) -> Response:
 
-        # Chars whitelist: letters, numbers, colon and hyphen
-        if not re.match("^[a-zA-Z0-9:-]+$", query):
+        # Chars whitelist: letters, numbers, space, colon and hyphen
+        if not re.match("^[a-zA-Z0-9 :-]+$", query):
             raise BadRequest("Invalid HPO query")
 
         cypher = "MATCH (hpo:HPO)"
