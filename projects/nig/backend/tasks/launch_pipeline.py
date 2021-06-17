@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 from pathlib import Path
 from typing import List
 
@@ -13,21 +14,22 @@ from restapi.utilities.logs import log
 def launch_pipeline(
     self: CeleryExt.TaskType,
     file_list: List[str],
-    # TO BE REMOVED
-    isnake: str,
-    force: bool = False,
-    dryrun: bool = False,
 ) -> None:
     log.info("Start task [{}:{}]", self.request.id, self.name)
+    # create the workdir --> it has to be unique for every celery task (and snakemake launch)
+    wrkdir = Path("/data/output", self.request.id)
+    wrkdir.mkdir(parents=True, exist_ok=True)
+    # copy the files used by snakemake in the work dir
+    source_dir = Path("/snakemake")
+    for snk_file in source_dir.glob("*"):
+        shutil.copy(snk_file, wrkdir)
+
     # create a list of fastq files as csv file: fastq.csv
     # create symlinks for fastq files
     fastq = []
 
-    wrkdir = Path("/snakemake")
-    out_dir = Path("/data/output")
-
-    # TODO what will be the directory for symlinks? it will be a single one?
-    slinkdir = Path(out_dir, "slinks")
+    # symlinks are useful now that the input path is in the csv?
+    slinkdir = Path(wrkdir, "slinks")
     slinkdir.mkdir(parents=True, exist_ok=True)
 
     # the pattern is check also in the file upload endpoint. This is an additional check
@@ -42,7 +44,6 @@ def launch_pipeline(
             # create a symlink in workdir folder
             try:
                 symlink_path = Path(slinkdir, fname)
-                # TODO what will be the slinks dir?
                 # it is the same for all or different for the different datasets?
                 symlink_path.symlink_to(filepath)
             except FileExistsError:
@@ -58,30 +59,29 @@ def launch_pipeline(
             )
 
     # A dataframe is created
-    df = pd.DataFrame(fastq, columns=["Sample", "Frag", "Path"])
+    df = pd.DataFrame(fastq, columns=["Sample", "Frag", "InputPath"])
     df["Reverse"] = "No"
     df.loc[df.Frag == "R2", "Reverse"] = "Yes"
     # fastq_csv_file = '/data/snakemake/NIG/fastq.csv'
-    fastq_csv_file = Path(out_dir, "fastq.csv")
+    fastq_csv_file = Path(wrkdir, "fastq.csv")
     df.to_csv(fastq_csv_file, index=False)
     log.info("*************************************")
-    log.info("New file `fastq.csv' is now created")
+    log.info("New file {} is now created", fastq_csv_file)
     log.info("Total Number Of Fastq identified:{}\n", df.shape[0])
 
     # Launch snakemake
-    # TODO it will be static or it has to be passed from the celery function?
     config = [Path(wrkdir, "config.yaml")]
 
+    # TODO this param can be in the config? it should be passed as argument for the celery task? or it's ok the simple cpu count?
     cores = os.cpu_count()
     log.info("Calling Snakemake with {} cores", cores)
+    snakefile = f"{wrkdir}/Single_Sample_V2.smk"
 
     smk.snakemake(
-        isnake,
+        snakefile,
         cores=cores,
         workdir=wrkdir,
-        dryrun=dryrun,
         configfiles=config,
-        forceall=force,
     )
 
     return None
