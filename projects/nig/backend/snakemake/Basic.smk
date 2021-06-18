@@ -14,7 +14,7 @@ def call_json(update=update):
         gvcf = glob.glob( 'gatk_gvcf/*g.vcf.gz')
     else:
         # All samples in .csv files
-        sall  = set( pd.read_csv('/data/output/fastq.csv').Sample )
+        sall  = set( pd.read_csv('fastq.csv').Sample )
         with open('gatk_db/callset.json') as f:
             data = json.load(f)
         f.close()
