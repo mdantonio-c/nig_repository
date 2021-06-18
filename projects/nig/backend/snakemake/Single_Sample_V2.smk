@@ -32,7 +32,7 @@ rule Fastqc:
     threads:
         config["THREAD"]["fastqc"]
     shell:
-        "fastqc -o fastqc_out -t {threads} -f fastq --extract {input} > {log} 2>&1"
+        "fastqc -o /data/output/fastqc_out -t {threads} -f fastq --extract {input} > {log} 2>&1"
 
 rule Seqtk:
     message:
