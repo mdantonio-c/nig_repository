@@ -16,13 +16,14 @@ def launch_pipeline(
     file_list: List[str],
 ) -> None:
     log.info("Start task [{}:{}]", self.request.id, self.name)
-    # create the workdir --> it has to be unique for every celery task (and snakemake launch)
+    # create a unique workdir for every celery task / and snakemake launch)
     wrkdir = Path("/data/output", self.request.id)
     wrkdir.mkdir(parents=True, exist_ok=True)
     # copy the files used by snakemake in the work dir
     source_dir = Path("/snakemake")
     for snk_file in source_dir.glob("*"):
-        shutil.copy(snk_file, wrkdir)
+        if snk_file.is_file():
+            shutil.copy(snk_file, wrkdir)
 
     # create a list of fastq files as csv file: fastq.csv
     # create symlinks for fastq files
