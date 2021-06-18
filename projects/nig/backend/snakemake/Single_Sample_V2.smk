@@ -1,7 +1,7 @@
 include: "Basic.smk"
 
 # Here goes the inputs list
-df  = pd.read_csv('/data/output/fastq.csv')
+df  = pd.read_csv('fastq.csv')
 # Collect paired and single samples
 pair = df[ df.Reverse=='Yes' ] ; sing = df[ ~df.Sample.isin(pair.Sample) ]
 
@@ -14,21 +14,21 @@ wildcard_constraints:
     Sw = '|'.join([re.escape(x) for x in sing.Sample])
 
 rule all:
-	input: expand("/data/output/fastqc_out/{S}_{F}_fastqc.html",zip,S=df.Sample,F=df.Frag),\
-    expand("/data/output/OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz",zip,S=df.Sample)
+	input: expand("fastqc_out/{S}_{F}_fastqc.html",zip,S=df.Sample,F=df.Frag),\
+    expand(OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz",zip,S=df.Sample)
 
 
 rule Fastqc:
     message:
         "Running fastqc tool on input fastq files"
     input:
-        "/data/output/slinks/{S}_{F}.fastq.gz"
+        "slinks/{S}_{F}.fastq.gz"
     output:
-        "/data/output/fastqc_out/{S}_{F}_fastqc.html"
+        "fastqc_out/{S}_{F}_fastqc.html"
     log:
-        "/data/output/fastqc_out/{S}_{F}_fastqc.log"
+        "fastqc_out/{S}_{F}_fastqc.log"
     benchmark:
-        "/data/output/fastqc_out/{S}_{F}_fastqc.benchmark"
+        "fastqc_out/{S}_{F}_fastqc.benchmark"
     threads:
         config["THREAD"]["fastqc"]
     shell:
@@ -40,7 +40,7 @@ rule Seqtk:
     input:
         rules.Fastqc.input
     output:
-        "/data/output/OUTPUT/{S}/seqtk/{S}_{F}.converted.gz"
+        "OUTPUT/{S}/seqtk/{S}_{F}.converted.gz"
     shell:
         "seqtk seq -Q33 -V {input} | gzip > {output} "
 
@@ -50,13 +50,13 @@ rule BwaS:
     message:
         "Creating sam files for unpaired samples"
     input:
-        i="/data/output/OUTPUT/{Sm}/seqtk/{Sw}_R1.converted.gz"
+        i="OUTPUT/{Sm}/seqtk/{Sw}_R1.converted.gz"
     output:
-        "/data/output/OUTPUT/{Sm}/bwa/{Sw}.sam"
+        "OUTPUT/{Sm}/bwa/{Sw}.sam"
     log:
-        "/data/output/OUTPUT/{Sm}/bwa/{Sw}.log"
+        "OUTPUT/{Sm}/bwa/{Sw}.log"
     benchmark:
-        "/data/output/OUTPUT/{Sm}/bwa/{Sw}.benchmark"
+        "OUTPUT/{Sm}/bwa/{Sw}.benchmark"
     threads:
         config["THREAD"]["bwa"]
     params:
@@ -68,14 +68,14 @@ rule BwaP:
     message:
         "Creating sam files for paired samples"
     input:
-        i1 = "/data/output/OUTPUT/{Pm}/seqtk/{Pw}_R1.converted.gz",
-        i2 = "/data/output/OUTPUT/{Pm}/seqtk/{Pw}_R2.converted.gz"
+        i1 = "OUTPUT/{Pm}/seqtk/{Pw}_R1.converted.gz",
+        i2 = "OUTPUT/{Pm}/seqtk/{Pw}_R2.converted.gz"
     output:
-        "/data/output/OUTPUT/{Pm}/bwa/{Pw}.sam"
+        "OUTPUT/{Pm}/bwa/{Pw}.sam"
     log:
-        "/data/output/OUTPUT/{Pm}/bwa/{Pw}.log"
+        "OUTPUT/{Pm}/bwa/{Pw}.log"
     benchmark:
-        "/data/output/OUTPUT/{Pm}/bwa/{Pw}.benchmark"
+        "OUTPUT/{Pm}/bwa/{Pw}.benchmark"
     threads:
         config["THREAD"]["bwa"]
     params:
@@ -87,13 +87,13 @@ rule Samsort:
     message:
         "Doing `samsort` for all samples"
     input: 
-        "/data/output/OUTPUT/{S}/bwa/{S}.sam"
+        "OUTPUT/{S}/bwa/{S}.sam"
     output:
-        "/data/output/OUTPUT/{S}/bwa/{S}_sort_nodup.sam"
+        "OUTPUT/{S}/bwa/{S}_sort_nodup.sam"
     log:
-        "/data/output/OUTPUT/{S}/bwa/{S}_sort_nodup.sam.log"
+        "OUTPUT/{S}/bwa/{S}_sort_nodup.sam.log"
     benchmark:
-        "/data/output/OUTPUT/{S}/bwa/{S}_sort_nodup.sam.benchmark"
+        "OUTPUT/{S}/bwa/{S}_sort_nodup.sam.benchmark"
     threads:
         config["THREAD"]["samtool"]
     shell:
@@ -106,9 +106,9 @@ rule Samview:
     input:
         rules.Samsort.output
     output:
-        "/data/output/OUTPUT/{S}/bwa/{S}_sort_nodup.bam"
+        "OUTPUT/{S}/bwa/{S}_sort_nodup.bam"
     benchmark:
-        "/data/output/OUTPUT/{S}/bwa/{S}_sort_nodup.bam.benchmark"
+        "OUTPUT/{S}/bwa/{S}_sort_nodup.bam.benchmark"
     threads:
         config["THREAD"]["samview"]
     shell:
@@ -118,7 +118,7 @@ rule Samindex:
     input:
         rules.Samview.output                 
     output:
-        "/data/output/OUTPUT/{S}/bwa/{S}_sort_nodup.bai"
+        "OUTPUT/{S}/bwa/{S}_sort_nodup.bai"
     threads:
         config["THREAD"]["samview"]
     shell:
@@ -130,11 +130,11 @@ rule BaseRecalibrator:
         bai=rules.Samindex.output,
         inter=config["IFILES"]["inter"]
     output:
-        "/data/output/OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.recaldat"
+        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.recaldat"
     log:
-        "/data/output/OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.recaldat.log"
+        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.recaldat.log"
     benchmark:
-        "/data/output/OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.recaldat.benchmark"
+        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.recaldat.benchmark"
     params:
         jv = config["JAVA"]["brc"],
         p1=Mult_Params('--known-sites',[ config["IFOLDER"]["gatk"]+name for name in config["IFILES"]["dbsnp"] ])
@@ -148,11 +148,11 @@ rule ApplyBQSR:
         rec=rules.BaseRecalibrator.output,
         inter=config["IFILES"]["inter"]
     output:
-        "/data/output/OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.bqsr.bam"
+        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.bqsr.bam"
     log:
-        "/data/output/OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.bqsr.log"
+        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.bqsr.log"
     benchmark:
-        "/data/output/OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.bqsr.benchmark"
+        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.bqsr.benchmark"
     params:
         jv = config["JAVA"]["absq"],
         p1 = Mult_Params( '--static-quantized-quals' , config["PARAMS"]["absq"] ),
@@ -166,11 +166,11 @@ rule HaplotypeCaller:
         bam=rules.ApplyBQSR.output,
         inter=config["IFILES"]["inter"]
     output:
-        "/data/output/OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz"
+        "OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz"
     log:
-        "/data/output/OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.log"
+        "OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.log"
     benchmark:
-        "/data/output/OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.benchmark"
+        "OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.benchmark"
     threads:
         config["THREAD"]["hapcal"]
     params:
