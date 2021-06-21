@@ -2,8 +2,8 @@
 project:
   title: NIG Repository
   description: platform for genomic and phenotypic datasets
-  version: "1.2"
-  rapydo: "1.2"
+  version: "2.0"
+  rapydo: "2.0"
 
 variables:
   roles:

@@ -1,26 +1,26 @@
-version: "3"
+version: "3.8"
 
 services:
   backend:
-    build: ${VANILLA_DIR}/projects/${COMPOSE_PROJECT_NAME}/builds/backend
+    build: ${PROJECT_DIR}/builds/backend
     image: nig/backend:${RAPYDO_VERSION}
     volumes:
-      - ${VANILLA_DIR}/data/data:/data
-      - ${VANILLA_DIR}/data/resources:/resources
-      - ${VANILLA_DIR}/projects/${COMPOSE_PROJECT_NAME}/backend/snakemake:/snakemake
+      - ${DATA_DIR}/data:/data
+      - ${DATA_DIR}/resources:/resources
+      - ${PROJECT_DIR}/backend/snakemake:/snakemake
 
   celery:
-    build: ${VANILLA_DIR}/projects/${COMPOSE_PROJECT_NAME}/builds/backend
+    build: ${PROJECT_DIR}/builds/backend
     image: nig/backend:${RAPYDO_VERSION}
     volumes:
-      - ${VANILLA_DIR}/data/data:/data
-      - ${VANILLA_DIR}/data/resources:/resources
-      - ${VANILLA_DIR}/projects/${COMPOSE_PROJECT_NAME}/backend/snakemake:/snakemake
+      - ${DATA_DIR}/data:/data
+      - ${DATA_DIR}/resources:/resources
+      - ${PROJECT_DIR}/backend/snakemake:/snakemake
 
   neo4j:
     volumes:
-      - ${VANILLA_DIR}/data/graphdata:/data
-      - ${VANILLA_DIR}/data/data:/var/lib/neo4j/import/repo
+      - ${DATA_DIR}/graphdata:/data
+      - ${DATA_DIR}/data:/var/lib/neo4j/import/repo
     ports:
       - 7687:7687
       - 9090:${NEO4J_WEB_INTERFACE_PORT}

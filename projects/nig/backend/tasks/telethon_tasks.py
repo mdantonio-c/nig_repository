@@ -5,6 +5,7 @@ from datetime import datetime
 
 import dateutil.parser
 import pytz
+from celery.result import AsyncResult
 from nig.endpoints import NIGEndpoint
 from restapi.utilities.logs import log
 
@@ -20,7 +21,7 @@ SKIPM = "SKIP METADATA"
 
 # @after_task_publish.connect
 # def update_sent_state(sender=None, body=None, **kwargs):
-#     task = celery_app.AsyncResult(body['id'])
+#     task = AsyncResult(body['id'])
 #     task.backend.store_result(task.id, None, 'SENT')
 #     log.critical("Setting status 'SENT' to task %s " % task.id)
 
