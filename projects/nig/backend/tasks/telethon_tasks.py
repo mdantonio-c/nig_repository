@@ -16,6 +16,12 @@
 # TECHM = "TECHNICAL METADATA"
 # SKIPM = "SKIP METADATA"
 
+
+# def createUniqueIndex(*var: str) -> str:
+
+#     separator = "#_#"
+#     return separator.join(var)
+
 ####################
 # Define your celery tasks
 
@@ -251,7 +257,7 @@ def getParent(self, graph, study, name, relation, son):
         return None
 
     rel = f"({name})-[{relation}]->({son})"
-    u_name = NIGEndpoint.createUniqueIndex(study.uuid, name)
+    u_name = createUniqueIndex(study.uuid, name)
     try:
         return graph.Phenotype.nodes.get(unique_name=u_name)
     except graph.Phenotype.DoesNotExist:
@@ -333,7 +339,7 @@ def parse_file_ped(self, graph, filename, reimport=False):
             study = self.fileNode.study.all().pop(0)
             log.info("Retrieved study: %s", study.uuid)
 
-            unique_name = NIGEndpoint.createUniqueIndex(study.uuid, individual_id)
+            unique_name = createUniqueIndex(study.uuid, individual_id)
 
             log.info("Assigned unique name: %s", unique_name)
 
@@ -466,7 +472,7 @@ def parse_file_tech(self, graph, filename, reimport=False):
             study = self.fileNode.study.all().pop(0)
             log.info("Retrieved study: %s", study.uuid)
 
-            unique_name = NIGEndpoint.createUniqueIndex(study.uuid, name)
+            unique_name = createUniqueIndex(study.uuid, name)
             log.info("Assigned unique name: %s", unique_name)
 
             # Verify if this technical already exists

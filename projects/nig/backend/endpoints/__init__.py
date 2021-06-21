@@ -16,7 +16,7 @@ TECHMETA_NOT_FOUND = (
     "This set of technical metadata cannot be found or you are not authorized to access"
 )
 FILE_NOT_FOUND = "This file cannot be found or you are not authorized to access"
-RESOURCE_NOT_FOUND = "This resource cannot be found or you are not authorized to access"
+# RESOURCE_NOT_FOUND = "This resource cannot be found or you are not authorized to access"
 
 # Should be the class models, but can't be imported here
 Study = Any
@@ -64,12 +64,6 @@ class NIGEndpoint(EndpointResource):
         return path
 
     @staticmethod
-    def createUniqueIndex(*var: str) -> str:
-
-        separator = "#_#"
-        return separator.join(var)
-
-    @staticmethod
     def getError(error_type: str) -> str:
         if error_type == "Study":
             return STUDY_NOT_FOUND
@@ -77,13 +71,13 @@ class NIGEndpoint(EndpointResource):
             return DATASET_NOT_FOUND
         if error_type == "File":
             return FILE_NOT_FOUND
-        if error_type == "Resource":
-            return RESOURCE_NOT_FOUND
+        # if error_type == "Resource":
+        #     return RESOURCE_NOT_FOUND
         if error_type == "Phenotype":
             return PHENOTYPE_NOT_FOUND
         if error_type == "Technical Metadata":
             return TECHMETA_NOT_FOUND
-        return "Resource not found"
+        return "Resource not found"  # pragma: no cover
 
     # returns 2 values:
     #   - user has access True/False
@@ -106,7 +100,7 @@ class NIGEndpoint(EndpointResource):
 
         owner = study.ownership.single()
 
-        if owner is None:
+        if owner is None:  # pragma: no cover
             log.warning("Study with null owner: %s" % study.uuid)
             return False
 
