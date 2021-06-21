@@ -1,20 +1,20 @@
 # import json
-import os
-import re
-from datetime import datetime
+# import os
+# import re
+# from datetime import datetime
 
-import dateutil.parser
-import pytz
-from celery.result import AsyncResult
-from nig.endpoints import NIGEndpoint
-from restapi.utilities.logs import log
+# import dateutil.parser
+# import pytz
+# from celery.result import AsyncResult
+# from nig.endpoints import NIGEndpoint
+# from restapi.utilities.logs import log
 
-FILE_TYPE = "File"
-RESOURCE_TYPE = "Resource"
-GENEM = "GENE METADATA"
-FUNCM = "FUNCTIONAL METADATA"
-TECHM = "TECHNICAL METADATA"
-SKIPM = "SKIP METADATA"
+# FILE_TYPE = "File"
+# RESOURCE_TYPE = "Resource"
+# GENEM = "GENE METADATA"
+# FUNCM = "FUNCTIONAL METADATA"
+# TECHM = "TECHNICAL METADATA"
+# SKIPM = "SKIP METADATA"
 
 ####################
 # Define your celery tasks
