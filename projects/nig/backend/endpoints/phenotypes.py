@@ -2,17 +2,17 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Type, Union
 
 import pytz
-from flask import request
 from nig.endpoints import PHENOTYPE_NOT_FOUND, NIGEndpoint
+from nig.endpoints._injectors import verify_phenotype_access, verify_study_access
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.customizer import FlaskRequest
 from restapi.exceptions import NotFound
 from restapi.models import ISO8601UTC, Schema, fields, validate
 from restapi.rest.definition import Response
-from restapi.utilities.logs import log
 
 # from restapi.connectors import celery
+# from restapi.utilities.logs import log
 
 SEX = ["male", "female"]
 
@@ -104,25 +104,6 @@ def getPOSTInputSchema(request: FlaskRequest) -> Type[Schema]:
 
 def getPUTInputSchema(request: FlaskRequest) -> Type[Schema]:
     return getInputSchema(request, False)
-
-
-def verify_study_access(endpoint: NIGEndpoint) -> Optional[Dict[str, Any]]:
-    graph = neo4j.get_instance()
-    study_uuid = request.view_args.get("uuid")
-    study = graph.Study.nodes.get_or_none(uuid=study_uuid)
-    endpoint.verifyStudyAccess(study)
-    return {"study": study}
-
-
-def verify_phenotype_access(endpoint: NIGEndpoint) -> Optional[Dict[str, Any]]:
-    graph = neo4j.get_instance()
-    phenotype_uuid = request.view_args.get("uuid")
-    phenotype = graph.Phenotype.nodes.get_or_none(uuid=phenotype_uuid)
-    if phenotype is None:
-        raise NotFound(PHENOTYPE_NOT_FOUND)
-    study = phenotype.defined_in.single()
-    endpoint.verifyStudyAccess(study, error_type="Phenotype")
-    return {"phenotype": phenotype, "study": study}
 
 
 class PhenotypeList(NIGEndpoint):

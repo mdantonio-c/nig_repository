@@ -81,7 +81,8 @@ export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile> 
       item.remaining == 0 &&
       item.status == "complete"
     ) {
-      this.list().add(() => {
+      const subject = this.list();
+      subject.subscribe((success: boolean) => {
         this.count.emit(this.data.length);
       });
       delete this.uploadProgress[item.name];
@@ -92,7 +93,8 @@ export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile> 
     this.notify.showSuccess(
       `Confirmation: ${this.resource_name} successfully deleted`
     );
-    super.list().add((response) => {
+    const subject = this.list();
+    subject.subscribe((success: boolean) => {
       this.count.emit(this.data.length);
     });
   }

@@ -2,8 +2,8 @@ import os
 import shutil
 from typing import Any, Dict, Optional, Type, Union
 
-from flask import request
 from nig.endpoints import PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND, NIGEndpoint
+from nig.endpoints._injectors import verify_dataset_access, verify_study_access
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.customizer import FlaskRequest
@@ -110,26 +110,6 @@ def getPOSTInputSchema(request: FlaskRequest) -> Type[Schema]:
 
 def getPUTInputSchema(request: FlaskRequest) -> Type[Schema]:
     return getInputSchema(request, False)
-
-
-def verify_study_access(endpoint: NIGEndpoint) -> Optional[Dict[str, Any]]:
-    graph = neo4j.get_instance()
-    study_uuid = request.view_args.get("uuid")
-    study = graph.Study.nodes.get_or_none(uuid=study_uuid)
-    endpoint.verifyStudyAccess(study)
-    return {"study": study}
-
-
-def verify_dataset_access(endpoint: NIGEndpoint) -> Optional[Dict[str, Any]]:
-    graph = neo4j.get_instance()
-    dataset_uuid = request.view_args.get("uuid")
-    dataset = graph.Dataset.nodes.get_or_none(uuid=dataset_uuid)
-    endpoint.verifyDatasetAccess(dataset)
-
-    study = dataset.parent_study.single()
-    endpoint.verifyStudyAccess(study, error_type="Dataset")
-
-    return {"dataset": dataset, "study": study}
 
 
 class Datasets(NIGEndpoint):
