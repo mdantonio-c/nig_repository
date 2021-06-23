@@ -14,6 +14,8 @@ from restapi.utilities.logs import log
 def launch_pipeline(
     self: CeleryExt.TaskType,
     file_list: List[str],
+    snakefile: str = "Single_Sample_V2.smk",
+    force: bool = False,
 ) -> None:
     log.info("Start task [{}:{}]", self.request.id, self.name)
     # create a unique workdir for every celery task / and snakemake launch)
@@ -76,13 +78,10 @@ def launch_pipeline(
     # TODO this param can be in the config? it should be passed as argument for the celery task? or it's ok the simple cpu count?
     cores = os.cpu_count()
     log.info("Calling Snakemake with {} cores", cores)
-    snakefile = f"{wrkdir}/Single_Sample_V2.smk"
+    snakefile_path = Path(wrkdir, snakefile)
 
     smk.snakemake(
-        snakefile,
-        cores=cores,
-        workdir=wrkdir,
-        configfiles=config,
+        snakefile_path, cores=cores, workdir=wrkdir, configfiles=config, forceall=force
     )
 
     return None
