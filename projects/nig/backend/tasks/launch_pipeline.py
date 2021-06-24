@@ -6,8 +6,11 @@ from typing import List
 
 import pandas as pd
 import snakemake as smk
+from nig.endpoints import GROUP_DIR
 from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
+
+OUTPUT_ROOT = "/data/output"
 
 
 @CeleryExt.task()
@@ -19,7 +22,7 @@ def launch_pipeline(
 ) -> None:
     log.info("Start task [{}:{}]", self.request.id, self.name)
     # create a unique workdir for every celery task / and snakemake launch)
-    wrkdir = Path("/data/output", self.request.id)
+    wrkdir = Path("/data/jobs", self.request.id)
     wrkdir.mkdir(parents=True, exist_ok=True)
     # copy the files used by snakemake in the work dir
     source_dir = Path("/snakemake")
@@ -52,8 +55,13 @@ def launch_pipeline(
             except FileExistsError:
                 log.warning("{} has already a symlink", filepath)
 
+            # get the input path
+            input_path = filepath.parent
+            # create the output path
+            output_path = Path(OUTPUT_ROOT, input_path.relative_to(GROUP_DIR))
+
             # create row for csv
-            fastq_row = [file_label, fragment, filepath.parent]
+            fastq_row = [file_label, fragment, input_path, output_path]
             fastq.append(fastq_row)
         else:
             log.info(
@@ -62,7 +70,7 @@ def launch_pipeline(
             )
 
     # A dataframe is created
-    df = pd.DataFrame(fastq, columns=["Sample", "Frag", "InputPath"])
+    df = pd.DataFrame(fastq, columns=["Sample", "Frag", "InputPath", "OutputPath"])
     df["Reverse"] = "No"
     df.loc[df.Frag == "R2", "Reverse"] = "Yes"
     # fastq_csv_file = '/data/snakemake/NIG/fastq.csv'
