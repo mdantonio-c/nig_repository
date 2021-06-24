@@ -14,7 +14,7 @@ wildcard_constraints:
     Sw = '|'.join([re.escape(x) for x in sing.Sample])
 
 rule all:
-	input: expand("OUTPUT/{S}/fastqc/{S}_{F}_fastqc.html",zip,S=df.Sample,F=df.Frag),\
+	input: expand("fastqc_out/{S}_{F}_fastqc.html",zip,S=df.Sample,F=df.Frag),\
     expand("OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz",zip,S=df.Sample)
 
 
@@ -24,15 +24,15 @@ rule Fastqc:
     input:
         "slinks/{S}_{F}.fastq.gz"
     output:
-        "OUTPUT/{S}/fastqc/{S}_{F}_fastqc.html"
+        "fastqc_out/{S}_{F}_fastqc.html"
     log:
-        "OUTPUT/{S}/fastqc/{S}_{F}_fastqc.log"
+        "fastqc_out/{S}_{F}_fastqc.log"
     benchmark:
-        "OUTPUT/{S}/fastqc/{S}_{F}_fastqc.benchmark"
+        "fastqc_out/{S}_{F}_fastqc.benchmark"
     threads:
         config["THREAD"]["fastqc"]
     shell:
-        "fastqc -o OUTPUT/{S}/fastqc -t {threads} -f fastq --extract {input} > {log} 2>&1"
+        "fastqc -o fastqc_out -t {threads} -f fastq --extract {input} > {log} 2>&1"
 
 rule Seqtk:
     message:
