@@ -15,7 +15,7 @@ wildcard_constraints:
 
 rule all:
 	input: expand("fastqc_out/{S}_{F}_fastqc.html",zip,S=df.Sample,F=df.Frag),\
-    expand(OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz",zip,S=df.Sample)
+    expand("OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz",zip,S=df.Sample)
 
 
 rule Fastqc:
