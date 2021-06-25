@@ -11,10 +11,10 @@ refg=config["GENOME"]["hg38"]
 
 wildcard_constraints:
     Pw = '|'.join([re.escape(x) for x in pair.Sample]),
-    Sw = '|'.join([re.escape(x) for x in sing.Sample])
+    Sw = '|'.join([re.escape(x) for x in sing.Sample]),
 
 rule all:
-	input: expand("OUTPUT/{S}/fastqc/{S}_{F}_fastqc.html",zip,S=df.Sample,F=df.Frag),\
+	input: expand("{O}/fastqc/{S}_{F}_fastqc.html",zip,O=df.OutputPath,S=df.Sample,F=df.Frag),\
     expand("OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz",zip,S=df.Sample)
 
 
@@ -24,15 +24,15 @@ rule Fastqc:
     input:
         "slinks/{S}_{F}.fastq.gz"
     output:
-        "OUTPUT/{S}/fastqc/{S}_{F}_fastqc.html"
+        "{O}/fastqc/{{S}}_{{F}}_fastqc.html"
     log:
-        "OUTPUT/{S}/fastqc/{S}_{F}_fastqc.log"
+        "{O}/fastqc/{{S}}_{{F}}_fastqc.log"
     benchmark:
-        "OUTPUT/{S}/fastqc/{S}_{F}_fastqc.benchmark"
+        "{O}/fastqc/{{S}}_{{F}}_fastqc.benchmark"
     threads:
         config["THREAD"]["fastqc"]
     shell:
-        "fastqc -o OUTPUT/{wildcards.S}/fastqc -t {threads} -f fastq --extract {input} > {log} 2>&1"
+        "fastqc -o {wildcards.O}/fastqc -t {threads} -f fastq --extract {input} > {log} 2>&1"
 
 rule Seqtk:
     message:
