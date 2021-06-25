@@ -22,7 +22,7 @@ rule Fastqc:
     message:
         "Running fastqc tool on input fastq files"
     input:
-        "input_files/{S}_{F}.fastq.gz"
+        expand("{I}/{{S}}_{{F}}.fastq.gz",I=df.InputPath)
     output:
         "{O}/fastqc/{S}_{F}_fastqc.html"
     log:

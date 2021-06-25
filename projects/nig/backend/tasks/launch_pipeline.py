@@ -61,7 +61,7 @@ def launch_pipeline(
             output_path = Path(OUTPUT_ROOT, input_path.relative_to(GROUP_DIR))
 
             # create row for csv
-            fastq_row = [file_label, fragment, output_path]
+            fastq_row = [file_label, fragment, input_path, output_path]
             fastq.append(fastq_row)
         else:
             log.info(
@@ -70,7 +70,7 @@ def launch_pipeline(
             )
 
     # A dataframe is created
-    df = pd.DataFrame(fastq, columns=["Sample", "Frag", "OutputPath"])
+    df = pd.DataFrame(fastq, columns=["Sample", "Frag", "InputPath", "OutputPath"])
     df["Reverse"] = "No"
     df.loc[df.Frag == "R2", "Reverse"] = "Yes"
     # fastq_csv_file = '/data/snakemake/NIG/fastq.csv'
