@@ -34,10 +34,6 @@ def launch_pipeline(
     # create symlinks for fastq files
     fastq = []
 
-    # symlinks are useful now that the input path is in the csv?
-    slinkdir = Path(wrkdir, "input_files")
-    slinkdir.mkdir(parents=True, exist_ok=True)
-
     # the pattern is check also in the file upload endpoint. This is an additional check
     pattern = r"([a-zA-Z0-9]+)_(R[12]).fastq.gz"
     for fl in file_list:
@@ -46,14 +42,6 @@ def launch_pipeline(
         if match := re.match(pattern, fname):
             file_label = match.group(1)
             fragment = match.group(2)
-
-            # create a symlink in workdir folder
-            try:
-                symlink_path = Path(slinkdir, fname)
-                # it is the same for all or different for the different datasets?
-                symlink_path.symlink_to(filepath)
-            except FileExistsError:
-                log.warning("{} has already a symlink", filepath)
 
             # get the input path
             input_path = filepath.parent
