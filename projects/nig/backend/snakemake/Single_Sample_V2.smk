@@ -22,7 +22,7 @@ rule Fastqc:
     message:
         "Running fastqc tool on input fastq files"
     input:
-        "slinks/{S}_{F}.fastq.gz"
+        "input_files/{S}_{F}.fastq.gz"
     output:
         "{O}/fastqc/{S}_{F}_fastqc.html"
     log:

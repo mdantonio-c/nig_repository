@@ -35,7 +35,7 @@ def launch_pipeline(
     fastq = []
 
     # symlinks are useful now that the input path is in the csv?
-    slinkdir = Path(wrkdir, "slinks")
+    slinkdir = Path(wrkdir, "input_files")
     slinkdir.mkdir(parents=True, exist_ok=True)
 
     # the pattern is check also in the file upload endpoint. This is an additional check
