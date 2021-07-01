@@ -11,28 +11,28 @@ refg=config["GENOME"]["hg38"]
 
 wildcard_constraints:
     Pw = '|'.join([re.escape(x) for x in pair.Sample]),
-    Sw = '|'.join([re.escape(x) for x in sing.Sample])
+    Sw = '|'.join([re.escape(x) for x in sing.Sample]),
 
 rule all:
-	input: expand("OUTPUT/{S}/fastqc/{S}_{F}_fastqc.html",zip,S=df.Sample,F=df.Frag),\
-    expand("OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz",zip,S=df.Sample)
+	input: expand("{O}/fastqc/{S}_{F}_fastqc.html",zip,O=df.OutputPath,S=df.Sample,F=df.Frag),\
+    expand("{O}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz",zip,O=df.OutputPath,S=df.Sample)
 
 
 rule Fastqc:
     message:
         "Running fastqc tool on input fastq files"
     input:
-        "slinks/{S}_{F}.fastq.gz"
+        expand("{I}/{{S}}_{{F}}.fastq.gz",I=df.InputPath)
     output:
-        "OUTPUT/{S}/fastqc/{S}_{F}_fastqc.html"
+        "{O}/fastqc/{S}_{F}_fastqc.html"
     log:
-        "OUTPUT/{S}/fastqc/{S}_{F}_fastqc.log"
+        "{O}/fastqc/{S}_{F}_fastqc.log"
     benchmark:
-        "OUTPUT/{S}/fastqc/{S}_{F}_fastqc.benchmark"
+        "{O}/fastqc/{S}_{F}_fastqc.benchmark"
     threads:
         config["THREAD"]["fastqc"]
     shell:
-        "fastqc -o OUTPUT/{wildcards.S}/fastqc -t {threads} -f fastq --extract {input} > {log} 2>&1"
+        "fastqc -o {wildcards.O}/fastqc -t {threads} -f fastq --extract {input} > {log} 2>&1"
 
 rule Seqtk:
     message:
@@ -40,7 +40,7 @@ rule Seqtk:
     input:
         rules.Fastqc.input
     output:
-        "OUTPUT/{S}/seqtk/{S}_{F}.converted.gz"
+        "{O}/seqtk/{S}_{F}.converted.gz"
     shell:
         "seqtk seq -Q33 -V {input} | gzip > {output} "
 
@@ -50,13 +50,13 @@ rule BwaS:
     message:
         "Creating sam files for unpaired samples"
     input:
-        i="OUTPUT/{Sm}/seqtk/{Sw}_R1.converted.gz"
+        i="{O}/seqtk/{Sw}_R1.converted.gz"
     output:
-        "OUTPUT/{Sm}/bwa/{Sw}.sam"
+        "{O}/bwa/{Sw}.sam"
     log:
-        "OUTPUT/{Sm}/bwa/{Sw}.log"
+        "{O}/bwa/{Sw}.log"
     benchmark:
-        "OUTPUT/{Sm}/bwa/{Sw}.benchmark"
+        "{O}/bwa/{Sw}.benchmark"
     threads:
         config["THREAD"]["bwa"]
     params:
@@ -68,14 +68,14 @@ rule BwaP:
     message:
         "Creating sam files for paired samples"
     input:
-        i1 = "OUTPUT/{Pm}/seqtk/{Pw}_R1.converted.gz",
-        i2 = "OUTPUT/{Pm}/seqtk/{Pw}_R2.converted.gz"
+        i1 = "{O}/seqtk/{Pw}_R1.converted.gz",
+        i2 = "{O}/seqtk/{Pw}_R2.converted.gz"
     output:
-        "OUTPUT/{Pm}/bwa/{Pw}.sam"
+        "{O}/bwa/{Pw}.sam"
     log:
-        "OUTPUT/{Pm}/bwa/{Pw}.log"
+        "{O}/bwa/{Pw}.log"
     benchmark:
-        "OUTPUT/{Pm}/bwa/{Pw}.benchmark"
+        "{O}/bwa/{Pw}.benchmark"
     threads:
         config["THREAD"]["bwa"]
     params:
@@ -87,13 +87,13 @@ rule Samsort:
     message:
         "Doing `samsort` for all samples"
     input: 
-        "OUTPUT/{S}/bwa/{S}.sam"
+        "{O}/bwa/{S}.sam"
     output:
-        "OUTPUT/{S}/bwa/{S}_sort_nodup.sam"
+        "{O}/bwa/{S}_sort_nodup.sam"
     log:
-        "OUTPUT/{S}/bwa/{S}_sort_nodup.sam.log"
+        "{O}/bwa/{S}_sort_nodup.sam.log"
     benchmark:
-        "OUTPUT/{S}/bwa/{S}_sort_nodup.sam.benchmark"
+        "{O}/bwa/{S}_sort_nodup.sam.benchmark"
     threads:
         config["THREAD"]["samtool"]
     shell:
@@ -106,9 +106,9 @@ rule Samview:
     input:
         rules.Samsort.output
     output:
-        "OUTPUT/{S}/bwa/{S}_sort_nodup.bam"
+        "{O}/bwa/{S}_sort_nodup.bam"
     benchmark:
-        "OUTPUT/{S}/bwa/{S}_sort_nodup.bam.benchmark"
+        "{O}/bwa/{S}_sort_nodup.bam.benchmark"
     threads:
         config["THREAD"]["samview"]
     shell:
@@ -118,7 +118,7 @@ rule Samindex:
     input:
         rules.Samview.output                 
     output:
-        "OUTPUT/{S}/bwa/{S}_sort_nodup.bai"
+        "{O}/bwa/{S}_sort_nodup.bai"
     threads:
         config["THREAD"]["samview"]
     shell:
@@ -130,11 +130,11 @@ rule BaseRecalibrator:
         bai=rules.Samindex.output,
         inter=config["IFILES"]["inter"]
     output:
-        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.recaldat"
+        "{O}/gatk_bsr/{S}_sort_nodup.recaldat"
     log:
-        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.recaldat.log"
+        "{O}/gatk_bsr/{S}_sort_nodup.recaldat.log"
     benchmark:
-        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.recaldat.benchmark"
+        "{O}/gatk_bsr/{S}_sort_nodup.recaldat.benchmark"
     params:
         jv = config["JAVA"]["brc"],
         p1=Mult_Params('--known-sites',[ config["IFOLDER"]["gatk"]+name for name in config["IFILES"]["dbsnp"] ])
@@ -148,11 +148,11 @@ rule ApplyBQSR:
         rec=rules.BaseRecalibrator.output,
         inter=config["IFILES"]["inter"]
     output:
-        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.bqsr.bam"
+        "{O}/gatk_bsr/{S}_sort_nodup.bqsr.bam"
     log:
-        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.bqsr.log"
+        "{O}/gatk_bsr/{S}_sort_nodup.bqsr.log"
     benchmark:
-        "OUTPUT/{S}/gatk_bsr/{S}_sort_nodup.bqsr.benchmark"
+        "{O}/gatk_bsr/{S}_sort_nodup.bqsr.benchmark"
     params:
         jv = config["JAVA"]["absq"],
         p1 = Mult_Params( '--static-quantized-quals' , config["PARAMS"]["absq"] ),
@@ -166,11 +166,11 @@ rule HaplotypeCaller:
         bam=rules.ApplyBQSR.output,
         inter=config["IFILES"]["inter"]
     output:
-        "OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz"
+        "{O}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz"
     log:
-        "OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.log"
+        "{O}/gatk_gvcf/{S}_sort_nodup.g.vcf.log"
     benchmark:
-        "OUTPUT/{S}/gatk_gvcf/{S}_sort_nodup.g.vcf.benchmark"
+        "{O}/gatk_gvcf/{S}_sort_nodup.g.vcf.benchmark"
     threads:
         config["THREAD"]["hapcal"]
     params:
