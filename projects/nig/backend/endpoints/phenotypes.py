@@ -44,8 +44,7 @@ class Relationships(Schema):
 class PhenotypeOutputSchema(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
-    birthday = fields.DateTime(format=ISO8601UTC)
-    deathday = fields.DateTime(format=ISO8601UTC)
+    age = fields.Integer()
     sex = fields.Str(required=True, validate=validate.OneOf(SEX))
     hpo = fields.List(fields.Nested(Hpo), required=False)
     birth_place = fields.Nested(GeoData, required=False)
@@ -60,8 +59,7 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
     attributes: Dict[str, Union[fields.Field, type]] = {}
 
     attributes["name"] = fields.Str(required=True)
-    attributes["birthday"] = fields.DateTime(format=ISO8601UTC, allow_none=True)
-    attributes["deathday"] = fields.DateTime(format=ISO8601UTC, allow_none=True)
+    attributes["age"] = fields.Integer(allow_none=True)
     attributes["sex"] = fields.Str(
         required=True, description="", validate=validate.OneOf(SEX)
     )
@@ -153,10 +151,8 @@ class PhenotypeList(NIGEndpoint):
             phenotype_el = {}
             phenotype_el["uuid"] = phenotype.uuid
             phenotype_el["name"] = phenotype.name
-            if phenotype.birthday:
-                phenotype_el["birthday"] = phenotype.birthday
-            if phenotype.deathday:
-                phenotype_el["deathday"] = phenotype.deathday
+            if phenotype.age:
+                phenotype_el["age"] = phenotype.age
             phenotype_el["sex"] = phenotype.sex
             phenotype_el["hpo"] = []
             for hpo in phenotype.hpo:
@@ -274,10 +270,8 @@ class Phenotypes(NIGEndpoint):
         phenotype_el = {}
         phenotype_el["uuid"] = phenotype.uuid
         phenotype_el["name"] = phenotype.name
-        if phenotype.birthday:
-            phenotype_el["birthday"] = phenotype.birthday
-        if phenotype.deathday:
-            phenotype_el["deathday"] = phenotype.deathday
+        if phenotype.age:
+            phenotype_el["age"] = phenotype.age
         phenotype_el["sex"] = phenotype.sex
         phenotype_el["hpo"] = []
         for hpo in phenotype.hpo:
@@ -347,8 +341,7 @@ class Phenotypes(NIGEndpoint):
         # should be an instance of neo4j.Study,
         # but typing is still not working with neomodel
         study: Any,
-        birthday: Optional[datetime] = None,
-        deathday: Optional[datetime] = None,
+        age: Optional[int] = None,
         birth_place: Optional[str] = None,
         hpo: Optional[List[str]] = None,
     ) -> Response:
@@ -356,18 +349,11 @@ class Phenotypes(NIGEndpoint):
         graph = neo4j.get_instance()
 
         kwargs: Dict[str, Optional[Any]] = {}
-        if birthday:
-            birthday = self.check_timezone(birthday)
-            kwargs["birthday"] = birthday
+        if age:
+            kwargs["age"] = age
 
-        if deathday:
-            deathday = self.check_timezone(deathday)
-            kwargs["deathday"] = deathday
-
-        if name:
-            kwargs["name"] = name
-        if sex:
-            kwargs["sex"] = sex
+        kwargs["name"] = name
+        kwargs["sex"] = sex
 
         phenotype = graph.Phenotype(**kwargs).save()
 
@@ -410,8 +396,7 @@ class Phenotypes(NIGEndpoint):
         # should be an instance of neo4j.Study,
         # but typing is still not working with neomodel
         study: Any,
-        birthday: Optional[datetime] = None,
-        deathday: Optional[datetime] = None,
+        age: Optional[int] = None,
         birth_place: Optional[str] = None,
         hpo: Optional[List[str]] = None,
     ) -> Response:
@@ -419,17 +404,10 @@ class Phenotypes(NIGEndpoint):
         graph = neo4j.get_instance()
 
         kwargs: Dict[str, Optional[Any]] = {}
-        if birthday:
-            birthday = self.check_timezone(birthday)
 
-        phenotype.birthday = birthday
-        kwargs["birthday"] = birthday
-
-        if deathday:
-            deathday = self.check_timezone(deathday)
-
-        phenotype.deathday = deathday
-        kwargs["deathday"] = deathday
+        if age:
+            phenotype.age = age
+            kwargs["age"] = age
 
         phenotype.name = name
         kwargs["name"] = name

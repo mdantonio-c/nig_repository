@@ -25,8 +25,7 @@ class TestApp(BaseTests):
         # create new phenotypes
         phenotype_father = {
             "name": faker.pystr(),
-            "birthday": f"{faker.iso8601()}.000Z",
-            "deathday": f"{faker.iso8601()}.000Z",
+            "age": faker.pyint(0, 100),
             "sex": "male",
         }
         r = client.post(
@@ -39,8 +38,7 @@ class TestApp(BaseTests):
 
         phenotype_mother = {
             "name": faker.pystr(),
-            "birthday": f"{faker.iso8601()}.000Z",
-            "deathday": f"{faker.iso8601()}.000Z",
+            "age": faker.pyint(0, 100),
             "sex": "female",
         }
         r = client.post(
@@ -53,8 +51,7 @@ class TestApp(BaseTests):
 
         phenotype_son_B = {
             "name": faker.pystr(),
-            "birthday": f"{faker.iso8601()}.000Z",
-            "deathday": f"{faker.iso8601()}.000Z",
+            "age": faker.pyint(0, 100),
             "sex": "female",
         }
         r = client.post(
@@ -67,8 +64,7 @@ class TestApp(BaseTests):
 
         phenotype_son_A = {
             "name": faker.pystr(),
-            "birthday": f"{faker.iso8601()}.000Z",
-            "deathday": f"{faker.iso8601()}.000Z",
+            "age": faker.pyint(0, 100),
             "sex": "female",
         }
         r = client.post(

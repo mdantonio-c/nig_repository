@@ -28,8 +28,7 @@ class TestApp(BaseTests):
         # create a new phenotype
         phenotype1 = {
             "name": faker.pystr(),
-            "birthday": f"{faker.iso8601()}.000Z",
-            "deathday": f"{faker.iso8601()}.000Z",
+            "age": faker.pyint(0, 100),
             "sex": "male",
         }
         r = client.post(
@@ -51,8 +50,7 @@ class TestApp(BaseTests):
         # create a new phenotype as admin not belonging to study group
         phenotype2 = {
             "name": faker.pystr(),
-            "birthday": f"{faker.iso8601()}.000Z",
-            "deathday": f"{faker.iso8601()}.000Z",
+            "age": faker.pyint(0, 100),
             "sex": "female",
         }
         r = client.post(
@@ -161,8 +159,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 404
         # modify a phenotype you own
-        phenotype1["deathday"] = f"{faker.iso8601()}.000Z"
-        phenotype1["birthday"] = f"{faker.iso8601()}.000Z"
+        phenotype1["age"] = faker.pyint(0, 100)
         r = client.put(
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=user_B1_headers,
