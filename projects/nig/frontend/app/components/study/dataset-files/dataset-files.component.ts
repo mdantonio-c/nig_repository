@@ -17,7 +17,7 @@ import {
 } from "ngx-uploadx";
 import { environment } from "@rapydo/../environments/environment";
 import { Observable, Subject, of } from "rxjs";
-import { takeUntil } from "rxjs/operators";
+import { takeUntil, take } from "rxjs/operators";
 
 @Component({
   selector: "nig-dataset-files",
@@ -82,7 +82,7 @@ export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile> 
       item.status == "complete"
     ) {
       const subject = this.list();
-      subject.subscribe((success: boolean) => {
+      subject.pipe(take(1)).subscribe((success: boolean) => {
         this.count.emit(this.data.length);
       });
       delete this.uploadProgress[item.name];
@@ -94,7 +94,7 @@ export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile> 
       `Confirmation: ${this.resource_name} successfully deleted`
     );
     const subject = this.list();
-    subject.subscribe((success: boolean) => {
+    subject.pipe(take(1)).subscribe((success: boolean) => {
       this.count.emit(this.data.length);
     });
   }
