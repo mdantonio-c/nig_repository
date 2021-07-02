@@ -20,9 +20,10 @@ def launch_pipeline(
     snakefile: str = "Single_Sample_V2.smk",
     force: bool = False,
 ) -> None:
-    log.info("Start task [{}:{}]", self.request.id, self.name)
+    task_id = self.request.id  # type: ignore
+    log.info("Start task [{}:{}]", task_id, self.name)
     # create a unique workdir for every celery task / and snakemake launch)
-    wrkdir = Path("/data/jobs", self.request.id)
+    wrkdir = Path("/data/jobs", task_id)
     wrkdir.mkdir(parents=True, exist_ok=True)
     # copy the files used by snakemake in the work dir
     source_dir = Path("/snakemake")
