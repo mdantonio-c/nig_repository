@@ -33,6 +33,8 @@ jobs:
 
           rapydo -e AUTH_LOGIN_BAN_TIME=10 start
           rapydo shell --no-tty backend 'restapi wait'
+          # Create indexes before init the HPOs
+          rapydo shell --no-tty backend 'restapi init'
 
           rapydo shell --no-tty backend "bash nig/scripts/init_hpo.sh"
 
