@@ -26,7 +26,7 @@ jobs:
         with:
           project: ${PROJECT}
           install: pronto typer pandas-stubs
-          ignore: neo4j neomodel vcf faker snakemake
+          ignore: vcf snakemake
       - name: Save Report
         uses: actions/upload-artifact@v2
         with:
