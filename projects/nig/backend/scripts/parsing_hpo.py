@@ -4,7 +4,9 @@ from restapi.connectors.neo4j.parser import NodeDump, RelationDump
 
 nodes = NodeDump("HPO", fields=["hpo_id:string", "label:string", "description:string"])
 
-relations = RelationDump("HPO", "IS_CHILD_OF", "HPO", fields=["hpo_id", "hpo_id"])
+relations = RelationDump(
+    "HPO", "IS_CHILD_OF", "HPO", fields=["hpo_id", "hpo_id"], ignore_indexes=True
+)
 
 cl = Ontology(f"{IMPORT_PATH}/hp.obo")
 for hpo in cl:
