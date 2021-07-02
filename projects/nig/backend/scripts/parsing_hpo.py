@@ -10,7 +10,7 @@ relations = RelationDump(
 
 cl = Ontology(f"{IMPORT_PATH}/hp.obo")
 for hpo in cl:
-    nodes.dump(cl[hpo].id, cl[hpo].name, cl[hpo].definition or "")
+    nodes.dump(cl[hpo].id, cl[hpo].name, cl[hpo].definition or "N/A")
 
     for s in list(cl[hpo].subclasses(distance=1)):  # type: ignore
         if cl[hpo].id != s.id:
