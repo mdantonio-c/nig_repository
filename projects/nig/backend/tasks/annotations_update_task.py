@@ -1,6 +1,7 @@
 # import time
 # from datetime import datetime
 # from typing import Any, Dict, Optional
+# from celery.app.task import Task
 
 # import pytz
 # from restapi.connectors import neo4j
@@ -77,7 +78,7 @@
 
 
 # @CeleryExt.task()
-# def update_annotations(self: CeleryExt.TaskType) -> str:
+# def update_annotations(self: Task) -> str:
 #     graph = neo4j.get_instance()
 
 #     """

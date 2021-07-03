@@ -6,6 +6,7 @@ from typing import List
 
 import pandas as pd
 import snakemake as smk
+from celery.app.task import Task
 from nig.endpoints import GROUP_DIR
 from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
@@ -15,12 +16,12 @@ OUTPUT_ROOT = "/data/output"
 
 @CeleryExt.task()
 def launch_pipeline(
-    self: CeleryExt.TaskType,
+    self: Task,
     file_list: List[str],
     snakefile: str = "Single_Sample_V2.smk",
     force: bool = False,
 ) -> None:
-    task_id = self.request.id  # type: ignore
+    task_id = self.request.id
     log.info("Start task [{}:{}]", task_id, self.name)
     # create a unique workdir for every celery task / and snakemake launch)
     wrkdir = Path("/data/jobs", task_id)
