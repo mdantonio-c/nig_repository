@@ -141,8 +141,7 @@ class VirtualFile(IdentifiedNode):
 
 class Phenotype(TimestampedNode):
     name = StringProperty(required=True, is_restricted=True)
-    birthday = DateTimeProperty()
-    deathday = DateTimeProperty()
+    age = IntegerProperty()
     sex = StringProperty(required=True)
 
     identified_genes = JSONProperty(is_restricted=True)
