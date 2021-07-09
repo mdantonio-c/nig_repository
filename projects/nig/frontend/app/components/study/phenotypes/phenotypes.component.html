@@ -63,28 +63,10 @@
               {{ value.province || "-" }}
             </ng-template>
           </ngx-datatable-column>
-          <!-- Birthday -->
-          <ngx-datatable-column
-            prop="birthday"
-            name="Birth Date"
-            [flexGrow]="1"
-          >
+          <!-- Age -->
+          <ngx-datatable-column prop="age" name="Age" [flexGrow]="0.4">
             <ng-template let-value="value" ngx-datatable-cell-template>
-              <span *ngIf="value; else noValue">{{
-                value | amFromUtc | date: "dd-MM-yyyy"
-              }}</span>
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Deathday -->
-          <ngx-datatable-column
-            prop="deathday"
-            name="Death Date"
-            [flexGrow]="1"
-          >
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              <span *ngIf="value; else noValue">{{
-                value | amFromUtc | date: "dd-MM-yyyy"
-              }}</span>
+              <span *ngIf="value; else noValue">{{ value }}</span>
             </ng-template>
           </ngx-datatable-column>
           <!-- HPO -->

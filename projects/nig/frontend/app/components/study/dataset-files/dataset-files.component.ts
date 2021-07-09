@@ -100,6 +100,7 @@ export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile> 
   }
 
   ngOnDestroy(): void {
+    // @ts-ignore
     this.unsubscribe$.next();
     this.unsubscribe$.complete();
   }

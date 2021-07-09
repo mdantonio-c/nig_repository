@@ -43,9 +43,7 @@ export interface Phenotype extends ResourceIdentity {
   /** @nullable */
   birth_place?: Place;
   /** @nullable */
-  birthday?: string;
-  /** @nullable */
-  deathday?: string;
+  age?: number;
   hpo: HPO[];
   sex: string;
   relationships: FamilyRelationships;
