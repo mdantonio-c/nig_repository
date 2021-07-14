@@ -44,12 +44,12 @@ uri = "bolt://{}:{}@{}:{}".format(
 
 
 def cypher(query: str) -> Any:
-    """ Execute normal neo4j queries """
+    """Execute normal neo4j queries"""
     try:
         # results, meta = db.cypher_query(query)
         results, _ = db.cypher_query(query)
     except Exception as e:
-        raise Exception("Failed to execute Cypher Query: {}\n{}".format(query, str(e)))
+        raise Exception(f"Failed to execute Cypher Query: {query}\n{str(e)}")
     # log.debug("Graph query.\nResults: %s\nMeta: %s" % (results, meta))
     return results
 

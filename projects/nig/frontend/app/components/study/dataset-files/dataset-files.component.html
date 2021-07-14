@@ -1,108 +1,106 @@
-
 <div class="col-lg-4">
-	<div class="input-group mb-2">
-		<div class="input-group-prepend">
-	    <span class="input-group-text">
-	    	<i class="fas fa-upload"></i>
-	    </span>
-	  </div>
-	  <div class="custom-file">
-	    <input
-	      id="inputGroupFile"
-			  *ngIf="uploadOptions"
-			  type="file"
-			  [uploadx]="uploadOptions"
-			  (state)="onUpload($event)"
-			/>
-	    <label class="custom-file-label clickable" for="inputGroupFile">Choose file</label>
-	  </div>
-	</div>
+  <div class="input-group mb-2">
+    <div class="input-group-prepend">
+      <span class="input-group-text">
+        <i class="fas fa-upload"></i>
+      </span>
+    </div>
+    <div class="custom-file">
+      <input
+        id="inputGroupFile"
+        *ngIf="uploadOptions"
+        type="file"
+        [uploadx]="uploadOptions"
+        (state)="onUpload($event)"
+      />
+      <label class="custom-file-label clickable" for="inputGroupFile"
+        >Choose file</label
+      >
+    </div>
+  </div>
 
-	<div *ngFor="let item of uploadProgress | keyvalue">
-	  <div class="row no-gutters">
-	    <div class="col-6">{{ item.key }}</div>
-	    <div class="col-6">
-	      <ngb-progressbar
-	        *ngIf="item.value > 0"
-	        type="info"
-	        height="2rem"
-	        showValue="true"
-	        [value]="item.value"
-	      >
-	      </ngb-progressbar>
-	      <span *ngIf="item.value == 0">
-	        upload initialization...
-	      </span>
-	    </div>
-	  </div>
-	</div>
+  <div *ngFor="let item of uploadProgress | keyvalue">
+    <div class="row no-gutters">
+      <div class="col-6">{{ item.key }}</div>
+      <div class="col-6">
+        <ngb-progressbar
+          *ngIf="item.value > 0"
+          type="info"
+          height="2rem"
+          showValue="true"
+          [value]="item.value"
+        >
+        </ngb-progressbar>
+        <span *ngIf="item.value == 0"> upload initialization... </span>
+      </div>
+    </div>
+  </div>
 </div>
-
 
 <div class="table-responsive bg-white">
-	<div class="table-wrapper" #tableWrapper>
-		<ngx-spinner [fullScreen]="false"></ngx-spinner>
-	  <ngx-datatable
-	    #filesTable
-	    class="bootstrap expandable"
-	    [rows]="data"
-	    [columns]="columns"
-	    [columnMode]="ColumnMode.flex"
-	    [headerHeight]="40"
-	    [footerHeight]="0"
-	    [count]="paging.dataLength"
-	    [limit]="paging.itemsPerPage"
-	    [offset]="paging.page"
-	    [rowHeight]="'auto'"
-	  >
-	    <!-- Column Templates -->
-	    <!-- Name -->
-			<ngx-datatable-column prop="name" [flexGrow]="1">
-				<ng-template let-value="value" ngx-datatable-cell-template>
-					{{value}}
-				</ng-template>
-			</ngx-datatable-column>
-			<!-- Type -->
-			<ngx-datatable-column prop="type" [flexGrow]="1">
-				<ng-template let-value="value" ngx-datatable-cell-template>
-					{{value}}
-				</ng-template>
-			</ngx-datatable-column>
-			<!-- Size -->
-			<ngx-datatable-column prop="size" [flexGrow]="0.5">
-				<ng-template let-value="value" ngx-datatable-cell-template>
-					{{value | bytes}}
-				</ng-template>
-			</ngx-datatable-column>
-			<!-- Status -->
-			<ngx-datatable-column prop="status" [flexGrow]="1">
-				<ng-template let-value="value" ngx-datatable-cell-template>
-					{{value}}
-				</ng-template>
-			</ngx-datatable-column>
-			<!-- Controls -->
-	    <ngx-datatable-column
-	      width="60"
-	      headerClass="px-0"
-	      [resizeable]="false"
-	      [sortable]="false"
-	      [draggable]="false"
-	      [canAutoResize]="false"
-	    >
-		    <ng-template let-value="value" let-row="row" ngx-datatable-cell-template>
-	        <div class="btn-toolbar justify-content-end" role="toolbar">
-	          <div class="btn-group mr-1" role="group">
-	            <button
-	              class="btn p-0"
-	              (click)="delete(row.uuid)"
-	            >
-	              <i class="fa fa-trash red"></i>
-	            </button>
-	          </div>
-	        </div>
-	      </ng-template>
-	  	</ngx-datatable-column>
-	  </ngx-datatable>
-	</div>
+  <div class="table-wrapper" #tableWrapper>
+    <ngx-spinner [fullScreen]="false"></ngx-spinner>
+    <ngx-datatable
+      #filesTable
+      class="bootstrap expandable"
+      [rows]="data"
+      [columns]="columns"
+      [columnMode]="ColumnMode.flex"
+      [headerHeight]="40"
+      [footerHeight]="0"
+      [count]="paging.dataLength"
+      [limit]="paging.itemsPerPage"
+      [offset]="paging.page"
+      [rowHeight]="'auto'"
+    >
+      <!-- Column Templates -->
+      <!-- Name -->
+      <ngx-datatable-column prop="name" [flexGrow]="1">
+        <ng-template let-value="value" ngx-datatable-cell-template>
+          {{ value }}
+        </ng-template>
+      </ngx-datatable-column>
+      <!-- Type -->
+      <ngx-datatable-column prop="type" [flexGrow]="1">
+        <ng-template let-value="value" ngx-datatable-cell-template>
+          {{ value }}
+        </ng-template>
+      </ngx-datatable-column>
+      <!-- Size -->
+      <ngx-datatable-column prop="size" [flexGrow]="0.5">
+        <ng-template let-value="value" ngx-datatable-cell-template>
+          {{ value | bytes }}
+        </ng-template>
+      </ngx-datatable-column>
+      <!-- Status -->
+      <ngx-datatable-column prop="status" [flexGrow]="1">
+        <ng-template let-value="value" ngx-datatable-cell-template>
+          {{ value }}
+        </ng-template>
+      </ngx-datatable-column>
+      <!-- Controls -->
+      <ngx-datatable-column
+        width="60"
+        headerClass="px-0"
+        [resizeable]="false"
+        [sortable]="false"
+        [draggable]="false"
+        [canAutoResize]="false"
+      >
+        <ng-template
+          let-value="value"
+          let-row="row"
+          ngx-datatable-cell-template
+        >
+          <div class="btn-toolbar justify-content-end" role="toolbar">
+            <div class="btn-group mr-1" role="group">
+              <button class="btn p-0" (click)="delete(row.uuid)">
+                <i class="fa fa-trash red"></i>
+              </button>
+            </div>
+          </div>
+        </ng-template>
+      </ngx-datatable-column>
+    </ngx-datatable>
+  </div>
 </div>
-

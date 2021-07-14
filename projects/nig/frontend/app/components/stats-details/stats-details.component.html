@@ -1,58 +1,68 @@
 <div class="stats-detail" *ngIf="stats$ | async as stats">
   <table class="table table-hover table-condensed">
     <tbody>
-    <tr>
-      <th>Number of contributors</th>
-      <td class="ng-binding">{{ stats?.num_users }}</td>
-    </tr>
-    <tr>
-      <th>Number of studies</th>
-      <td class="ng-binding">{{ stats?.num_studies }}</td>
-    </tr>
-    <tr>
-      <th>Number of datasets</th>
-      <td>{{ stats?.num_datasets }}</td>
-    </tr>
-    <tr *ngIf="extended && stats.num_datasets > 0">
-      <th></th>
-      <td>
-        <ng-container *ngFor="let item of stats.num_datasets_per_group | keyvalue">
-          <span class="d-block">{{item.key}}: {{item.value}}</span>
-        </ng-container>
-      </td>
-    </tr>
-    <tr>
-      <th>Number of samples with genetic data</th>
-      <td class="ng-binding">
-        {{ stats?.num_datasets_with_vcf }}
-      </td>
-    </tr>
-    <tr *ngIf="extended && stats.num_datasets_with_vcf > 0">
-      <th></th>
-      <td>
-        <ng-container *ngFor="let item of stats.num_datasets_with_vcf_per_group | keyvalue">
-          <span class="d-block">{{item.key}}: {{item.value}}</span>
-        </ng-container>
-      </td>
-    </tr>
-    <tr *ngIf="extended && stats.num_datasets_with_gvcf">
-      <th>Number of datasets with g.vcf files</th>
-      <td class="ng-binding">
-        {{ stats.num_datasets_with_gvcf }}
-      </td>
-    </tr>
-    <tr *ngIf="extended && stats.num_datasets_with_gvcf > 0">
-      <th></th>
-      <td>
-        <ng-container *ngFor="let item of stats.num_datasets_with_gvcf_per_group | keyvalue">
-          <span class="d-block">{{item.key}}: {{item.value}}</span>
-        </ng-container>
-      </td>
-    </tr>
-    <tr>
-      <th>Number of files</th>
-      <td class="ng-binding">{{ stats?.num_files }}</td>
-    </tr>
+      <tr>
+        <th>Number of contributors</th>
+        <td class="ng-binding">{{ stats?.num_users }}</td>
+      </tr>
+      <tr>
+        <th>Number of studies</th>
+        <td class="ng-binding">{{ stats?.num_studies }}</td>
+      </tr>
+      <tr>
+        <th>Number of datasets</th>
+        <td>{{ stats?.num_datasets }}</td>
+      </tr>
+      <tr *ngIf="extended && stats.num_datasets > 0">
+        <th></th>
+        <td>
+          <ng-container
+            *ngFor="let item of stats.num_datasets_per_group | keyvalue"
+          >
+            <span class="d-block">{{ item.key }}: {{ item.value }}</span>
+          </ng-container>
+        </td>
+      </tr>
+      <tr>
+        <th>Number of samples with genetic data</th>
+        <td class="ng-binding">
+          {{ stats?.num_datasets_with_vcf }}
+        </td>
+      </tr>
+      <tr *ngIf="extended && stats.num_datasets_with_vcf > 0">
+        <th></th>
+        <td>
+          <ng-container
+            *ngFor="
+              let item of stats.num_datasets_with_vcf_per_group | keyvalue
+            "
+          >
+            <span class="d-block">{{ item.key }}: {{ item.value }}</span>
+          </ng-container>
+        </td>
+      </tr>
+      <tr *ngIf="extended && stats.num_datasets_with_gvcf">
+        <th>Number of datasets with g.vcf files</th>
+        <td class="ng-binding">
+          {{ stats.num_datasets_with_gvcf }}
+        </td>
+      </tr>
+      <tr *ngIf="extended && stats.num_datasets_with_gvcf > 0">
+        <th></th>
+        <td>
+          <ng-container
+            *ngFor="
+              let item of stats.num_datasets_with_gvcf_per_group | keyvalue
+            "
+          >
+            <span class="d-block">{{ item.key }}: {{ item.value }}</span>
+          </ng-container>
+        </td>
+      </tr>
+      <tr>
+        <th>Number of files</th>
+        <td class="ng-binding">{{ stats?.num_files }}</td>
+      </tr>
     </tbody>
   </table>
 </div>

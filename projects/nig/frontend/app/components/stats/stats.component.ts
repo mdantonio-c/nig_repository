@@ -2,7 +2,6 @@ import { Component } from "@angular/core";
 
 @Component({
   selector: "nig-stats",
-  templateUrl: "./stats.component.html"
+  templateUrl: "./stats.component.html",
 })
-export class StatsComponent {
-}
+export class StatsComponent {}

@@ -20,12 +20,12 @@ from restapi.utilities.logs import log
 
 
 def cypher(query: str) -> Any:
-    """ Execute normal neo4j queries """
+    """Execute normal neo4j queries"""
     try:
         # results, meta = db.cypher_query(query)
         results, _ = db.cypher_query(query)
     except Exception as e:
-        raise Exception("Failed to execute Cypher Query: {}\n{}".format(query, str(e)))
+        raise Exception(f"Failed to execute Cypher Query: {query}\n{str(e)}")
     # log.debug("Graph query.\nResults: %s\nMeta: %s" % (results, meta))
     return results
 
@@ -206,7 +206,7 @@ while True:
     variants: Dict[str, Any] = {}
     set_connection()
     skip = variant_counter * limit
-    log.debug("Reading variants from {} to {}".format(skip + 1, skip + limit))
+    log.debug(f"Reading variants from {skip + 1} to {skip + limit}")
     res = cypher(
         "MATCH (v:Variant) return v ORDER by id(v) SKIP {} LIMIT {}".format(
             skip + 1, limit
