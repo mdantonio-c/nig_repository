@@ -53,7 +53,7 @@ jobs:
           rapydo pull --quiet
           rapydo ssl --volatile
           rapydo -e AUTH_LOGIN_BAN_TIME=10 start
-          sleep 50
+          sleep 60
           rapydo logs
           docker cp nig_proxy_1:/etc/letsencrypt/local_client.crt .
           docker cp nig_proxy_1:/etc/letsencrypt/local_client.key .
