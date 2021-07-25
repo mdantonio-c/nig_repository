@@ -23,30 +23,36 @@ class TestApp(BaseTests):
         r = client.get(f"{endpoint}/abcdefghilmn", headers=headers)
         assert r.status_code == 200
         content = self.get_content(r)
+        assert isinstance(content, list)
         assert len(content) == 0
 
         r = client.get(f"{endpoint}/1", headers=headers)
         assert r.status_code == 200
         content = self.get_content(r)
+        assert isinstance(content, list)
         assert len(content) > 0
 
         r = client.get(f"{endpoint}/HP:00", headers=headers)
         assert r.status_code == 200
         content = self.get_content(r)
+        assert isinstance(content, list)
         assert len(content) > 0
 
         r = client.get(f"{endpoint}/-", headers=headers)
         assert r.status_code == 200
         content = self.get_content(r)
+        assert isinstance(content, list)
         assert len(content) > 0
 
         r = client.get(f"{endpoint}/a ", headers=headers)
         assert r.status_code == 200
         content = self.get_content(r)
+        assert isinstance(content, list)
         assert len(content) > 0
         r = client.get(f"{endpoint}/abc 123 - def : 456", headers=headers)
         assert r.status_code == 200
         content = self.get_content(r)
+        assert isinstance(content, list)
         assert len(content) == 0
 
         r = client.get(f"{endpoint}/a(a", headers=headers)

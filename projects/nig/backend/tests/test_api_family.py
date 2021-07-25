@@ -102,7 +102,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
-        assert isinstance(response, dict)
+        assert isinstance(response, list)
         for el in response:
             if el["uuid"] == phenotype_son_B_uuid:
                 assert el["relationships"]["father"]["uuid"] == phenotype_father_uuid

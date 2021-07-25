@@ -137,7 +137,7 @@ class Study(NIGEndpoint):
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study)
 
-        self.auth.db.update_properties(study, kwargs)
+        graph.update_properties(study, kwargs)
         study.save()
 
         self.log_event(self.events.modify, study, kwargs)

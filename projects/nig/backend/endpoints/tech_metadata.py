@@ -171,7 +171,7 @@ class TechnicalMetadata(NIGEndpoint):
         if "sequencing_date" in kwargs:
             kwargs["sequencing_date"] = self.check_timezone(kwargs["sequencing_date"])
 
-        self.auth.db.update_properties(techmeta, kwargs)
+        graph.update_properties(techmeta, kwargs)
         techmeta.save()
 
         self.log_event(self.events.modify, techmeta, kwargs)
