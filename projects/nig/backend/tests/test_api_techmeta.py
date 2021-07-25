@@ -87,7 +87,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
-        assert isinstance(response, dict)
+        assert isinstance(response, list)
         assert len(response) == 2
 
         # test empty list of technicals in a study
@@ -96,7 +96,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
-        assert isinstance(response, dict)
+        assert isinstance(response, list)
         assert not response
 
         # study owner
