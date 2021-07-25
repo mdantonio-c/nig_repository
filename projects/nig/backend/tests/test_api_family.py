@@ -35,6 +35,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         phenotype_father_uuid = self.get_content(r)
+        assert isinstance(phenotype_father_uuid, str)
 
         phenotype_mother = {
             "name": faker.pystr(),
@@ -48,6 +49,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         phenotype_mother_uuid = self.get_content(r)
+        assert isinstance(phenotype_mother_uuid, str)
 
         phenotype_son_B = {
             "name": faker.pystr(),
@@ -61,6 +63,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         phenotype_son_B_uuid = self.get_content(r)
+        assert isinstance(phenotype_son_B_uuid, str)
 
         phenotype_son_A = {
             "name": faker.pystr(),
@@ -74,6 +77,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         phenotype_son_A_uuid = self.get_content(r)
+        assert isinstance(phenotype_son_A_uuid, str)
 
         # create a relationship
         # father case
@@ -98,6 +102,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         for el in response:
             if el["uuid"] == phenotype_son_B_uuid:
                 assert el["relationships"]["father"]["uuid"] == phenotype_father_uuid
@@ -110,6 +115,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert response["relationships"]["father"]["uuid"] == phenotype_father_uuid
 
         r = client.get(
@@ -117,6 +123,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert response["relationships"]["sons"][0]["uuid"] == phenotype_son_B_uuid
 
         # create a relationship for two phenotypes in an other study
@@ -156,6 +163,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, list)
         for el in response:
             if el["uuid"] == phenotype_son_B_uuid:
                 assert el["relationships"]["mother"]["uuid"] == phenotype_mother_uuid
@@ -168,6 +176,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert response["relationships"]["mother"]["uuid"] == phenotype_mother_uuid
 
         # relationship between phenotype from different studies

@@ -30,6 +30,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         dataset_A_uuid = self.get_content(r)
+        assert isinstance(dataset_A_uuid, str)
         # create a dataset for group B
         dataset_B = {"name": faker.pystr(), "description": faker.pystr()}
         r = client.post(
@@ -39,6 +40,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         dataset_B_uuid = self.get_content(r)
+        assert isinstance(dataset_B_uuid, str)
 
         # init an upload in dataset A
         fake_filename = f"{faker.pystr()}_R1"
@@ -71,6 +73,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         full_public_stats = self.get_content(r)
+        assert isinstance(full_public_stats, dict)
         assert full_public_stats["num_users"] > 0
         assert full_public_stats["num_studies"] > 0
         assert full_public_stats["num_datasets"] > 0
@@ -82,6 +85,7 @@ class TestApp(BaseTests):
             headers=user_B1_headers,
         )
         private_stats = self.get_content(r)
+        assert isinstance(private_stats, dict)
         assert private_stats["num_users"] > 0
         assert private_stats["num_studies"] > 0
         assert private_stats["num_datasets"] > 0
@@ -95,6 +99,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         public_stats = self.get_content(r)
+        assert isinstance(public_stats, dict)
         assert public_stats["num_users"] == 3
         assert public_stats["num_studies"] == 2
         assert public_stats["num_datasets"] == 2
@@ -112,6 +117,7 @@ class TestApp(BaseTests):
             headers=user_B1_headers,
         )
         private_stats = self.get_content(r)
+        assert isinstance(private_stats, dict)
         assert private_stats["num_users"] == 3
         assert private_stats["num_studies"] == 2
         assert private_stats["num_datasets"] == 2
@@ -136,6 +142,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         public_stats = self.get_content(r)
+        assert isinstance(public_stats, dict)
         assert public_stats["num_users"] == 0
         assert public_stats["num_studies"] == 0
         assert public_stats["num_datasets"] == 0
@@ -146,6 +153,7 @@ class TestApp(BaseTests):
             headers=user_B1_headers,
         )
         private_stats = self.get_content(r)
+        assert isinstance(private_stats, dict)
         assert private_stats["num_users"] == 0
         assert private_stats["num_studies"] == 0
         assert private_stats["num_datasets"] == 0

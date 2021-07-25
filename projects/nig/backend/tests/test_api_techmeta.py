@@ -33,6 +33,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         techmeta1_uuid = self.get_content(r)
+        assert isinstance(techmeta1_uuid, str)
 
         # create a new techmeta in a study of an other group
         r = client.post(
@@ -62,6 +63,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         techmeta2_uuid = self.get_content(r)
+        assert isinstance(techmeta2_uuid, str)
 
         # test technical access
         # test technical list response
@@ -70,6 +72,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, list)
         assert len(response) == 2
 
         # test technical list response for a study you don't have access
@@ -84,6 +87,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert len(response) == 2
 
         # test empty list of technicals in a study
@@ -92,6 +96,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert not response
 
         # study owner
@@ -103,7 +108,8 @@ class TestApp(BaseTests):
         # technical owned by an other group
         r = client.get(f"{API_URI}/technical/{techmeta1_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
-        no_authorized_message = self.get_content(r)
+        not_authorized_message = self.get_content(r)
+        assert isinstance(not_authorized_message, str)
 
         # admin access
         r = client.get(f"{API_URI}/technical/{techmeta1_uuid}", headers=admin_headers)
@@ -171,8 +177,9 @@ class TestApp(BaseTests):
         # check technical deletion
         r = client.get(f"{API_URI}/technical/{techmeta1_uuid}", headers=user_B1_headers)
         assert r.status_code == 404
-        no_existent_message = self.get_content(r)
-        assert no_existent_message == no_authorized_message
+        not_existent_message = self.get_content(r)
+        assert isinstance(not_existent_message, str)
+        assert not_existent_message == not_authorized_message
 
         # delete all the elements used by the test
         delete_test_env(

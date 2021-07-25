@@ -90,6 +90,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         dataset_B_uuid = self.get_content(r)
+        assert isinstance(dataset_B_uuid, str)
 
         # check accesses for post request
         # upload a new file in a dataset of an other group
@@ -184,6 +185,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         dataset_B2_uuid = self.get_content(r)
+        assert isinstance(dataset_B2_uuid, str)
         response = self.upload_file(
             client, user_B2_headers, input, dataset_B2_uuid, stream=True
         )
@@ -203,6 +205,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 500
         error_message = self.get_content(response)
+        assert isinstance(error_message, str)
         assert (
             error_message
             == "File has not been uploaded correctly: final size does not correspond to total size. Please try a new upload"
@@ -245,6 +248,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         file_list = self.get_content(r)
+        assert isinstance(file_list, list)
         assert len(file_list) == 1
         file_uuid = file_list[0]["uuid"]
 
@@ -260,6 +264,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         file_list = self.get_content(r)
+        assert isinstance(file_list, list)
         assert len(file_list) == 1
 
         # check use case of file not in the folder
@@ -270,8 +275,10 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         file_list = self.get_content(r)
+        assert isinstance(file_list, list)
         assert file_list[0]["status"] == "unknown"
-        # create an empty file with the original name -- test status from unknown to importing
+        # create an empty file with the original name
+        # test status from unknown to importing
         with open(filepath, "a"):
             os.utime(filepath, None)
         r = client.get(
@@ -279,6 +286,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         file_list = self.get_content(r)
+        assert isinstance(file_list, list)
         assert file_list[0]["status"] == "importing"
 
         # restore the original file
@@ -286,6 +294,7 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
         file_response = self.get_content(r)
+        assert isinstance(file_response, dict)
         assert file_response["status"] == "unknown"
         os.rename(f"{filepath}.fastq.tmp", filepath)
 
@@ -294,6 +303,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         file_list = self.get_content(r)
+        assert isinstance(file_list, list)
         assert file_list[0]["status"] == "uploaded"
 
         # dataset owner
@@ -305,7 +315,8 @@ class TestApp(BaseTests):
         # file owned by an other group
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
-        no_authorized_message = self.get_content(r)
+        not_authorized_message = self.get_content(r)
+        assert isinstance(not_authorized_message, str)
 
         # admin access
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=admin_headers)
@@ -317,12 +328,14 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
 
-        # create an empty file with the original name -- test status from unknown to importing
+        # create an empty file with the original name
+        # test status from unknown to importing
         with open(filepath, "a"):
             os.utime(filepath, None)
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
         file_res = self.get_content(r)
+        assert isinstance(file_res, dict)
         assert file_res["status"] == "importing"
 
         # restore the original file
@@ -335,6 +348,7 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
         file_res = self.get_content(r)
+        assert isinstance(file_res, dict)
         assert file_res["status"] == "uploaded"
 
         # delete a file
@@ -355,6 +369,7 @@ class TestApp(BaseTests):
             f"{API_URI}/dataset/{dataset_B2_uuid}/files", headers=user_B2_headers
         )
         file_list = self.get_content(r)
+        assert isinstance(file_list, list)
         file2_uuid = file_list[0]["uuid"]
 
         r = client.delete(f"{API_URI}/file/{file2_uuid}", headers=user_B2_headers)
@@ -362,8 +377,9 @@ class TestApp(BaseTests):
         # check file deletion
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 404
-        no_existent_message = self.get_content(r)
-        assert no_existent_message == no_authorized_message
+        not_existent_message = self.get_content(r)
+        assert isinstance(not_existent_message, str)
+        assert not_existent_message == not_authorized_message
         # check physical deletion from the folder
         assert not os.path.isfile(filepath)
 

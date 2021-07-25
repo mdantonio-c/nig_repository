@@ -32,6 +32,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         dataset1_uuid = self.get_content(r)
+        assert isinstance(dataset1_uuid, str)
         # check the directory exists
         dir_path = os.path.join(GROUP_DIR, uuid_group_B, study1_uuid, dataset1_uuid)
         assert os.path.isdir(dir_path)
@@ -52,6 +53,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         technical_uuid = self.get_content(r)
+        assert isinstance(technical_uuid, str)
         # create a phenotype
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
@@ -60,6 +62,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         phenotype_uuid = self.get_content(r)
+        assert isinstance(phenotype_uuid, str)
 
         # create a new dataset as admin not belonging to study group
         dataset2 = {
@@ -82,6 +85,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         dataset2_uuid = self.get_content(r)
+        assert isinstance(dataset2_uuid, str)
 
         # test dataset access
         # test dataset list response
@@ -90,6 +94,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, list)
         assert len(response) == 2
 
         # test dataset list response for a study you don't have access
@@ -102,6 +107,7 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/study/{study1_uuid}/datasets", headers=admin_headers)
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, list)
         assert len(response) == 2
 
         # test empty list of datasets in a study
@@ -110,6 +116,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, list)
         assert not response
 
         # dataset owner
@@ -121,7 +128,8 @@ class TestApp(BaseTests):
         # dataset owned by an other group
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
-        no_authorized_message = self.get_content(r)
+        not_authorized_message = self.get_content(r)
+        assert isinstance(not_authorized_message, str)
 
         # admin access
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=admin_headers)
@@ -131,6 +139,7 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/dataset/{dataset2_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert "technical" in response
         assert "phenotype" in response
         assert response["technical"]["uuid"] == technical_uuid
@@ -168,6 +177,7 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B2_headers)
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert "technical" in response
         assert "phenotype" in response
         assert response["technical"]["uuid"] == technical_uuid
@@ -185,6 +195,7 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B2_headers)
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert response["technical"] is None
         # check phenotype was correctly removed
         assert response["phenotype"] is None
@@ -214,8 +225,9 @@ class TestApp(BaseTests):
         # check dataset deletion
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B1_headers)
         assert r.status_code == 404
-        no_existent_message = self.get_content(r)
-        assert no_existent_message == no_authorized_message
+        not_existent_message = self.get_content(r)
+        assert isinstance(not_existent_message, str)
+        assert not_existent_message == not_authorized_message
 
         # delete all the elements used by the test
         delete_test_env(

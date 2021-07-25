@@ -29,6 +29,7 @@ class TestApp(BaseTests):
         r = client.post(f"{API_URI}/study", headers=user_B1_headers, data=study1)
         assert r.status_code == 200
         study1_uuid = self.get_content(r)
+        assert isinstance(study1_uuid, str)
 
         # create a new study for the group A
         random_name2 = faker.pystr()
@@ -36,6 +37,7 @@ class TestApp(BaseTests):
         r = client.post(f"{API_URI}/study", headers=user_A1_headers, data=study2)
         assert r.status_code == 200
         study2_uuid = self.get_content(r)
+        assert isinstance(study2_uuid, str)
 
         # check the directory was created
         dir_path = os.path.join(GROUP_DIR, uuid_group_A, study2_uuid)
@@ -46,6 +48,7 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/study", headers=user_B1_headers)
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, list)
         assert len(response) == 1
 
         # test admin access
@@ -61,7 +64,8 @@ class TestApp(BaseTests):
         # study own by an other group
         r = client.get(f"{API_URI}/study/{study1_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
-        no_authorized_message = self.get_content(r)
+        not_authorized_message = self.get_content(r)
+        assert isinstance(not_authorized_message, str)
 
         # test study modification
         # modify a study you do not own
@@ -93,6 +97,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         dataset_uuid = self.get_content(r)
+        assert isinstance(dataset_uuid, str)
         dataset_path = os.path.join(dir_path, dataset_uuid)
         assert os.path.isdir(dir_path)
         # create a new file to test if it's deleted with the study
@@ -116,6 +121,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         file_list = self.get_content(r)
+        assert isinstance(file_list, list)
         file_uuid = file_list[0]["uuid"]
 
         # create a new technical to test if it's deleted with the study
@@ -127,6 +133,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         techmeta_uuid = self.get_content(r)
+        assert isinstance(techmeta_uuid, str)
         # create a new phenotype to test if it's deleted with the study
         phenotype = {"name": faker.pystr(), "sex": "male"}
         r = client.post(
@@ -136,6 +143,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         phenotype_uuid = self.get_content(r)
+        assert isinstance(phenotype_uuid, str)
         # delete the study
         r = client.delete(f"{API_URI}/study/{study2_uuid}", headers=user_A1_headers)
         assert r.status_code == 204
@@ -161,8 +169,9 @@ class TestApp(BaseTests):
         # check study deletion
         r = client.get(f"{API_URI}/study/{study1_uuid}", headers=user_B1_headers)
         assert r.status_code == 404
-        no_existent_message = self.get_content(r)
-        assert no_existent_message == no_authorized_message
+        not_existent_message = self.get_content(r)
+        assert isinstance(not_existent_message, str)
+        assert not_existent_message == not_authorized_message
 
         # delete all the elements used by the test
         delete_test_env(

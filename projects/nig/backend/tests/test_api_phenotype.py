@@ -38,6 +38,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         phenotype1_uuid = self.get_content(r)
+        assert isinstance(phenotype1_uuid, str)
 
         # create a new phenotype in a study of an other group
         r = client.post(
@@ -78,6 +79,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         phenotype2_uuid = self.get_content(r)
+        assert isinstance(phenotype2_uuid, str)
 
         # test phenotype access
         # test phenotype list response
@@ -86,6 +88,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, list)
         assert len(response) == 2
 
         # test phenotype list response for a study you don't have access
@@ -100,6 +103,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, list)
         assert len(response) == 2
 
         # test empty list of phenotypes in a study
@@ -108,6 +112,7 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, list)
         assert not response
 
         # study owner
@@ -122,6 +127,7 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         # check hpo and geodata were correctly linked
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert response["birth_place"]["uuid"] == geodata_uuid
         assert len(response["hpo"]) == 2
         hpo_list = []
@@ -135,7 +141,8 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype1_uuid}", headers=user_A1_headers
         )
         assert r.status_code == 404
-        no_authorized_message = self.get_content(r)
+        not_authorized_message = self.get_content(r)
+        assert isinstance(not_authorized_message, str)
 
         # admin access
         r = client.get(f"{API_URI}/phenotype/{phenotype1_uuid}", headers=admin_headers)
@@ -193,6 +200,7 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B2_headers
         )
         res = self.get_content(r)
+        assert isinstance(res, dict)
         assert res["birth_place"]["uuid"] == geodata2_uuid
         assert len(res["hpo"]) == 3
 
@@ -208,6 +216,7 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B2_headers
         )
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert "birth_place" not in response
         assert not response["hpo"]
 
@@ -251,8 +260,9 @@ class TestApp(BaseTests):
             f"{API_URI}/phenotype/{phenotype1_uuid}", headers=user_B1_headers
         )
         assert r.status_code == 404
-        no_existent_message = self.get_content(r)
-        assert no_existent_message == no_authorized_message
+        not_existent_message = self.get_content(r)
+        assert isinstance(not_existent_message, str)
+        assert not_existent_message == not_authorized_message
 
         # delete all the elements used by the test
         delete_test_env(
