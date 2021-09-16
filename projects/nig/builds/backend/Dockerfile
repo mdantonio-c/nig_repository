@@ -1,4 +1,4 @@
-FROM rapydo/backend:2.0
+FROM rapydo/backend:2.1
 
 ENV PYTHONDONTWRITEBYTECODE "true"
 
