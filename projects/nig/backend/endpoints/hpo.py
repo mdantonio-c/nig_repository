@@ -6,6 +6,7 @@ from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import BadRequest
 from restapi.rest.definition import Response
+from restapi.services.authentication import User
 
 
 class HPO(NIGEndpoint):
@@ -20,7 +21,7 @@ class HPO(NIGEndpoint):
             200: "Matching hpo terms successfully retrieved",
         },
     )
-    def get(self, query: str) -> Response:
+    def get(self, query: str, user: User) -> Response:
 
         # Chars whitelist: letters, numbers, space, colon and hyphen
         if not re.match("^[a-zA-Z0-9 :-]+$", query):

@@ -26,10 +26,10 @@ class Resources(NIGEndpoint):
         graph = neo4j.get_instance()
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
-        self.verifyStudyAccess(study, read=True)
+        self.verifyStudyAccess(study, user=user, read=True)
         nodeset = study.resources
 
-        path = self.getPath(study=study.uuid)
+        path = self.getPath(user=user, study=study.uuid)
 
         irods_data = self.user_icom.list(path=path, recursive=False)
 
@@ -66,14 +66,14 @@ class Resources(NIGEndpoint):
         if resource is None:
             raise NotFound(RESOURCE_NOT_FOUND)
         study = self.getSingleLinkedNode(resource.study)
-        self.verifyStudyAccess(study)
+        self.verifyStudyAccess(study, user=user)
 
         for v in resource.virtual_file.all():
             v.delete()
 
         resource.delete()
 
-        path = self.getPath(study=study.uuid, file=resource.name)
+        path = self.getPath(user=user, tudy=study.uuid, file=resource.name)
         # you should verify for object existence
         try:
             self.admin_icom.remove(path, recursive=False)
@@ -125,7 +125,7 @@ class ResourcesUpload(Uploader, NIGEndpoint):
         if chunk_number == chunk_total:
 
             study = graph.Study.nodes.get_or_none(uuid=uuid)
-            self.verifyStudyAccess(study)
+            self.verifyStudyAccess(study, user=user)
 
             name = os.path.basename(filename)
 
@@ -134,7 +134,7 @@ class ResourcesUpload(Uploader, NIGEndpoint):
 
             resource.study.connect(study)
 
-            path = self.getPath(study=study.uuid, file=resource.name)
+            path = self.getPath(user=user, study=study.uuid, file=resource.name)
 
             stage_path = "???"  # no longer used
             irods_groups = "???"  # no longer used

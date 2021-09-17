@@ -10,6 +10,7 @@ from restapi.customizer import FlaskRequest
 from restapi.exceptions import Conflict, NotFound
 from restapi.models import Schema, fields, validate
 from restapi.rest.definition import Response
+from restapi.services.authentication import User
 
 # from restapi.utilities.logs import log
 
@@ -73,7 +74,7 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
         attributes["phenotype"] = fields.Str(
             required=False,
             allow_none=True,
-            default=default_phenotype,
+            dump_default=default_phenotype,
             validate=validate.OneOf(choices=phenotype_keys, labels=phenotype_labels),
         )
 
@@ -97,7 +98,7 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
         attributes["technical"] = fields.Str(
             required=False,
             allow_none=True,
-            default=default_techmeta,
+            dump_default=default_techmeta,
             validate=validate.OneOf(choices=techmeta_keys, labels=techmeta_labels),
         )
 
@@ -124,18 +125,20 @@ class Datasets(NIGEndpoint):
         },
     )
     @decorators.marshal_with(DatasetOutput(many=True), code=200)
-    def get(self, uuid: str) -> Response:
+    def get(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
-        self.verifyStudyAccess(study, read=True)
+        self.verifyStudyAccess(study, user=user, read=True)
         nodeset = study.datasets
 
         data = []
         for dataset in nodeset.all():
 
-            if not self.verifyDatasetAccess(dataset, read=True, raiseError=False):
+            if not self.verifyDatasetAccess(
+                dataset, user=user, read=True, raiseError=False
+            ):
                 continue
 
             if not dataset.parent_study.is_connected(study):
@@ -157,15 +160,15 @@ class Dataset(NIGEndpoint):
         },
     )
     @decorators.marshal_with(DatasetOutput, code=200)
-    def get(self, uuid: str) -> Response:
+    def get(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
         dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
-        self.verifyDatasetAccess(dataset, read=True)
+        self.verifyDatasetAccess(dataset, user=user, read=True)
 
         study = dataset.parent_study.single()
-        self.verifyStudyAccess(study, error_type="Dataset", read=True)
+        self.verifyStudyAccess(study, user=user, error_type="Dataset", read=True)
 
         self.log_event(self.events.access, dataset)
         return self.response(dataset)
@@ -190,18 +193,17 @@ class Dataset(NIGEndpoint):
         # should be an instance of neo4j.Study,
         # but typing is still not working with neomodel
         study: Any,
+        user: User,
         phenotype: Optional[str] = None,
         technical: Optional[str] = None,
     ) -> Response:
 
         graph = neo4j.get_instance()
 
-        current_user = self.get_user()
-
         kwargs = {"name": name, "description": description}
         dataset = graph.Dataset(**kwargs).save()
 
-        dataset.ownership.connect(current_user)
+        dataset.ownership.connect(user)
         dataset.parent_study.connect(study)
         if phenotype:
             kwargs["phenotype"] = phenotype
@@ -216,7 +218,7 @@ class Dataset(NIGEndpoint):
                 raise NotFound(TECHMETA_NOT_FOUND)
             dataset.technical.connect(technical)
 
-        path = self.getPath(dataset=dataset)
+        path = self.getPath(user=user, dataset=dataset)
 
         try:
             os.makedirs(path, exist_ok=False)
@@ -250,6 +252,7 @@ class Dataset(NIGEndpoint):
         # should be an instance of neo4j.Dataset,
         # but typing is still not working with neomodel
         dataset: Any,
+        user: User,
         name: Optional[str] = None,
         description: Optional[str] = None,
         phenotype: Optional[str] = None,
@@ -306,17 +309,17 @@ class Dataset(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def delete(self, uuid: str) -> Response:
+    def delete(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
         # INIT #
         dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
-        self.verifyDatasetAccess(dataset)
+        self.verifyDatasetAccess(dataset, user=user)
 
         study = dataset.parent_study.single()
-        self.verifyStudyAccess(study, error_type="Dataset")
-        path = self.getPath(dataset=dataset)
+        self.verifyStudyAccess(study, user=user, error_type="Dataset")
+        path = self.getPath(user=user, dataset=dataset)
 
         for f in dataset.files.all():
             f.delete()

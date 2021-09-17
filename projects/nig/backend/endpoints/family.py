@@ -4,6 +4,7 @@ from restapi.connectors import neo4j
 from restapi.exceptions import BadRequest, NotFound
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
+from restapi.services.authentication import User
 
 # from restapi.utilities.logs import log
 
@@ -29,7 +30,7 @@ class Family(NIGEndpoint):
     )
     @decorators.database_transaction
     @decorators.marshal_with(Parent, code=200)
-    def post(self, uuid1: str, uuid2: str) -> Response:
+    def post(self, uuid1: str, uuid2: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -41,14 +42,14 @@ class Family(NIGEndpoint):
             raise NotFound(PHENOTYPE_NOT_FOUND)
 
         study = phenotype1.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype", read=False)
+        self.verifyStudyAccess(study, user=user, error_type="Phenotype", read=False)
 
         phenotype2 = graph.Phenotype.nodes.get_or_none(uuid=uuid2)
         if phenotype2 is None:
             raise NotFound(PHENOTYPE_NOT_FOUND)
 
         study = phenotype2.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype", read=False)
+        self.verifyStudyAccess(study, user=user, error_type="Phenotype", read=False)
 
         # check parent sex
 
@@ -80,7 +81,7 @@ class Family(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def delete(self, uuid1: str, uuid2: str) -> Response:
+    def delete(self, uuid1: str, uuid2: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -89,14 +90,14 @@ class Family(NIGEndpoint):
             raise NotFound(PHENOTYPE_NOT_FOUND)
 
         study = phenotype1.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype", read=False)
+        self.verifyStudyAccess(study, user=user, error_type="Phenotype", read=False)
 
         phenotype2 = graph.Phenotype.nodes.get_or_none(uuid=uuid2)
         if phenotype2 is None:
             raise NotFound(PHENOTYPE_NOT_FOUND)
 
         study = phenotype2.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype", read=False)
+        self.verifyStudyAccess(study, user=user, error_type="Phenotype", read=False)
 
         # [1] - FATHER -> [2]
         if phenotype1.father.is_connected(phenotype2):

@@ -8,6 +8,7 @@ from restapi.connectors import neo4j
 from restapi.exceptions import NotFound
 from restapi.models import ISO8601UTC, Schema, fields, validate
 from restapi.rest.definition import Response
+from restapi.services.authentication import User
 
 # from restapi.utilities.logs import log
 
@@ -59,12 +60,12 @@ class TechnicalMetadatas(NIGEndpoint):
         },
     )
     @decorators.marshal_with(TechmetaOutputSchema(many=True), code=200)
-    def get(self, uuid: str) -> Response:
+    def get(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
-        self.verifyStudyAccess(study, read=True)
+        self.verifyStudyAccess(study, user=user, read=True)
         nodeset = study.technicals
 
         data = []
@@ -94,7 +95,7 @@ class TechnicalMetadata(NIGEndpoint):
         },
     )
     @decorators.marshal_with(TechmetaOutputSchema, code=200)
-    def get(self, uuid: str) -> Response:
+    def get(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -102,7 +103,9 @@ class TechnicalMetadata(NIGEndpoint):
         if not techmeta:
             raise NotFound(TECHMETA_NOT_FOUND)
         study = techmeta.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Technical Metadata", read=True)
+        self.verifyStudyAccess(
+            study, user=user, error_type="Technical Metadata", read=True
+        )
 
         self.log_event(self.events.access, techmeta)
 
@@ -119,7 +122,7 @@ class TechnicalMetadata(NIGEndpoint):
     )
     @decorators.database_transaction
     @decorators.use_kwargs(TechmetaInputSchema)
-    def post(self, uuid: str, **kwargs: Any) -> Response:
+    def post(self, uuid: str, user: User, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -128,7 +131,7 @@ class TechnicalMetadata(NIGEndpoint):
             kwargs["sequencing_date"] = self.check_timezone(kwargs["sequencing_date"])
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
-        self.verifyStudyAccess(study)
+        self.verifyStudyAccess(study, user=user)
 
         # kit = properties.get("enrichment_kit", None)
         # if kit is not None and "value" in kit:
@@ -153,7 +156,7 @@ class TechnicalMetadata(NIGEndpoint):
     )
     @decorators.database_transaction
     @decorators.use_kwargs(TechmetaPutSchema)
-    def put(self, uuid: str, **kwargs: Any) -> Response:
+    def put(self, uuid: str, user: User, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -161,7 +164,7 @@ class TechnicalMetadata(NIGEndpoint):
         if techmeta is None:
             raise NotFound(TECHMETA_NOT_FOUND)
         study = techmeta.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Technical Metadata")
+        self.verifyStudyAccess(study, user=user, error_type="Technical Metadata")
 
         # kit = v.get("enrichment_kit", None)
         # if kit is not None and "value" in kit:
@@ -188,7 +191,7 @@ class TechnicalMetadata(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def delete(self, uuid: str) -> Response:
+    def delete(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -196,7 +199,7 @@ class TechnicalMetadata(NIGEndpoint):
         if techmeta is None:
             raise NotFound(TECHMETA_NOT_FOUND)
         study = techmeta.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Technical Metadata")
+        self.verifyStudyAccess(study, user=user, error_type="Technical Metadata")
 
         techmeta.delete()
 

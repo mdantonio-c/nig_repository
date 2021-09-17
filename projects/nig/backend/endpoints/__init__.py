@@ -3,6 +3,7 @@ from typing import Any, List, Optional
 
 from restapi.exceptions import NotFound
 from restapi.rest.definition import EndpointResource
+from restapi.services.authentication import User
 from restapi.utilities.logs import log
 
 GROUP_DIR = "/data"
@@ -30,16 +31,14 @@ class NIGEndpoint(EndpointResource):
 
     def getPath(
         self,
+        user: User,
         study: Optional[Study] = None,
         dataset: Optional[Dataset] = None,
         file: Optional[File] = None,
         read: bool = False,
     ) -> str:
-        current_user = self.get_user()
-        if not current_user:  # pragma: no cover
-            raise NotFound("User not found")
 
-        group = current_user.belongs_to.single()
+        group = user.belongs_to.single()
         if not group:
             raise NotFound("User group not found")
         if study:
@@ -85,6 +84,7 @@ class NIGEndpoint(EndpointResource):
     def verifyStudyAccess(
         self,
         study: Study,
+        user: User,
         error_type: str = "Study",
         read: bool = False,
         raiseError: bool = True,
@@ -104,18 +104,17 @@ class NIGEndpoint(EndpointResource):
             log.warning("Study with null owner: %s" % study.uuid)
             return False
 
-        current_user = self.get_user()
         # The owner has always access
-        if owner == current_user:
+        if owner == user:
             return True
 
         # An admin has always access for readonly
-        if read and self.auth.is_admin(current_user):
+        if read and self.auth.is_admin(user):
             return True
 
         # A member of the some group of the owner, has always access
         for group in owner.belongs_to.all():
-            if group.members.is_connected(current_user):
+            if group.members.is_connected(user):
                 return True
 
         if raiseError:
@@ -126,6 +125,7 @@ class NIGEndpoint(EndpointResource):
     def verifyDatasetAccess(
         self,
         dataset: Dataset,
+        user: User,
         error_type: str = "Dataset",
         read: bool = False,
         raiseError: bool = True,
@@ -146,19 +146,17 @@ class NIGEndpoint(EndpointResource):
             log.warning("Dataset with null owner: %s" % dataset.uuid)
             return False
 
-        current_user = self.get_user()
-
         # The owner has always access
-        if owner == current_user:
+        if owner == user:
             return True
 
         # An admin has always access for readonly
-        if read and self.auth.is_admin(current_user):
+        if read and self.auth.is_admin(user):
             return True
 
         # A member of the some group of the owner, has always access
         for group in owner.belongs_to.all():
-            if group.members.is_connected(current_user):
+            if group.members.is_connected(user):
                 return True
 
         if raiseError:

@@ -8,8 +8,9 @@ from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.customizer import FlaskRequest
 from restapi.exceptions import NotFound
-from restapi.models import ISO8601UTC, Schema, fields, validate
+from restapi.models import Schema, fields, validate
 from restapi.rest.definition import Response
+from restapi.services.authentication import User
 
 # from restapi.connectors import celery
 # from restapi.utilities.logs import log
@@ -49,7 +50,8 @@ class PhenotypeOutputSchema(Schema):
     hpo = fields.List(fields.Nested(Hpo), required=False)
     birth_place = fields.Nested(GeoData, required=False)
     relationships = fields.Nested(
-        Relationships, description="family relationships between phenotypes"
+        Relationships,
+        metadata={"description": "family relationships between phenotypes"},
     )
 
 
@@ -61,15 +63,17 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
     attributes["name"] = fields.Str(required=True)
     attributes["age"] = fields.Integer(allow_none=True)
     attributes["sex"] = fields.Str(
-        required=True, description="", validate=validate.OneOf(SEX)
+        required=True, validate=validate.OneOf(SEX), metadata={"description": ""}
     )
     attributes["hpo"] = fields.List(
         fields.Str(),
-        label="HPO",
-        autocomplete_endpoint="/api/hpo",
-        autocomplete_show_id=True,
-        autocomplete_id_bind="hpo_id",
-        autocomplete_label_bind="label",
+        metadata={
+            "label": "HPO",
+            "autocomplete_endpoint": "/api/hpo",
+            "autocomplete_show_id": True,
+            "autocomplete_id_bind": "hpo_id",
+            "autocomplete_label_bind": "label",
+        },
     )
 
     geodata_keys = []
@@ -87,9 +91,11 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
     attributes["birth_place"] = fields.Str(
         required=False,
         allow_none=True,
-        label="Birth Place",
-        description="",
-        default=default_geodata,
+        metadata={
+            "label": "Birth Place",
+            "description": "",
+        },
+        dump_default=default_geodata,
         validate=validate.OneOf(choices=geodata_keys, labels=geodata_labels),
     )
 
@@ -119,12 +125,12 @@ class PhenotypeList(NIGEndpoint):
         },
     )
     @decorators.marshal_with(PhenotypeOutputSchema(many=True), code=200)
-    def get(self, uuid: str) -> Response:
+    def get(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
-        self.verifyStudyAccess(study, read=True)
+        self.verifyStudyAccess(study, user=user, read=True)
         nodeset = study.phenotypes
 
         data = []
@@ -236,7 +242,7 @@ class Phenotypes(NIGEndpoint):
         },
     )
     @decorators.marshal_with(PhenotypeOutputSchema, code=200)
-    def get(self, uuid: str) -> Response:
+    def get(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -244,7 +250,7 @@ class Phenotypes(NIGEndpoint):
         if not phenotype:
             raise NotFound(PHENOTYPE_NOT_FOUND)
         study = phenotype.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype", read=True)
+        self.verifyStudyAccess(study, user=user, error_type="Phenotype", read=True)
 
         self.log_event(self.events.access, phenotype)
 
@@ -322,6 +328,7 @@ class Phenotypes(NIGEndpoint):
         # should be an instance of neo4j.Study,
         # but typing is still not working with neomodel
         study: Any,
+        user: User,
         age: Optional[int] = None,
         birth_place: Optional[str] = None,
         hpo: Optional[List[str]] = None,
@@ -377,6 +384,7 @@ class Phenotypes(NIGEndpoint):
         # should be an instance of neo4j.Study,
         # but typing is still not working with neomodel
         study: Any,
+        user: User,
         age: Optional[int] = None,
         birth_place: Optional[str] = None,
         hpo: Optional[List[str]] = None,
@@ -433,7 +441,7 @@ class Phenotypes(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def delete(self, uuid: str) -> Response:
+    def delete(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -441,7 +449,7 @@ class Phenotypes(NIGEndpoint):
         if phenotype is None:
             raise NotFound(PHENOTYPE_NOT_FOUND)
         study = phenotype.defined_in.single()
-        self.verifyStudyAccess(study, error_type="Phenotype")
+        self.verifyStudyAccess(study, user=user, error_type="Phenotype")
 
         phenotype.delete()
 

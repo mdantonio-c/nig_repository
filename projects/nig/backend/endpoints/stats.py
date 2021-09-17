@@ -5,6 +5,7 @@ from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
+from restapi.services.authentication import User
 
 # from restapi.utilities.logs import log
 
@@ -186,7 +187,7 @@ class PrivateStats(NIGEndpoint):
         },
     )
     @decorators.marshal_with(PrivateStatsOutput, code=200)
-    def get(self) -> Response:
+    def get(self, user: User) -> Response:
 
         graph = neo4j.get_instance()
 

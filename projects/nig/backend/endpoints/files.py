@@ -6,9 +6,10 @@ from typing import Any
 from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import BadRequest, NotFound, ServerError
+from restapi.exceptions import BadRequest, NotFound
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
+from restapi.services.authentication import User
 from restapi.services.uploader import Uploader
 from restapi.utilities.logs import log
 
@@ -36,17 +37,17 @@ class Files(NIGEndpoint):
         },
     )
     @decorators.marshal_with(FileOutput(many=True), code=200)
-    def get(self, uuid: str) -> Response:
+    def get(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
         dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
-        self.verifyDatasetAccess(dataset, read=True)
+        self.verifyDatasetAccess(dataset, user=user, read=True)
 
         study = dataset.parent_study.single()
 
-        self.verifyStudyAccess(study, error_type="Dataset", read=True)
+        self.verifyStudyAccess(study, user=user, error_type="Dataset", read=True)
 
-        path = self.getPath(dataset=dataset, read=True)
+        path = self.getPath(user=user, dataset=dataset, read=True)
 
         directory_data = os.listdir(path)
 
@@ -59,7 +60,7 @@ class Files(NIGEndpoint):
             else:
                 # check if the status is correct
                 if file.status == "unknown":
-                    filepath = self.getPath(file=file, read=True)
+                    filepath = self.getPath(user=user, file=file, read=True)
                     if not os.path.getsize(filepath) == file.size:
                         file.status = "importing"
                     else:
@@ -84,7 +85,7 @@ class SingleFile(NIGEndpoint):
         },
     )
     @decorators.marshal_with(FileOutput, code=200)
-    def get(self, uuid: str) -> Response:
+    def get(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -93,13 +94,13 @@ class SingleFile(NIGEndpoint):
             raise NotFound(FILE_NOT_FOUND)
 
         dataset = file.dataset.single()
-        self.verifyDatasetAccess(dataset, error_type="File", read=True)
+        self.verifyDatasetAccess(dataset, user=user, error_type="File", read=True)
 
         study = dataset.parent_study.single()
-        self.verifyStudyAccess(study, error_type="File", read=True)
+        self.verifyStudyAccess(study, user=user, error_type="File", read=True)
 
         # check if file exists in the folder
-        path = self.getPath(dataset=dataset, read=True)
+        path = self.getPath(user=user, dataset=dataset, read=True)
 
         directory_data = os.listdir(path)
 
@@ -109,7 +110,7 @@ class SingleFile(NIGEndpoint):
         else:
             # check if the status is correct
             if file.status == "unknown":
-                filepath = self.getPath(file=file, read=True)
+                filepath = self.getPath(user=user, file=file, read=True)
                 if not os.path.getsize(filepath) == file.size:
                     file.status = "importing"
                 else:
@@ -130,7 +131,7 @@ class SingleFile(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def delete(self, uuid: str) -> Response:
+    def delete(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
@@ -138,10 +139,10 @@ class SingleFile(NIGEndpoint):
         if file is None:
             raise NotFound(FILE_NOT_FOUND)
         dataset = file.dataset.single()
-        self.verifyDatasetAccess(dataset, error_type="File")
+        self.verifyDatasetAccess(dataset, user=user, error_type="File")
         study = dataset.parent_study.single()
-        self.verifyDatasetAccess(study, error_type="File")
-        path = self.getPath(file=file)
+        self.verifyStudyAccess(study, user=user, error_type="File")
+        path = self.getPath(user=user, file=file)
 
         file.delete()
 
@@ -168,15 +169,15 @@ class FileUpload(Uploader, NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def put(self, uuid: str, filename: str) -> Response:
+    def put(self, uuid: str, filename: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
         # check permission
         dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
-        self.verifyDatasetAccess(dataset)
+        self.verifyDatasetAccess(dataset, user=user)
 
         study = dataset.parent_study.single()
-        self.verifyStudyAccess(study, error_type="Dataset")
+        self.verifyStudyAccess(study, user=user, error_type="Dataset")
 
         # get the file
         file = None
@@ -188,13 +189,13 @@ class FileUpload(Uploader, NIGEndpoint):
         file.status = "importing"
         file.save()
 
-        path = self.getPath(dataset=dataset)
+        path = self.getPath(user=user, dataset=dataset)
         completed, response = self.chunk_upload(pathlib.Path(path), filename)
         log.debug("check {}", response)
 
         if completed:
             # check the final size
-            filepath = self.getPath(file=file)
+            filepath = self.getPath(user=user, file=file)
             if not os.path.getsize(filepath) == file.size:
                 log.debug(
                     "size expected: {},actual size: {}",
@@ -232,17 +233,17 @@ class FileUpload(Uploader, NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def post(self, uuid: str, name: str, **kwargs: Any) -> Response:
+    def post(self, uuid: str, name: str, user: User, **kwargs: Any) -> Response:
 
         # check permissions
         graph = neo4j.get_instance()
         dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
-        self.verifyDatasetAccess(dataset)
+        self.verifyDatasetAccess(dataset, user=user)
 
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, error_type="Dataset")
 
-        path = self.getPath(dataset=dataset)
+        path = self.getPath(user=user, dataset=dataset)
 
         # check if the filename is correct
         name_pattern = r"([a-zA-Z0-9]+)_(R[12]).fastq.gz"

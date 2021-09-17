@@ -8,6 +8,7 @@ from restapi.connectors import neo4j
 from restapi.exceptions import Conflict
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
+from restapi.services.authentication import User
 
 # from restapi.utilities.logs import log
 
@@ -45,14 +46,14 @@ class Studies(NIGEndpoint):
         },
     )
     @decorators.marshal_with(StudyOutput(many=True), code=200)
-    def get(self) -> Response:
+    def get(self, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
         data = []
         for t in graph.Study.nodes.order_by().all():
 
-            if not self.verifyStudyAccess(t, read=True, raiseError=False):
+            if not self.verifyStudyAccess(t, user=user, read=True, raiseError=False):
                 continue
 
             data.append(t)
@@ -74,12 +75,12 @@ class Study(NIGEndpoint):
         },
     )
     @decorators.marshal_with(StudyOutput, code=200)
-    def get(self, uuid: str) -> Response:
+    def get(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
-        self.verifyStudyAccess(study, read=True)
+        self.verifyStudyAccess(study, user=user, read=True)
 
         self.log_event(self.events.access, study)
 
@@ -95,17 +96,15 @@ class Study(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def post(self, **kwargs: Any) -> Response:
+    def post(self, user: User, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
 
-        current_user = self.get_user()
-
         study = graph.Study(**kwargs).save()
 
-        study.ownership.connect(current_user)
+        study.ownership.connect(user)
 
-        path = self.getPath(study=study)
+        path = self.getPath(user=user, study=study)
 
         try:
             os.makedirs(path, exist_ok=False)
@@ -130,12 +129,12 @@ class Study(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def put(self, uuid: str, **kwargs: Any) -> Response:
+    def put(self, uuid: str, user: User, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
-        self.verifyStudyAccess(study)
+        self.verifyStudyAccess(study, user=user)
 
         graph.update_properties(study, kwargs)
         study.save()
@@ -155,14 +154,14 @@ class Study(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    def delete(self, uuid: str) -> Response:
+    def delete(self, uuid: str, user: User) -> Response:
 
         graph = neo4j.get_instance()
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
-        self.verifyStudyAccess(study)
+        self.verifyStudyAccess(study, user=user)
 
-        path = self.getPath(study=study)
+        path = self.getPath(user=user, study=study)
 
         for d in study.datasets.all():
             for f in d.files.all():
