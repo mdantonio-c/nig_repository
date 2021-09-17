@@ -241,7 +241,7 @@ class FileUpload(Uploader, NIGEndpoint):
         self.verifyDatasetAccess(dataset, user=user)
 
         study = dataset.parent_study.single()
-        self.verifyStudyAccess(study, error_type="Dataset")
+        self.verifyStudyAccess(study, user=user, error_type="Dataset")
 
         path = self.getPath(user=user, dataset=dataset)
 
