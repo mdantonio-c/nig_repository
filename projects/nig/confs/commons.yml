@@ -9,6 +9,11 @@ services:
       - ${DATA_DIR}/resources:/resources
       - ${PROJECT_DIR}/backend/snakemake:/snakemake
 
+  neo4j:
+    volumes:
+      - ${DATA_DIR}/graphdata:/data
+      - ${DATA_DIR}/data:/var/lib/neo4j/import/repo
+
   celery:
     build: ${PROJECT_DIR}/builds/backend
     image: nig/backend:${RAPYDO_VERSION}
@@ -17,7 +22,6 @@ services:
       - ${DATA_DIR}/resources:/resources
       - ${PROJECT_DIR}/backend/snakemake:/snakemake
 
-  neo4j:
-    volumes:
-      - ${DATA_DIR}/graphdata:/data
-      - ${DATA_DIR}/data:/var/lib/neo4j/import/repo
+  flower:
+    build: ${PROJECT_DIR}/builds/backend
+    image: nig/backend:${RAPYDO_VERSION}
