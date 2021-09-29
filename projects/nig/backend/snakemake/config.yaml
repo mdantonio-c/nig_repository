@@ -13,11 +13,11 @@ IFILES:
     ]
   inter: "/resources/hg38_resources/wgs_calling_regions.hg38.interval_list"
 THREAD:
-  fastqc: 18
-  bwa: 18
-  samtool: 18
-  samview: 18
-  hapcal: 18
+  fastqc: 48
+  bwa: 24
+  samtool: 6
+  samview: 6
+  hapcal: 2
 PARAMS:
   bwap: '-R "@RG\tID:{Pw}\tLB:{Pw}\tSM:{Pw}\tPU:unknown\tPL:ILLUMINA" '
   bwas: '-R "@RG\tID:{Sw}\tLB:{Sw}\tSM:{Sw}\tPU:unknown\tPL:ILLUMINA" '
@@ -26,9 +26,9 @@ PARAMS:
     ["StandardAnnotation", "StandardHCAnnotation", "AS_StandardAnnotation"]
   hapl_gqb: [10, 20, 30, 40, 50, 60, 70, 80, 90]
   vrfl: "QD < 2.0 || FS > 30.0 || SOR > 3.0 || MQ < 40.0 || MQRankSum < -3.0 || ReadPosRankSum < -3.0"
-JAVA:
-  brc: '--java-options "-XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -XX:+PrintFlagsFinal -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails -Xms5g " '
-  absq: '--java-options "-XX:+PrintFlagsFinal -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xms3g " '
-  hapl: '--java-options "-Xms6g -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" '
+JJAVA:
+  brc: '--java-options "-XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -XX:+PrintFlagsFinal -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails -Xms5g -Xmx4G -XX:ParallelGCThreads=2 " '
+  absq: '--java-options "-XX:+PrintFlagsFinal -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xms3g -Xmx2G -XX:ParallelGCThreads=2" '
+  hapl: '--java-options "-XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xms20G -Xmx20G -XX:ParallelGCThreads=2" '
 UPDATE:
   GDBI: True
