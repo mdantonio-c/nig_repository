@@ -48,6 +48,7 @@ class Dataset(TimestampedNode):
     # unique_name = StringProperty(required=True, unique_index=True)
     description = StringProperty()
     is_proband = BooleanProperty()
+    status = StringProperty()
 
     ownership = RelationshipTo(
         "restapi.connectors.neo4j.models.User", "IS_OWNED_BY", cardinality=ZeroOrMore
