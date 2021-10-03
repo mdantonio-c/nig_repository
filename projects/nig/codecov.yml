@@ -1,0 +1,3 @@
+ignore:
+  - "tasks/test_task.py" # created by tests
+  - "submodules/"
