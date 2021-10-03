@@ -22,7 +22,6 @@ jobs:
       - uses: rapydo/actions/install@v1
         with:
           project: ${PROJECT}
-          codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Run Pytest
         run: |
