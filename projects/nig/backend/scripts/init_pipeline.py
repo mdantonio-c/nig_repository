@@ -1,8 +1,9 @@
-import os
+#!/usr/bin/python3
 
 from restapi.connectors import celery, neo4j
+from restapi.env import Env
 
-# get the list of dataset ready to be analysed
+# get the list of datasets ready to be analysed
 graph = neo4j.get_instance()
 
 datasets_to_analise = graph.Dataset.nodes.filter(status="UPLOAD COMPLETED").all()
@@ -10,7 +11,7 @@ datasets_to_analise = graph.Dataset.nodes.filter(status="UPLOAD COMPLETED").all(
 # get all the dataset uuid
 datasets_uuid = [x.uuid for x in datasets_to_analise]
 
-chunks_limit = int(os.environ.get("CHUNKS_LIMIT"))
+chunks_limit = Env.get_int("CHUNKS_LIMIT", 16)
 
 for chunk in [
     datasets_uuid[i : i + chunks_limit]

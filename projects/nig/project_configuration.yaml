@@ -10,6 +10,8 @@ variables:
     staff_user: disabled
 
   env:
+    CHUNKS_LIMIT: 16
+
     FRONTEND_FRAMEWORK: angular
     AUTH_SERVICE: neo4j
 
