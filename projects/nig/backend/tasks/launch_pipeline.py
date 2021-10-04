@@ -7,17 +7,16 @@ from typing import List
 import pandas as pd
 import snakemake as smk
 from celery.app.task import Task
-from nig.endpoints import GROUP_DIR
+from nig.endpoints import GROUP_DIR, OUTPUT_ROOT
+from restapi.connectors import neo4j
 from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
-
-OUTPUT_ROOT = "/data/output"
 
 
 @CeleryExt.task()
 def launch_pipeline(
     self: Task,
-    file_list: List[str],
+    dataset_list: List[str],
     snakefile: str = "Single_Sample_V2.smk",
     force: bool = False,
 ) -> None:
@@ -32,14 +31,34 @@ def launch_pipeline(
         if snk_file.is_file():
             shutil.copy(snk_file, wrkdir)
 
+    # get the file list from the dataset list
+    file_list = []
+    graph = neo4j.get_instance()
+    for d in dataset_list:
+        # get the path of the dataset directory
+        dataset = graph.Dataset.nodes.get_or_none(uuid=d)
+        owner = dataset.ownership.single()
+        group = owner.belongs_to.single()
+        study = dataset.parent_study.single()
+        datasetDirectory = Path(GROUP_DIR, group.uuid, study.uuid, dataset.uuid)
+        # check if the directory exists
+        if not datasetDirectory.exists():
+            # an error should be raised?
+            log.warning(f"directory for dataset {d} not found")
+            continue
+        # append the contained files in the file list
+        for f in datasetDirectory.iterdir():
+            file_list.append(f)
+        # mark the dataset as running
+        dataset.status = "RUNNING"
+        dataset.save()
+
     # create a list of fastq files as csv file: fastq.csv
-    # create symlinks for fastq files
     fastq = []
 
     # the pattern is check also in the file upload endpoint. This is an additional check
     pattern = r"([a-zA-Z0-9]+)_(R[12]).fastq.gz"
-    for fl in file_list:
-        filepath = Path(fl)
+    for filepath in file_list:
         fname = filepath.name
         if match := re.match(pattern, fname):
             file_label = match.group(1)
@@ -56,7 +75,7 @@ def launch_pipeline(
         else:
             log.info(
                 "fastq {} should follow correct naming convention SampleName_R1/R2.fastq.gz",
-                fl,
+                filepath,
             )
 
     # A dataframe is created

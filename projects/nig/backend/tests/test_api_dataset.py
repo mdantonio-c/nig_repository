@@ -3,6 +3,7 @@ import os
 from faker import Faker
 from nig.endpoints import GROUP_DIR
 from nig.tests.setup_tests import create_test_env, delete_test_env
+from restapi.connectors import neo4j
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
@@ -145,6 +146,44 @@ class TestApp(BaseTests):
         assert response["technical"]["uuid"] == technical_uuid
         # check phenotype was correctly assigned
         assert response["phenotype"]["uuid"] == phenotype_uuid
+
+        # test dataset changing status
+        r = client.patch(
+            f"{API_URI}/dataset/{dataset1_uuid}",
+            headers=user_B1_headers,
+            data={"status": "UPLOAD COMPLETED"},
+        )
+        assert r.status_code == 204
+        # check new status in get response
+        r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B1_headers)
+        assert r.status_code == 200
+        response = self.get_content(r)
+        assert "status" in response
+
+        # delete status
+        r = client.patch(
+            f"{API_URI}/dataset/{dataset1_uuid}",
+            headers=user_B1_headers,
+            data={"status": "-1"},
+        )
+        assert r.status_code == 204
+        # check status has been removed
+        r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B1_headers)
+        assert r.status_code == 200
+        response = self.get_content(r)
+        assert not response["status"]
+
+        # try to modify a status when the dataset is running
+        graph = neo4j.get_instance()
+        dataset = graph.Dataset.nodes.get_or_none(uuid=dataset1_uuid)
+        dataset.status = "RUNNING"
+        dataset.save()
+        r = client.patch(
+            f"{API_URI}/dataset/{dataset1_uuid}",
+            headers=user_B1_headers,
+            data={"status": "UPLOAD COMPLETED"},
+        )
+        assert r.status_code == 400
 
         # test dataset modification
 

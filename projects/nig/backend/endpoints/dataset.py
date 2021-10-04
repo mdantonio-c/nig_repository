@@ -7,7 +7,7 @@ from nig.endpoints._injectors import verify_dataset_access, verify_study_access
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.customizer import FlaskRequest
-from restapi.exceptions import Conflict, NotFound
+from restapi.exceptions import BadRequest, Conflict, NotFound
 from restapi.models import Schema, fields, validate
 from restapi.rest.definition import Response
 from restapi.services.authentication import User
@@ -30,6 +30,7 @@ class DatasetOutput(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
     description = fields.Str(required=False)
+    status = fields.Str(required=False)
     technical = fields.Neo4jRelationshipToSingle(TechnicalMetadata)
     phenotype = fields.Neo4jRelationshipToSingle(Phenotype)
     files = fields.Neo4jRelationshipToCount()
@@ -295,6 +296,47 @@ class Dataset(NIGEndpoint):
         dataset.save()
 
         self.log_event(self.events.modify, dataset, kwargs)
+
+        return self.empty_response()
+
+    @decorators.auth.require()
+    @decorators.endpoint(
+        path="/dataset/<uuid>",
+        summary="Modify the status of a dataset",
+        responses={
+            200: "Status successfully modified",
+            400: "Status can't be modified",
+            404: "This dataset cannot be found or you are not authorized to access",
+        },
+    )
+    @decorators.preload(callback=verify_dataset_access)
+    @decorators.use_kwargs(
+        {
+            "status": fields.Str(
+                required=True, validate=validate.OneOf(["UPLOAD COMPLETED", "-1"])
+            )
+        }
+    )
+    @decorators.database_transaction
+    def patch(
+        self,
+        uuid: str,
+        study: Any,
+        dataset: Any,
+        status: str,
+    ) -> Response:
+
+        # patch can only be done on dataset with status UPLOAD COMPLETED
+        if dataset.status and dataset.status != "UPLOAD COMPLETED":
+            raise BadRequest(f"the status of dataset {dataset.name} cannot be modified")
+        if status == "-1":
+            dataset.status = None
+        else:
+            dataset.status = status
+
+        dataset.save()
+
+        self.log_event(self.events.modify, dataset, status)
 
         return self.empty_response()
 

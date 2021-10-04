@@ -180,4 +180,4 @@ rule HaplotypeCaller:
         p3 = '-native-pair-hmm-threads'
     shell:
         '''gatk {params.jv} HaplotypeCaller -R {refg} -I {input.bam} --intervals {input.inter} \
-        -O {output} -ERC GVCF {params.p1} {params.p2} {params.p3} {threads}  > {log} 2>&1'''
+        -O {output} -ERC GVCF {params.p1} {params.p2} > {log} 2>&1'''

@@ -6,7 +6,8 @@ from restapi.rest.definition import EndpointResource
 from restapi.services.authentication import User
 from restapi.utilities.logs import log
 
-GROUP_DIR = "/data"
+GROUP_DIR = "/data/input"
+OUTPUT_ROOT = "/data/output"
 
 STUDY_NOT_FOUND = "This study cannot be found or you are not authorized to access"
 DATASET_NOT_FOUND = "This dataset cannot be found or you are not authorized to access"
