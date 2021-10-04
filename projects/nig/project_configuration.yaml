@@ -11,6 +11,7 @@ variables:
 
   env:
     CHUNKS_LIMIT: 16
+    CRONTAB_ENABLE: 1
 
     FRONTEND_FRAMEWORK: angular
     AUTH_SERVICE: neo4j
