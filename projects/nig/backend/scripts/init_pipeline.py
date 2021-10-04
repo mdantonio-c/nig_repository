@@ -2,7 +2,9 @@
 
 from restapi.connectors import celery, neo4j
 from restapi.env import Env
+from restapi.utilities.logs import log
 
+log.info("\nStarting init pipeline cron")
 # get the list of datasets ready to be analysed
 graph = neo4j.get_instance()
 
@@ -17,6 +19,7 @@ for chunk in [
     datasets_uuid[i : i + chunks_limit]
     for i in range(0, len(datasets_uuid), chunks_limit)
 ]:
+    log.info("Sending pipeline for datasets: {}", chunk)
     # pass the chunk to the celery task
     c = celery.get_instance()
     task = c.celery_app.send_task(
@@ -29,3 +32,5 @@ for chunk in [
         dataset = graph.Dataset.nodes.get_or_none(uuid=d)
         dataset.status = "QUEUED"
         dataset.save()
+
+log.info("Init pipeline cron completed\n")
