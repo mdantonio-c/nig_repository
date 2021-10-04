@@ -324,11 +324,13 @@ class Dataset(NIGEndpoint):
         study: Any,
         dataset: Any,
         status: str,
+        user: User,
     ) -> Response:
 
         # patch can only be done on dataset with status UPLOAD COMPLETED
         if dataset.status and dataset.status != "UPLOAD COMPLETED":
-            raise BadRequest(f"the status of dataset {dataset.name} cannot be modified")
+            raise BadRequest(f"The status of dataset {dataset.name} cannot be modified")
+
         if status == "-1":
             dataset.status = None
         else:
@@ -336,7 +338,7 @@ class Dataset(NIGEndpoint):
 
         dataset.save()
 
-        self.log_event(self.events.modify, dataset, status)
+        self.log_event(self.events.modify, dataset, {"status": status})
 
         return self.empty_response()
 
