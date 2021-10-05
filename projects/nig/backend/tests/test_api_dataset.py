@@ -158,6 +158,7 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert "status" in response
 
         # delete status
@@ -171,6 +172,7 @@ class TestApp(BaseTests):
         r = client.get(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
         response = self.get_content(r)
+        assert isinstance(response, dict)
         assert not response["status"]
 
         # try to modify a status when the dataset is running
