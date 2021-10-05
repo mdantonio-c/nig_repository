@@ -4,7 +4,7 @@ from restapi.connectors import celery, neo4j
 from restapi.env import Env
 from restapi.utilities.logs import log
 
-log.info("\nStarting init pipeline cron")
+log.info("Starting init pipeline cron")
 # get the list of datasets ready to be analysed
 graph = neo4j.get_instance()
 
