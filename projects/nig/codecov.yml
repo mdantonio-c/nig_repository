@@ -1,0 +1,3 @@
+ignore:
+  - "submodules/rapydo-angular/src"
+  - "data/nig/frontend/app/validate.js"
