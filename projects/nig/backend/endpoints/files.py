@@ -1,7 +1,8 @@
+import gzip
 import os
-import pathlib
 import re
-from typing import Any
+from pathlib import Path
+from typing import Any, Tuple, Union
 
 from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
@@ -164,6 +165,7 @@ class FileUpload(Uploader, NIGEndpoint):
         summary="Upload a file into a dataset",
         responses={
             200: "File uploaded succesfully",
+            400: "The uploaded file has an invalid content",
             404: "File not found",
             500: "Fail in uploading file",
         },
@@ -190,12 +192,12 @@ class FileUpload(Uploader, NIGEndpoint):
         file.save()
 
         path = self.getPath(user=user, dataset=dataset)
-        completed, response = self.chunk_upload(pathlib.Path(path), filename)
+        completed, response = self.chunk_upload(Path(path), filename)
         log.debug("check {}", response)
-
         if completed:
             # check the final size
             filepath = self.getPath(user=user, file=file)
+            # check the final size
             if not os.path.getsize(filepath) == file.size:
                 log.debug(
                     "size expected: {},actual size: {}",
@@ -209,6 +211,14 @@ class FileUpload(Uploader, NIGEndpoint):
                     "File has not been uploaded correctly: final size does not correspond to total size. Please try a new upload",
                     code=500,
                 )
+            # check the content of the file
+            file_validation = validate_gzipped_fastq(filepath)
+            if not file_validation[0]:
+                # delete the file
+                file.delete()
+                graph.db.commit()
+                os.remove(filepath)
+                raise BadRequest(file_validation[1])
             file.status = "uploaded"
             file.save()
             self.log_event(
@@ -274,4 +284,41 @@ class FileUpload(Uploader, NIGEndpoint):
             {"operation": f"Accepted upload for {name} file in {uuid} dataset"},
         )
 
-        return self.init_chunk_upload(pathlib.Path(path), name, force=False)
+        return self.init_chunk_upload(Path(path), name, force=False)
+
+
+def validate_gzipped_fastq(path: Union[str, Path]) -> Tuple[bool, str]:
+
+    if not isinstance(path, Path):
+        path = Path(path)
+
+    if not path.exists():
+        return False, "File does not exist or it is not readable"
+
+    if path.stat().st_size == 0:
+        return False, "File is empty"
+
+    try:
+        with gzip.open(path, "rt") as f:
+            line1 = f.readline().strip()
+            if not line1.startswith("@"):
+                return False, f"Not a valid fastq file, invalid header: {line1}"
+            line2 = f.readline().strip()
+            line3 = f.readline().strip()
+            if not line3.startswith("+"):
+                return False, f"Not a valid fastq file, invalid separator: {line3}"
+            line4 = f.readline().strip()
+            if len(line2) != len(line4):
+                compare = f":\nline2: [{line2}]\nline4: [{line4}]"
+                return False, f"Not a valid fastq file, lines lengths differ{compare}"
+            line5 = f.readline().strip()
+            # line5 will be None if the the fastq only has one read
+            if line5 and not line5.startswith("@"):
+                return False, f"Not a valid fastq file, invalid header: {line5}"
+
+        return True, "Valid fastq file"
+    except gzip.BadGzipFile as bad_gzip:
+        return False, str(bad_gzip)
+    except UnicodeDecodeError as unicode_error:
+        log.error(unicode_error)
+        return False, "File is binary"

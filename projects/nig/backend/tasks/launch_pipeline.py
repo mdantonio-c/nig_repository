@@ -44,7 +44,7 @@ def launch_pipeline(
         # check if the directory exists
         if not datasetDirectory.exists():
             # an error should be raised?
-            log.warning(f"directory for dataset {d} not found")
+            log.warning("Folder for dataset {} not found", d)
             continue
         # append the contained files in the file list
         for f in datasetDirectory.iterdir():

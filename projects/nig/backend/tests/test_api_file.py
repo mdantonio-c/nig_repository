@@ -1,3 +1,4 @@
+import gzip
 import os
 from subprocess import check_call
 from typing import Any, Dict
@@ -145,7 +146,8 @@ class TestApp(BaseTests):
         assert r.status_code == 400
 
         # create a file to upload
-        fcontent = faker.paragraph()
+        fcontent = f"@SEQ_ID \n {faker.pystr(max_chars = 12)} \n +{faker.pystr()} \n {faker.pystr(max_chars = 12)}"
+
         # tmp_basepath=f"/tmp/{fake_filename}"
         # os.mkdir(tmp_basepath)
         with open(f"/tmp/{fake_filename}.fastq", "w") as f:
@@ -219,6 +221,197 @@ class TestApp(BaseTests):
             f"{fake_filename2}.fastq.gz",
         )
         assert not os.path.isfile(filepath2)
+
+        # check file validation
+        # upload an empty file
+        # create a file to upload
+        empty_filename = faker.pystr()
+        open(f"/tmp/{empty_filename}.fastq", "w").close()
+
+        # gzip the new file
+        check_call(["gzip", f"/tmp/{empty_filename}.fastq"])
+
+        # upload a file
+        response = self.upload_file(
+            client,
+            user_B1_headers,
+            f"/tmp/{empty_filename}.fastq.gz",
+            dataset_B_uuid,
+            stream=True,
+        )
+        assert response.status_code == 400
+        # check the empty file has been removed
+        empty_filepath = os.path.join(
+            GROUP_DIR,
+            uuid_group_B,
+            study1_uuid,
+            dataset_B_uuid,
+            f"{empty_filename}.fastq.gz",
+        )
+        assert not os.path.isfile(empty_filepath)
+
+        # upload a file with not valid content
+        # CASE false gzip file
+        novalid_filename = f"{faker.pystr()}_R1"
+        novalid_fcontent = f"SEQ_ID \n {faker.pystr(max_chars=12)} \n +{faker.pystr()} \n {faker.pystr(max_chars=12)}"
+
+        with open(f"/tmp/{novalid_filename}.fastq", "w") as f:
+            f.write(novalid_fcontent)
+
+        os.rename(f"/tmp/{novalid_filename}.fastq", f"/tmp/{novalid_filename}.fastq.gz")
+        response = self.upload_file(
+            client,
+            user_B1_headers,
+            f"/tmp/{novalid_filename}.fastq.gz",
+            dataset_B_uuid,
+            stream=True,
+        )
+        assert response.status_code == 400
+        error_message = self.get_content(response)
+        assert "gzipped" in error_message
+
+        # check the empty file has been removed
+        novalid_filepath = os.path.join(
+            GROUP_DIR,
+            uuid_group_B,
+            study1_uuid,
+            dataset_B_uuid,
+            f"{novalid_filename}.fastq.gz",
+        )
+        assert not os.path.isfile(novalid_filepath)
+
+        # CASE binary file instead of a text file
+        binary_filename = f"{faker.pystr()}_R1"
+        binary_content = faker.binary()
+        with open(f"/tmp/{binary_filename}.fastq", "wb") as f:
+            f.write(binary_content)
+        check_call(["gzip", f"/tmp/{binary_filename}.fastq"])
+
+        response = self.upload_file(
+            client,
+            user_B1_headers,
+            f"/tmp/{binary_filename}.fastq.gz",
+            dataset_B_uuid,
+            stream=True,
+        )
+        assert response.status_code == 400
+        error_message = self.get_content(response)
+        assert "binary" in error_message
+
+        binary_filepath = os.path.join(
+            GROUP_DIR,
+            uuid_group_B,
+            study1_uuid,
+            dataset_B_uuid,
+            f"{binary_filename}.fastq.gz",
+        )
+        assert not os.path.isfile(binary_filepath)
+
+        # CASE invalid header
+        with open(f"/tmp/{novalid_filename}.fastq", "w") as f:
+            f.write(novalid_fcontent)
+        check_call(["gzip", "-f", f"/tmp/{novalid_filename}.fastq"])
+
+        response = self.upload_file(
+            client,
+            user_B1_headers,
+            f"/tmp/{novalid_filename}.fastq.gz",
+            dataset_B_uuid,
+            stream=True,
+        )
+        assert response.status_code == 400
+        error_message = self.get_content(response)
+        assert "header" in error_message
+
+        novalid_filepath = os.path.join(
+            GROUP_DIR,
+            uuid_group_B,
+            study1_uuid,
+            dataset_B_uuid,
+            f"{novalid_filename}.fastq.gz",
+        )
+        assert not os.path.isfile(novalid_filepath)
+
+        # CASE invalid separator
+        novalid_fcontent = f"@SEQ_ID \n {faker.pystr(max_chars=12)} \n {faker.pystr()} \n {faker.pystr(max_chars=12)}"
+
+        with open(f"/tmp/{novalid_filename}.fastq", "w") as f:
+            f.write(novalid_fcontent)
+        check_call(["gzip", "-f", f"/tmp/{novalid_filename}.fastq"])
+
+        response = self.upload_file(
+            client,
+            user_B1_headers,
+            f"/tmp/{novalid_filename}.fastq.gz",
+            dataset_B_uuid,
+            stream=True,
+        )
+        assert response.status_code == 400
+        error_message = self.get_content(response)
+        assert "separator" in error_message
+
+        novalid_filepath = os.path.join(
+            GROUP_DIR,
+            uuid_group_B,
+            study1_uuid,
+            dataset_B_uuid,
+            f"{novalid_filename}.fastq.gz",
+        )
+        assert not os.path.isfile(novalid_filepath)
+
+        # CASE invalid fastq line
+        novalid_fcontent = f"@SEQ_ID \n {faker.pystr(max_chars=12)} \n +{faker.pystr()} \n {faker.pystr(max_chars=8)}"
+
+        with open(f"/tmp/{novalid_filename}.fastq", "w") as f:
+            f.write(novalid_fcontent)
+        check_call(["gzip", "-f", f"/tmp/{novalid_filename}.fastq"])
+
+        response = self.upload_file(
+            client,
+            user_B1_headers,
+            f"/tmp/{novalid_filename}.fastq.gz",
+            dataset_B_uuid,
+            stream=True,
+        )
+        assert response.status_code == 400
+        error_message = self.get_content(response)
+        assert "lines lengths differ" in error_message
+
+        novalid_filepath = os.path.join(
+            GROUP_DIR,
+            uuid_group_B,
+            study1_uuid,
+            dataset_B_uuid,
+            f"{novalid_filename}.fastq.gz",
+        )
+        assert not os.path.isfile(novalid_filepath)
+
+        # CASE invalid header for the second read
+        novalid_fcontent = f"@SEQ_ID \n {faker.pystr(max_chars=12)} \n +{faker.pystr()} \n {faker.pystr(max_chars=12)} \n {faker.pystr()}"
+
+        with open(f"/tmp/{novalid_filename}.fastq", "w") as f:
+            f.write(novalid_fcontent)
+        check_call(["gzip", "-f", f"/tmp/{novalid_filename}.fastq"])
+
+        response = self.upload_file(
+            client,
+            user_B1_headers,
+            f"/tmp/{novalid_filename}.fastq.gz",
+            dataset_B_uuid,
+            stream=True,
+        )
+        assert response.status_code == 400
+        error_message = self.get_content(response)
+        assert "header" in error_message
+
+        novalid_filepath = os.path.join(
+            GROUP_DIR,
+            uuid_group_B,
+            study1_uuid,
+            dataset_B_uuid,
+            f"{novalid_filename}.fastq.gz",
+        )
+        assert not os.path.isfile(novalid_filepath)
 
         # check accesses on put endpoint
         # put on a file in a dataset of an other group
@@ -385,6 +578,9 @@ class TestApp(BaseTests):
 
         # delete the file created for the tests
         os.remove(f"/tmp/{fake_filename2}.fastq.gz")
+        os.remove(f"/tmp/{empty_filename}.fastq.gz")
+        os.remove(f"/tmp/{novalid_filename}.fastq.gz")
+        os.remove(f"/tmp/{binary_filename}.fastq.gz")
 
         # delete all the elements used by the test
         delete_test_env(
