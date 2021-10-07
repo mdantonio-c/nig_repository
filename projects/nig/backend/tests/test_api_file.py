@@ -268,7 +268,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
-        assert isinstance(error_message, dict)
+        assert isinstance(error_message, str)
         assert "gzipped" in error_message
 
         # check the empty file has been removed
@@ -297,7 +297,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
-        assert isinstance(error_message, dict)
+        assert isinstance(error_message, str)
         assert "binary" in error_message
 
         binary_filepath = os.path.join(
@@ -323,7 +323,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
-        assert isinstance(error_message, dict)
+        assert isinstance(error_message, str)
         assert "header" in error_message
 
         novalid_filepath = os.path.join(
@@ -351,7 +351,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
-        assert isinstance(error_message, dict)
+        assert isinstance(error_message, str)
         assert "separator" in error_message
 
         novalid_filepath = os.path.join(
@@ -379,7 +379,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
-        assert isinstance(error_message, dict)
+        assert isinstance(error_message, str)
         assert "lines lengths differ" in error_message
 
         novalid_filepath = os.path.join(
@@ -407,7 +407,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
-        assert isinstance(error_message, dict)
+        assert isinstance(error_message, str)
         assert "header" in error_message
 
         novalid_filepath = os.path.join(
