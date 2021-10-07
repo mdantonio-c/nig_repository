@@ -268,6 +268,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
+        assert isinstance(error_message, dict)
         assert "gzipped" in error_message
 
         # check the empty file has been removed
@@ -283,8 +284,8 @@ class TestApp(BaseTests):
         # CASE binary file instead of a text file
         binary_filename = f"{faker.pystr()}_R1"
         binary_content = faker.binary()
-        with open(f"/tmp/{binary_filename}.fastq", "wb") as f:
-            f.write(binary_content)
+        with open(f"/tmp/{binary_filename}.fastq", "wb") as b:
+            b.write(binary_content)
         check_call(["gzip", f"/tmp/{binary_filename}.fastq"])
 
         response = self.upload_file(
@@ -296,6 +297,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
+        assert isinstance(error_message, dict)
         assert "binary" in error_message
 
         binary_filepath = os.path.join(
@@ -321,6 +323,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
+        assert isinstance(error_message, dict)
         assert "header" in error_message
 
         novalid_filepath = os.path.join(
@@ -348,6 +351,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
+        assert isinstance(error_message, dict)
         assert "separator" in error_message
 
         novalid_filepath = os.path.join(
@@ -375,6 +379,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
+        assert isinstance(error_message, dict)
         assert "lines lengths differ" in error_message
 
         novalid_filepath = os.path.join(
@@ -402,6 +407,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         error_message = self.get_content(response)
+        assert isinstance(error_message, dict)
         assert "header" in error_message
 
         novalid_filepath = os.path.join(

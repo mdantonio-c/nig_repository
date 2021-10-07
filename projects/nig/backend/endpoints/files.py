@@ -7,7 +7,7 @@ from typing import Any, Tuple, Union
 from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
-from restapi.exceptions import BadRequest, NotFound
+from restapi.exceptions import BadRequest, NotFound, ServerError
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
 from restapi.services.authentication import User
@@ -205,11 +205,11 @@ class FileUpload(Uploader, NIGEndpoint):
                     os.path.getsize(filepath),
                 )
                 file.delete()
+                graph.db.commit()
                 os.remove(filepath)
-                # in this case we return the response and not raise the exception to not have the database rollback due to database_transaction decorator (i want the file database entry to be deleted and the rollback will prevent that)
-                return self.response(
-                    "File has not been uploaded correctly: final size does not correspond to total size. Please try a new upload",
-                    code=500,
+                raise ServerError(
+                    "File has not been uploaded correctly: final size does not "
+                    "correspond to total size. Please try a new upload",
                 )
             # check the content of the file
             file_validation = validate_gzipped_fastq(filepath)
@@ -224,9 +224,7 @@ class FileUpload(Uploader, NIGEndpoint):
             self.log_event(
                 self.events.create,
                 file,
-                {
-                    "operation": f"Completed upload for {filename} file in {uuid} dataset"
-                },
+                {filename: f"Upload completed in dataset {uuid}"},
             )
 
         return response
@@ -259,7 +257,8 @@ class FileUpload(Uploader, NIGEndpoint):
         name_pattern = r"([a-zA-Z0-9]+)_(R[12]).fastq.gz"
         if not re.search(name_pattern, name):
             raise BadRequest(
-                "Filename should follow the correct naming convention SampleName_R1/R2.fastq.gz"
+                "Filename should follow the correct naming convention "
+                "SampleName_R1/R2.fastq.gz"
             )
 
         # set the allowed file format
