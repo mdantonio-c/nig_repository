@@ -8,7 +8,7 @@ from restapi.connectors import Connector, neo4j
 
 auth = Connector.get_authentication_instance()
 graph = neo4j.get_instance()
-faker = Faker()
+faker = Faker()  # type: ignore
 
 GROUP_DIR = "/data"
 
