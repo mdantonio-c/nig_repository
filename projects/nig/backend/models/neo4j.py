@@ -326,7 +326,7 @@ class GeoData(IdentifiedNode):
     birth_place = RelationshipFrom("Phenotype", "BIRTH_PLACE", cardinality=ZeroOrMore)
 
 
-class HPO(StructuredNode):
+class HPO(StructuredNode):  # type: ignore
 
     hpo_id = StringProperty(required=True, unique_index=True)
     label = StringProperty(required=True)
