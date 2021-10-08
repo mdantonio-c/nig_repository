@@ -63,7 +63,7 @@ class Dataset(TimestampedNode):
     )
 
 
-class VariantRelation(StructuredRel):
+class VariantRelation(StructuredRel):  # type: ignore
     quality = FloatProperty()
     heterozygosity = FloatProperty()
     num_alt = IntegerProperty()
