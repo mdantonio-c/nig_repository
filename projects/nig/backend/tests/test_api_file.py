@@ -1,13 +1,12 @@
-import gzip
 import os
 from subprocess import check_call
-from typing import Any, Dict
+from typing import Dict
 
 from faker import Faker
-from flask.wrappers import Response
 from nig.endpoints import GROUP_DIR
 from nig.tests.setup_tests import create_test_env, delete_test_env
 from restapi.tests import API_URI, BaseTests, FlaskClient
+from werkzeug.test import TestResponse as Response
 
 
 class TestApp(BaseTests):

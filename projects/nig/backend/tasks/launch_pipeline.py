@@ -74,7 +74,7 @@ def launch_pipeline(
             fastq.append(fastq_row)
         else:
             log.info(
-                "fastq {} should follow correct naming convention SampleName_R1/R2.fastq.gz",
+                "fastq {} should follow correct naming convention: SampleName_R1/R2.fastq.gz",
                 filepath,
             )
 

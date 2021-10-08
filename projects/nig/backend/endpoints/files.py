@@ -257,7 +257,7 @@ class FileUpload(Uploader, NIGEndpoint):
         name_pattern = r"([a-zA-Z0-9]+)_(R[12]).fastq.gz"
         if not re.search(name_pattern, name):
             raise BadRequest(
-                "Filename should follow the correct naming convention "
+                "Filename does not follow the correct naming convention: "
                 "SampleName_R1/R2.fastq.gz"
             )
 
