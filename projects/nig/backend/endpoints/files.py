@@ -2,7 +2,7 @@ import gzip
 import os
 import re
 from pathlib import Path
-from typing import Any, Tuple, Union
+from typing import Any, Tuple
 
 from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
@@ -62,7 +62,7 @@ class Files(NIGEndpoint):
                 # check if the status is correct
                 if file.status == "unknown":
                     filepath = self.getPath(user=user, file=file, read=True)
-                    if not os.path.getsize(filepath) == file.size:
+                    if filepath.stat().st_size != file.size:
                         file.status = "importing"
                     else:
                         file.status = "uploaded"
@@ -112,7 +112,7 @@ class SingleFile(NIGEndpoint):
             # check if the status is correct
             if file.status == "unknown":
                 filepath = self.getPath(user=user, file=file, read=True)
-                if not os.path.getsize(filepath) == file.size:
+                if filepath.stat().st_size != file.size:
                     file.status = "importing"
                 else:
                     file.status = "uploaded"
@@ -147,8 +147,8 @@ class SingleFile(NIGEndpoint):
 
         file.delete()
 
-        if os.path.exists(path):
-            os.remove(path)
+        if path.exists():
+            path.unlink()
 
         self.log_event(self.events.delete, file)
 
@@ -197,16 +197,17 @@ class FileUpload(Uploader, NIGEndpoint):
         if completed:
             # check the final size
             filepath = self.getPath(user=user, file=file)
+            filesize = filepath.stat().st_size
             # check the final size
-            if not os.path.getsize(filepath) == file.size:
+            if filesize != file.size:
                 log.debug(
                     "size expected: {},actual size: {}",
                     file.size,
-                    os.path.getsize(filepath),
+                    filesize,
                 )
                 file.delete()
                 graph.db.commit()
-                os.remove(filepath)
+                filepath.unlink()
                 raise ServerError(
                     "File has not been uploaded correctly: final size does not "
                     "correspond to total size. Please try a new upload",
@@ -217,7 +218,7 @@ class FileUpload(Uploader, NIGEndpoint):
                 # delete the file
                 file.delete()
                 graph.db.commit()
-                os.remove(filepath)
+                filepath.unlink()
                 raise BadRequest(file_validation[1])
             file.status = "uploaded"
             file.save()
@@ -264,12 +265,11 @@ class FileUpload(Uploader, NIGEndpoint):
         # set the allowed file format
         self.set_allowed_exts(["gz"])
 
-        filebase, fileext = os.path.splitext(name)
-
         properties = {
             "name": name,
             "size": kwargs["size"],
-            "type": fileext.strip("."),
+            # Currently fixed
+            "type": "fastq.gz",
             "status": "init",
         }
 
@@ -286,10 +286,7 @@ class FileUpload(Uploader, NIGEndpoint):
         return self.init_chunk_upload(Path(path), name, force=False)
 
 
-def validate_gzipped_fastq(path: Union[str, Path]) -> Tuple[bool, str]:
-
-    if not isinstance(path, Path):
-        path = Path(path)
+def validate_gzipped_fastq(path: Path) -> Tuple[bool, str]:
 
     if not path.exists():
         return False, "File does not exist or it is not readable"

@@ -1,5 +1,3 @@
-import os
-
 from faker import Faker
 from nig.endpoints import GROUP_DIR
 from nig.tests.setup_tests import create_test_env, delete_test_env
@@ -35,8 +33,8 @@ class TestApp(BaseTests):
         dataset1_uuid = self.get_content(r)
         assert isinstance(dataset1_uuid, str)
         # check the directory exists
-        dir_path = os.path.join(GROUP_DIR, uuid_group_B, study1_uuid, dataset1_uuid)
-        assert os.path.isdir(dir_path)
+        dir_path = GROUP_DIR.joinpath(uuid_group_B, study1_uuid, dataset1_uuid)
+        assert dir_path.is_dir()
 
         # create a new dataset in a study of an other group
         r = client.post(
@@ -259,7 +257,7 @@ class TestApp(BaseTests):
         # delete a dataset you own
         r = client.delete(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B1_headers)
         assert r.status_code == 204
-        assert not os.path.isdir(dir_path)
+        assert not dir_path.is_dir()
         # delete a study own by your group
         r = client.delete(f"{API_URI}/dataset/{dataset2_uuid}", headers=user_B2_headers)
         assert r.status_code == 204

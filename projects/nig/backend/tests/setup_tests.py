@@ -1,4 +1,3 @@
-import os
 import shutil
 from typing import Any, Dict, Optional, Tuple
 
@@ -101,13 +100,13 @@ def delete_test_env(
     assert r.status_code == 204
 
     # group A directory
-    group_dir_path = os.path.join(GROUP_DIR, uuid_group_A)
+    group_dir_path = GROUP_DIR.joinpath(uuid_group_A)
     shutil.rmtree(group_dir_path)
     # group A
     r = client.delete(f"{API_URI}/admin/groups/{uuid_group_A}", headers=admin_headers)
     assert r.status_code == 204
     # group B directory
-    group_dir_path = os.path.join(GROUP_DIR, uuid_group_B)
+    group_dir_path = GROUP_DIR.joinpath(uuid_group_B)
     shutil.rmtree(group_dir_path)
     # group B
     r = client.delete(f"{API_URI}/admin/groups/{uuid_group_B}", headers=admin_headers)

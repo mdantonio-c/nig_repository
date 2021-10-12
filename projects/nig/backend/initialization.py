@@ -1,6 +1,7 @@
 import csv
 from typing import List, Optional
 
+from restapi.config import UPLOAD_PATH
 from restapi.connectors import neo4j
 from restapi.utilities.logs import log
 
@@ -10,7 +11,7 @@ class Initializer:
         # enter GeoData in neo4j
         attributes: Optional[List[str]] = None
         graph = neo4j.get_instance()
-        with open("/data/geodata.tsv") as fd:
+        with open(UPLOAD_PATH.joinpath("geodata.tsv")) as fd:
             rd = csv.reader(fd, delimiter="\t", quotechar='"')
             for row in rd:
                 if not attributes:

@@ -1,4 +1,3 @@
-import os
 import shutil
 from typing import Any, Dict, Optional, Type, Union
 
@@ -222,7 +221,7 @@ class Dataset(NIGEndpoint):
         path = self.getPath(user=user, dataset=dataset)
 
         try:
-            os.makedirs(path, exist_ok=False)
+            path.mkdir(parents=True, exist_ok=False)
         # Almost impossible to have the same uuid was already used for an other study
         except FileExistsError as exc:  # pragma: no cover
             dataset.delete()

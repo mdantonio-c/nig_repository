@@ -1,5 +1,3 @@
-import os
-
 from faker import Faker
 from nig.endpoints import GROUP_DIR
 from nig.tests.setup_tests import create_test_env, delete_test_env
@@ -40,8 +38,8 @@ class TestApp(BaseTests):
         assert isinstance(study2_uuid, str)
 
         # check the directory was created
-        dir_path = os.path.join(GROUP_DIR, uuid_group_A, study2_uuid)
-        assert os.path.isdir(dir_path)
+        dir_path = GROUP_DIR.joinpath(uuid_group_A, study2_uuid)
+        assert dir_path.is_dir()
 
         # test study access
         # test study list response
@@ -98,8 +96,8 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         dataset_uuid = self.get_content(r)
         assert isinstance(dataset_uuid, str)
-        dataset_path = os.path.join(dir_path, dataset_uuid)
-        assert os.path.isdir(dir_path)
+        dataset_path = dir_path.joinpath(dataset_uuid)
+        assert dataset_path.is_dir()
         # create a new file to test if it's deleted with the study
         filename = f"{faker.pystr()}_R1"
         file_data = {
@@ -147,8 +145,8 @@ class TestApp(BaseTests):
         # delete the study
         r = client.delete(f"{API_URI}/study/{study2_uuid}", headers=user_A1_headers)
         assert r.status_code == 204
-        assert not os.path.isdir(dir_path)
-        assert not os.path.isdir(dataset_path)
+        assert not dir_path.is_dir()
+        assert not dataset_path.is_dir()
         # check the dataset was deleted
         r = client.get(f"{API_URI}/dataset/{dataset_uuid}", headers=user_A1_headers)
         assert r.status_code == 404

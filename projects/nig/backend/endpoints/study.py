@@ -1,4 +1,3 @@
-import os
 import shutil
 from typing import Any
 
@@ -107,7 +106,7 @@ class Study(NIGEndpoint):
         path = self.getPath(user=user, study=study)
 
         try:
-            os.makedirs(path, exist_ok=False)
+            path.mkdir(parents=True, exist_ok=False)
         except FileExistsError as exc:  # pragma: no cover
             # Almost impossible the have same uuid was already used for an other study
             study.delete()

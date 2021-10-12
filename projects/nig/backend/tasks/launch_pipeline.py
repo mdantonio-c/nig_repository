@@ -8,6 +8,7 @@ import pandas as pd
 import snakemake as smk
 from celery.app.task import Task
 from nig.endpoints import GROUP_DIR, OUTPUT_ROOT
+from restapi.config import UPLOAD_PATH
 from restapi.connectors import neo4j
 from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
@@ -23,7 +24,7 @@ def launch_pipeline(
     task_id = self.request.id
     log.info("Start task [{}:{}]", task_id, self.name)
     # create a unique workdir for every celery task / and snakemake launch)
-    wrkdir = Path("/data/jobs", task_id)
+    wrkdir = UPLOAD_PATH.joinpath("jobs", task_id)
     wrkdir.mkdir(parents=True, exist_ok=True)
     # copy the files used by snakemake in the work dir
     source_dir = Path("/snakemake")
@@ -40,7 +41,7 @@ def launch_pipeline(
         owner = dataset.ownership.single()
         group = owner.belongs_to.single()
         study = dataset.parent_study.single()
-        datasetDirectory = Path(GROUP_DIR, group.uuid, study.uuid, dataset.uuid)
+        datasetDirectory = GROUP_DIR.joinpath(group.uuid, study.uuid, dataset.uuid)
         # check if the directory exists
         if not datasetDirectory.exists():
             # an error should be raised?
@@ -67,14 +68,15 @@ def launch_pipeline(
             # get the input path
             input_path = filepath.parent
             # create the output path
-            output_path = Path(OUTPUT_ROOT, input_path.relative_to(GROUP_DIR))
+            output_path = OUTPUT_ROOT.joinpath(input_path.relative_to(GROUP_DIR))
 
             # create row for csv
             fastq_row = [file_label, fragment, input_path, output_path]
             fastq.append(fastq_row)
         else:
             log.info(
-                "fastq {} should follow correct naming convention: SampleName_R1/R2.fastq.gz",
+                "fastq {} should follow correct naming convention: "
+                "SampleName_R1/R2.fastq.gz",
                 filepath,
             )
 
@@ -82,20 +84,18 @@ def launch_pipeline(
     df = pd.DataFrame(fastq, columns=["Sample", "Frag", "InputPath", "OutputPath"])
     df["Reverse"] = "No"
     df.loc[df.Frag == "R2", "Reverse"] = "Yes"
-    # fastq_csv_file = '/data/snakemake/NIG/fastq.csv'
-    fastq_csv_file = Path(wrkdir, "fastq.csv")
+    fastq_csv_file = wrkdir.joinpath("fastq.csv")
     df.to_csv(fastq_csv_file, index=False)
     log.info("*************************************")
     log.info("New file {} is now created", fastq_csv_file)
     log.info("Total Number Of Fastq identified:{}\n", df.shape[0])
 
     # Launch snakemake
-    config = [Path(wrkdir, "config.yaml")]
+    config = [wrkdir.joinpath("config.yaml")]
 
-    # TODO this param can be in the config? it should be passed as argument for the celery task? or it's ok the simple cpu count?
     cores = os.cpu_count()
     log.info("Calling Snakemake with {} cores", cores)
-    snakefile_path = Path(wrkdir, snakefile)
+    snakefile_path = wrkdir.joinpath(snakefile)
 
     smk.snakemake(
         snakefile_path, cores=cores, workdir=wrkdir, configfiles=config, forceall=force

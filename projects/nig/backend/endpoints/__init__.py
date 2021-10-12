@@ -1,13 +1,14 @@
-import os
+from pathlib import Path
 from typing import Any, List, Optional
 
-from restapi.exceptions import NotFound
+from restapi.config import UPLOAD_PATH
+from restapi.exceptions import BadRequest, NotFound
 from restapi.rest.definition import EndpointResource
 from restapi.services.authentication import User
 from restapi.utilities.logs import log
 
-GROUP_DIR = "/data/input"
-OUTPUT_ROOT = "/data/output"
+GROUP_DIR = UPLOAD_PATH.joinpath("input")
+OUTPUT_ROOT = UPLOAD_PATH.joinpath("output")
 
 STUDY_NOT_FOUND = "This study cannot be found or you are not authorized to access"
 DATASET_NOT_FOUND = "This dataset cannot be found or you are not authorized to access"
@@ -18,7 +19,6 @@ TECHMETA_NOT_FOUND = (
     "This set of technical metadata cannot be found or you are not authorized to access"
 )
 FILE_NOT_FOUND = "This file cannot be found or you are not authorized to access"
-# RESOURCE_NOT_FOUND = "This resource cannot be found or you are not authorized to access"
 
 # Should be the class models, but can't be imported here
 Study = Any
@@ -37,20 +37,23 @@ class NIGEndpoint(EndpointResource):
         dataset: Optional[Dataset] = None,
         file: Optional[File] = None,
         read: bool = False,
-    ) -> str:
+    ) -> Path:
 
         group = user.belongs_to.single()
         if not group:
             raise NotFound("User group not found")
+
         if study:
-            path = os.path.join(GROUP_DIR, group.uuid, study.uuid)
+            return GROUP_DIR.joinpath(group.uuid, study.uuid)
+
         if dataset:
             study = dataset.parent_study.single()
             if read:
                 # it can be an admin so i have to get the group uuid of the dataset
                 owner = dataset.ownership.single()
                 group = owner.belongs_to.single()
-            path = os.path.join(GROUP_DIR, group.uuid, study.uuid, dataset.uuid)
+            return GROUP_DIR.joinpath(group.uuid, study.uuid, dataset.uuid)
+
         if file:
             dataset = file.dataset.single()
             study = dataset.parent_study.single()
@@ -58,10 +61,11 @@ class NIGEndpoint(EndpointResource):
                 # it can be an admin so i have to get the group uuid of the dataset
                 owner = dataset.ownership.single()
                 group = owner.belongs_to.single()
-            path = os.path.join(
-                GROUP_DIR, group.uuid, study.uuid, dataset.uuid, file.name
-            )
-        return path
+
+            return GROUP_DIR.joinpath(group.uuid, study.uuid, dataset.uuid, file.name)
+
+        if not group:
+            raise BadRequest("Can't get a path without a study specification")
 
     @staticmethod
     def getError(error_type: str) -> str:

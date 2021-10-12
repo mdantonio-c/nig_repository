@@ -1,4 +1,5 @@
-import os
+import tempfile
+from pathlib import Path
 from subprocess import check_call
 from typing import Dict
 
@@ -10,22 +11,22 @@ from werkzeug.test import TestResponse as Response
 
 
 class TestApp(BaseTests):
+    @staticmethod
     def upload_file(
-        self,
         client: FlaskClient,
         headers: Dict[str, str],
-        input: str,
+        fastq: Path,
         dataset_uuid: str,
         stream: bool = True,
     ) -> Response:
         # get the data for the upload request
-        filename = os.path.basename(input)
-        filesize = os.path.getsize(input)
+        filename = fastq.name
+        filesize = fastq.stat().st_size
         data = {
             "name": filename,
             "mimeType": "application/gzip",
             "size": filesize,
-            "lastModified": int(os.path.getmtime(input)),
+            "lastModified": int(fastq.stat().st_mtime),
         }
 
         r_post: Response = client.post(
@@ -37,7 +38,7 @@ class TestApp(BaseTests):
         chunksize = int(filesize / 2) + 1
         range_start = 0
 
-        with open(input, "rb") as f:
+        with open(fastq, "rb") as f:
             while True:
                 read_data = f.read(chunksize)
                 if not read_data:
@@ -65,6 +66,19 @@ class TestApp(BaseTests):
                     break
                 range_start += chunksize
             return r
+
+    @staticmethod
+    def create_fastq_gz(faker: Faker, content: str, mode="w") -> Path:
+
+        filename = f"{faker.pystr()}_R1"
+        path = Path(tempfile.gettempdir(), filename).with_suffix(".fastq")
+        with open(path, mode) as f:
+            f.write(content)
+
+        # gzip the new file
+        check_call(["gzip", "-f", path])
+
+        return path.with_suffix(".fastq.gz")
 
     def test_api_file(self, client: FlaskClient, faker: Faker) -> None:
         # setup the test env
@@ -94,9 +108,8 @@ class TestApp(BaseTests):
 
         # check accesses for post request
         # upload a new file in a dataset of an other group
-        fake_filename = f"{faker.pystr()}_R1"
         fake_file = {
-            "name": f"{fake_filename}.fastq.gz",
+            "name": f"{faker.pystr()}_R1.fastq.gz",
             "mimeType": "application/gzip",
             "size": faker.pyint(),
             "lastModified": faker.pyint(),
@@ -116,9 +129,9 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 404
 
-        # try to upload a file with a no allowed format
+        # try to upload a file with a non allowed format
         fake_format = {
-            "name": f"{fake_filename}.txt",
+            "name": f"{faker.pystr()}_R1.txt",
             "mimeType": "text/plain",
             "size": faker.pyint(),
             "lastModified": faker.pyint(),
@@ -144,35 +157,36 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 400
 
+        valid_fcontent = f"@SEQ_ID\n{faker.pystr(max_chars=12)}\n+{faker.pystr()}\n{faker.pystr(max_chars=12)}"
+        # invalid header, @ is missing
+        invalid_header = f"SEQ_ID\n{faker.pystr(max_chars=12)}\n+{faker.pystr()}\n{faker.pystr(max_chars=12)}"
+        # CASE invalid separator
+        invalid_separator = f"@SEQ_ID\n{faker.pystr(max_chars=12)}\n{faker.pystr()}\n{faker.pystr(max_chars=12)}"
+        # len of sequence != len of quality
+        invalid_sequence = f"@SEQ_ID\n{faker.pystr(max_chars=12)}\n+{faker.pystr()}\n{faker.pystr(max_chars=8)}"
+        # invalid second header
+        invalid_header2 = f"@SEQ_ID\n{faker.pystr(max_chars=12)}\n+{faker.pystr()}\n{faker.pystr(max_chars=12)}\n{faker.pystr()}"
+
         # create a file to upload
-        fcontent = f"@SEQ_ID \n {faker.pystr(max_chars = 12)} \n +{faker.pystr()} \n {faker.pystr(max_chars = 12)}"
-
-        # tmp_basepath=f"/tmp/{fake_filename}"
-        # os.mkdir(tmp_basepath)
-        with open(f"/tmp/{fake_filename}.fastq", "w") as f:
-            f.write(fcontent)
-
-        # gzip the new file
-        check_call(["gzip", f"/tmp/{fake_filename}.fastq"])
+        fastq = self.create_fastq_gz(faker, valid_fcontent)
 
         # upload a file
-        input = f"/tmp/{fake_filename}.fastq.gz"
         response = self.upload_file(
-            client, user_B1_headers, input, dataset_B_uuid, stream=True
+            client, user_B1_headers, fastq, dataset_B_uuid, stream=True
         )
         assert response.status_code == 200
         # check the file exists and have the expected size
-        filename = os.path.basename(input)
-        filesize = os.path.getsize(input)
-        filepath = os.path.join(
-            GROUP_DIR, uuid_group_B, study1_uuid, dataset_B_uuid, filename
+        filename = fastq.name
+        filesize = fastq.stat().st_size
+        filepath = GROUP_DIR.joinpath(
+            uuid_group_B, study1_uuid, dataset_B_uuid, filename
         )
-        assert os.path.isfile(filepath)
-        assert os.path.getsize(filepath) == filesize
+        assert filepath.is_file()
+        assert filepath.stat().st_size == filesize
 
         # upload the same file twice
         response = self.upload_file(
-            client, user_B2_headers, input, dataset_B_uuid, stream=True
+            client, user_B2_headers, fastq, dataset_B_uuid, stream=True
         )
         assert response.status_code == 409
 
@@ -188,19 +202,19 @@ class TestApp(BaseTests):
         dataset_B2_uuid = self.get_content(r)
         assert isinstance(dataset_B2_uuid, str)
         response = self.upload_file(
-            client, user_B2_headers, input, dataset_B2_uuid, stream=True
+            client, user_B2_headers, fastq, dataset_B2_uuid, stream=True
         )
         assert response.status_code == 200
 
-        # check error if final file size is different from the one expected
+        # check error if final file size is different from the expected
         # rename the file to upload
-        fake_filename2 = f"{faker.pystr()}_R1"
-        os.rename(input, f"/tmp/{fake_filename2}.fastq.gz")
+        fake_filename2 = fastq.parent.joinpath(f"{faker.pystr()}_R1.fastq.gz")
+        fastq.rename(fake_filename2)
         # upload without streaming
         response = self.upload_file(
             client,
             user_B1_headers,
-            f"/tmp/{fake_filename2}.fastq.gz",
+            fake_filename2,
             dataset_B_uuid,
             stream=False,
         )
@@ -212,56 +226,47 @@ class TestApp(BaseTests):
             == "File has not been uploaded correctly: final size does not correspond to total size. Please try a new upload"
         )
         # check non complete file has been removed
-        filepath2 = os.path.join(
-            GROUP_DIR,
+        check_filepath = GROUP_DIR.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
-            f"{fake_filename2}.fastq.gz",
+            fake_filename2.name,
         )
-        assert not os.path.isfile(filepath2)
+        assert not check_filepath.is_file()
 
         # check file validation
         # upload an empty file
-        # create a file to upload
-        empty_filename = faker.pystr()
-        open(f"/tmp/{empty_filename}.fastq", "w").close()
-
-        # gzip the new file
-        check_call(["gzip", f"/tmp/{empty_filename}.fastq"])
-
-        # upload a file
+        empty_file = self.create_fastq_gz(faker, "")
         response = self.upload_file(
             client,
             user_B1_headers,
-            f"/tmp/{empty_filename}.fastq.gz",
+            empty_file,
             dataset_B_uuid,
             stream=True,
         )
         assert response.status_code == 400
         # check the empty file has been removed
-        empty_filepath = os.path.join(
-            GROUP_DIR,
+        check_filepath = GROUP_DIR.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
-            f"{empty_filename}.fastq.gz",
+            empty_file.name,
         )
-        assert not os.path.isfile(empty_filepath)
+        assert not check_filepath.is_file()
+        empty_file.unlink()
 
         # upload a file with not valid content
-        # CASE false gzip file
-        novalid_filename = f"{faker.pystr()}_R1"
-        novalid_fcontent = f"SEQ_ID \n {faker.pystr(max_chars=12)} \n +{faker.pystr()} \n {faker.pystr(max_chars=12)}"
+        # CASE wrong gzip file
+        wrong_gzip = Path(tempfile.gettempdir(), f"{faker.pystr()}_R1.fastq.gz")
 
-        with open(f"/tmp/{novalid_filename}.fastq", "w") as f:
-            f.write(novalid_fcontent)
+        # Directly write the gz => it is an ascii file and not a valid gz
+        with open(wrong_gzip, "w") as f:
+            f.write(valid_fcontent)
 
-        os.rename(f"/tmp/{novalid_filename}.fastq", f"/tmp/{novalid_filename}.fastq.gz")
         response = self.upload_file(
             client,
             user_B1_headers,
-            f"/tmp/{novalid_filename}.fastq.gz",
+            wrong_gzip,
             dataset_B_uuid,
             stream=True,
         )
@@ -271,26 +276,21 @@ class TestApp(BaseTests):
         assert "gzipped" in error_message
 
         # check the empty file has been removed
-        novalid_filepath = os.path.join(
-            GROUP_DIR,
+        check_filepath = GROUP_DIR.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
-            f"{novalid_filename}.fastq.gz",
+            wrong_gzip.name,
         )
-        assert not os.path.isfile(novalid_filepath)
+        assert not check_filepath.is_file()
+        wrong_gzip.unlink()
 
         # CASE binary file instead of a text file
-        binary_filename = f"{faker.pystr()}_R1"
-        binary_content = faker.binary()
-        with open(f"/tmp/{binary_filename}.fastq", "wb") as b:
-            b.write(binary_content)
-        check_call(["gzip", f"/tmp/{binary_filename}.fastq"])
-
+        binary_file = self.create_fastq_gz(faker, faker.binary(), mode="wb")
         response = self.upload_file(
             client,
             user_B1_headers,
-            f"/tmp/{binary_filename}.fastq.gz",
+            binary_file,
             dataset_B_uuid,
             stream=True,
         )
@@ -299,24 +299,21 @@ class TestApp(BaseTests):
         assert isinstance(error_message, str)
         assert "binary" in error_message
 
-        binary_filepath = os.path.join(
-            GROUP_DIR,
+        check_filepath = GROUP_DIR.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
-            f"{binary_filename}.fastq.gz",
+            binary_file.name,
         )
-        assert not os.path.isfile(binary_filepath)
+        assert not check_filepath.is_file()
+        binary_file.unlink()
 
         # CASE invalid header
-        with open(f"/tmp/{novalid_filename}.fastq", "w") as f:
-            f.write(novalid_fcontent)
-        check_call(["gzip", "-f", f"/tmp/{novalid_filename}.fastq"])
-
+        invalid_fastq = self.create_fastq_gz(faker, invalid_header)
         response = self.upload_file(
             client,
             user_B1_headers,
-            f"/tmp/{novalid_filename}.fastq.gz",
+            invalid_fastq,
             dataset_B_uuid,
             stream=True,
         )
@@ -325,26 +322,21 @@ class TestApp(BaseTests):
         assert isinstance(error_message, str)
         assert "header" in error_message
 
-        novalid_filepath = os.path.join(
-            GROUP_DIR,
+        check_filepath = GROUP_DIR.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
-            f"{novalid_filename}.fastq.gz",
+            invalid_fastq.name,
         )
-        assert not os.path.isfile(novalid_filepath)
+        assert not check_filepath.is_file()
+        invalid_fastq.unlink()
 
         # CASE invalid separator
-        novalid_fcontent = f"@SEQ_ID \n {faker.pystr(max_chars=12)} \n {faker.pystr()} \n {faker.pystr(max_chars=12)}"
-
-        with open(f"/tmp/{novalid_filename}.fastq", "w") as f:
-            f.write(novalid_fcontent)
-        check_call(["gzip", "-f", f"/tmp/{novalid_filename}.fastq"])
-
+        invalid_fastq = self.create_fastq_gz(faker, invalid_separator)
         response = self.upload_file(
             client,
             user_B1_headers,
-            f"/tmp/{novalid_filename}.fastq.gz",
+            invalid_fastq,
             dataset_B_uuid,
             stream=True,
         )
@@ -353,26 +345,21 @@ class TestApp(BaseTests):
         assert isinstance(error_message, str)
         assert "separator" in error_message
 
-        novalid_filepath = os.path.join(
-            GROUP_DIR,
+        check_filepath = GROUP_DIR.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
-            f"{novalid_filename}.fastq.gz",
+            invalid_fastq.name,
         )
-        assert not os.path.isfile(novalid_filepath)
+        assert not check_filepath.is_file()
+        invalid_fastq.unlink()
 
-        # CASE invalid fastq line
-        novalid_fcontent = f"@SEQ_ID \n {faker.pystr(max_chars=12)} \n +{faker.pystr()} \n {faker.pystr(max_chars=8)}"
-
-        with open(f"/tmp/{novalid_filename}.fastq", "w") as f:
-            f.write(novalid_fcontent)
-        check_call(["gzip", "-f", f"/tmp/{novalid_filename}.fastq"])
-
+        # CASE invalid sequence line
+        invalid_fastq = self.create_fastq_gz(faker, invalid_sequence)
         response = self.upload_file(
             client,
             user_B1_headers,
-            f"/tmp/{novalid_filename}.fastq.gz",
+            invalid_fastq,
             dataset_B_uuid,
             stream=True,
         )
@@ -381,26 +368,21 @@ class TestApp(BaseTests):
         assert isinstance(error_message, str)
         assert "lines lengths differ" in error_message
 
-        novalid_filepath = os.path.join(
-            GROUP_DIR,
+        check_filepath = GROUP_DIR.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
-            f"{novalid_filename}.fastq.gz",
+            invalid_fastq.name,
         )
-        assert not os.path.isfile(novalid_filepath)
+        assert not check_filepath.is_file()
+        invalid_fastq.unlink()
 
         # CASE invalid header for the second read
-        novalid_fcontent = f"@SEQ_ID \n {faker.pystr(max_chars=12)} \n +{faker.pystr()} \n {faker.pystr(max_chars=12)} \n {faker.pystr()}"
-
-        with open(f"/tmp/{novalid_filename}.fastq", "w") as f:
-            f.write(novalid_fcontent)
-        check_call(["gzip", "-f", f"/tmp/{novalid_filename}.fastq"])
-
+        invalid_fastq = self.create_fastq_gz(faker, invalid_header2)
         response = self.upload_file(
             client,
             user_B1_headers,
-            f"/tmp/{novalid_filename}.fastq.gz",
+            invalid_fastq,
             dataset_B_uuid,
             stream=True,
         )
@@ -409,14 +391,14 @@ class TestApp(BaseTests):
         assert isinstance(error_message, str)
         assert "header" in error_message
 
-        novalid_filepath = os.path.join(
-            GROUP_DIR,
+        check_filepath = GROUP_DIR.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
-            f"{novalid_filename}.fastq.gz",
+            invalid_fastq.name,
         )
-        assert not os.path.isfile(novalid_filepath)
+        assert not check_filepath.is_file()
+        invalid_fastq.unlink()
 
         # check accesses on put endpoint
         # put on a file in a dataset of an other group
@@ -467,7 +449,8 @@ class TestApp(BaseTests):
 
         # check use case of file not in the folder
         # rename the file in the folder as it will not be found
-        os.rename(filepath, f"{filepath}.fastq.tmp")
+        temporary_filepath = filepath.with_suffix(".fastq.tmp")
+        filepath.rename(temporary_filepath)
         r = client.get(
             f"{API_URI}/dataset/{dataset_B_uuid}/files", headers=user_B1_headers
         )
@@ -477,8 +460,8 @@ class TestApp(BaseTests):
         assert file_list[0]["status"] == "unknown"
         # create an empty file with the original name
         # test status from unknown to importing
-        with open(filepath, "a"):
-            os.utime(filepath, None)
+        filepath.touch()
+
         r = client.get(
             f"{API_URI}/dataset/{dataset_B_uuid}/files", headers=user_B1_headers
         )
@@ -488,13 +471,13 @@ class TestApp(BaseTests):
         assert file_list[0]["status"] == "importing"
 
         # restore the original file
-        os.remove(filepath)
+        filepath.unlink()
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
         file_response = self.get_content(r)
         assert isinstance(file_response, dict)
         assert file_response["status"] == "unknown"
-        os.rename(f"{filepath}.fastq.tmp", filepath)
+        temporary_filepath.rename(filepath)
 
         r = client.get(
             f"{API_URI}/dataset/{dataset_B_uuid}/files", headers=user_B1_headers
@@ -522,14 +505,13 @@ class TestApp(BaseTests):
 
         # check use case of file not in the folder
         # rename the file in the folder as it will not be found
-        os.rename(filepath, f"{filepath}.fastq.tmp")
+        filepath.rename(temporary_filepath)
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
 
         # create an empty file with the original name
         # test status from unknown to importing
-        with open(filepath, "a"):
-            os.utime(filepath, None)
+        filepath.touch()
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
         file_res = self.get_content(r)
@@ -537,11 +519,11 @@ class TestApp(BaseTests):
         assert file_res["status"] == "importing"
 
         # restore the original file
-        os.remove(filepath)
+        filepath.unlink()
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
 
-        os.rename(f"{filepath}.fastq.tmp", filepath)
+        temporary_filepath.rename(filepath)
 
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_B1_headers)
         assert r.status_code == 200
@@ -551,6 +533,7 @@ class TestApp(BaseTests):
 
         # delete a file
         # delete a file that does not exists
+        fake_filename = f"{faker.pystr()}_R1"
         r = client.delete(f"{API_URI}/file/{fake_filename}", headers=user_A1_headers)
         assert r.status_code == 404
         # delete a file in a dataset you do not own
@@ -579,14 +562,9 @@ class TestApp(BaseTests):
         assert isinstance(not_existent_message, str)
         assert not_existent_message == not_authorized_message
         # check physical deletion from the folder
-        assert not os.path.isfile(filepath)
+        assert not filepath.is_file()
 
-        # delete the file created for the tests
-        os.remove(f"/tmp/{fake_filename2}.fastq.gz")
-        os.remove(f"/tmp/{empty_filename}.fastq.gz")
-        os.remove(f"/tmp/{novalid_filename}.fastq.gz")
-        os.remove(f"/tmp/{binary_filename}.fastq.gz")
-
+        fastq.unlink()
         # delete all the elements used by the test
         delete_test_env(
             client,
