@@ -1,6 +1,6 @@
-import os
 import time
 from mimetypes import MimeTypes
+from pathlib import Path
 
 import requests
 import typer
@@ -10,7 +10,7 @@ app = typer.Typer()
 
 @app.command()
 def upload(
-    input: str = typer.Argument(None, help="path of file to upload"),
+    file: Path = typer.Argument(None, help="path of file to upload"),
     username: str = typer.Option(None, prompt=True),
     pwd: str = typer.Option(None, prompt=True, hide_input=True),
     totp: str = typer.Option(None, prompt=True),
@@ -22,13 +22,11 @@ def upload(
     elif env == "dev":
         url = "https://nig-dev.cineca.it/"
     else:
-        typer.echo(
-            "ERROR: the specified environment is not valid. Please choose between dev and local"
-        )
+        typer.echo("ERROR: Invalid environment, please choose between dev and local")
         return None
 
     # check if the input file exists
-    if not os.path.exists(input):
+    if not file.exists():
         typer.echo("ERROR: the specified input path does not exists")
         return None
 
@@ -39,7 +37,7 @@ def upload(
 
     if r.status_code != 200:
         typer.echo(
-            f"ERROR: fail to login. Status code: {r.status_code}, response content: {r.json()}"
+            f"ERROR: fail to login. Status: {r.status_code}, response: {r.json()}"
         )
         return None
 
@@ -48,10 +46,10 @@ def upload(
     typer.echo("Logged in succesfully")
 
     # get the data for the upload request
-    filename = os.path.basename(input)
-    filesize = os.path.getsize(input)
-    mimeType = MimeTypes().guess_type(input)
-    lastModified = int(os.path.getmtime(input))
+    filename = file.name
+    filesize = file.stat().st_size
+    mimeType = MimeTypes().guess_type(str(file))
+    lastModified = int(file.stat().st_mtime)
 
     data = {
         "name": filename,
@@ -67,7 +65,7 @@ def upload(
     )
     if r.status_code != 201:
         typer.echo(
-            f"ERROR: fail to initialize the upload. Status code: {r.status_code}, response content: {r.json()}"
+            f"ERROR: can't start the upload. Status {r.status_code}, response: {r.json()}"
         )
         return None
 
@@ -76,7 +74,7 @@ def upload(
     chunksize = 100000  # 1kb
     range_start = 0
 
-    with open(input, "rb") as f:
+    with open(file, "rb") as f:
         with typer.progressbar(length=filesize, label="Uploading") as progress:
             while True:
                 read_data = f.read(chunksize)
@@ -99,9 +97,7 @@ def upload(
                         progress.update(filesize)
                         break
                     typer.echo(
-                        "ERROR: Fail in uploading the file. Status code: {}, response content: {}".format(
-                            r.status_code, r.json()
-                        )
+                        f"ERROR: Fail in uploading the file. Status: {r.status_code}, response: {r.json()}"
                     )
                     return None
                 # update the typer progress bar
@@ -113,9 +109,7 @@ def upload(
             typer.echo("Upload finished succesfully")
         else:
             typer.echo(
-                "ERROR: Fail in uploading the file. Status code: {}, response content: {}".format(
-                    r.status_code, r.json()
-                )
+                f"ERROR: Fail in uploading the file. Status: {r.status_code}, response: {r.json()}"
             )
     return None
 

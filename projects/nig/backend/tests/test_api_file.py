@@ -68,7 +68,7 @@ class TestApp(BaseTests):
             return r
 
     @staticmethod
-    def create_fastq_gz(faker: Faker, content: str, mode="w") -> Path:
+    def create_fastq_gz(faker: Faker, content: str, mode: str = "w") -> Path:
 
         filename = f"{faker.pystr()}_R1"
         path = Path(tempfile.gettempdir(), filename).with_suffix(".fastq")
@@ -208,13 +208,13 @@ class TestApp(BaseTests):
 
         # check error if final file size is different from the expected
         # rename the file to upload
-        fake_filename2 = fastq.parent.joinpath(f"{faker.pystr()}_R1.fastq.gz")
-        fastq.rename(fake_filename2)
+        fastq2 = fastq.parent.joinpath(f"{faker.pystr()}_R1.fastq.gz")
+        fastq.rename(fastq2)
         # upload without streaming
         response = self.upload_file(
             client,
             user_B1_headers,
-            fake_filename2,
+            fastq2,
             dataset_B_uuid,
             stream=False,
         )
@@ -225,12 +225,12 @@ class TestApp(BaseTests):
             error_message
             == "File has not been uploaded correctly: final size does not correspond to total size. Please try a new upload"
         )
-        # check non complete file has been removed
+        # check uncomplete file has been removed
         check_filepath = GROUP_DIR.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
-            fake_filename2.name,
+            fastq2.name,
         )
         assert not check_filepath.is_file()
 
@@ -414,9 +414,9 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 404
 
-        # put of a non existent file
+        # put of a ton existent file
         r = client.put(
-            f"{API_URI}/dataset/{dataset_B_uuid}/files/upload/{fake_filename2}.txt.gz",
+            f"{API_URI}/dataset/{dataset_B_uuid}/files/upload/{fastq2}.txt.gz",
             headers=user_B1_headers,
         )
         assert r.status_code == 404
@@ -564,7 +564,12 @@ class TestApp(BaseTests):
         # check physical deletion from the folder
         assert not filepath.is_file()
 
-        fastq.unlink()
+        if fastq.exists():
+            fastq.unlink()
+
+        if fastq2.exists():
+            fastq2.unlink()
+
         # delete all the elements used by the test
         delete_test_env(
             client,

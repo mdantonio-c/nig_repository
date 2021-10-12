@@ -64,8 +64,9 @@ class NIGEndpoint(EndpointResource):
 
             return GROUP_DIR.joinpath(group.uuid, study.uuid, dataset.uuid, file.name)
 
-        if not group:
-            raise BadRequest("Can't get a path without a study specification")
+        raise BadRequest(  # pragma: no cover
+            "Can't get a path without a study specification"
+        )
 
     @staticmethod
     def getError(error_type: str) -> str:

@@ -1,5 +1,4 @@
 import gzip
-import os
 import re
 from pathlib import Path
 from typing import Any, Tuple
@@ -50,12 +49,10 @@ class Files(NIGEndpoint):
 
         path = self.getPath(user=user, dataset=dataset, read=True)
 
-        directory_data = os.listdir(path)
-
         data = []
 
         for file in dataset.files.all():
-            if file.name not in directory_data:
+            if not path.joinpath(file.name).exists():
                 file.status = "unknown"
                 file.save()
             else:
@@ -103,9 +100,7 @@ class SingleFile(NIGEndpoint):
         # check if file exists in the folder
         path = self.getPath(user=user, dataset=dataset, read=True)
 
-        directory_data = os.listdir(path)
-
-        if file.name not in directory_data:
+        if not path.joinpath(file.name).exists():
             file.status = "unknown"
             file.save()
         else:
