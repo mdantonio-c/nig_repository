@@ -12,7 +12,7 @@ variables:
   env:
     CHUNKS_LIMIT: 16
     CRONTAB_ENABLE: 1
-    UPLOAD_PATH: /data
+    DATA_PATH: /data
 
     FRONTEND_FRAMEWORK: angular
     AUTH_SERVICE: neo4j

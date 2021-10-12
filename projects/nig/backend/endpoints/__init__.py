@@ -1,14 +1,14 @@
 from pathlib import Path
 from typing import Any, List, Optional
 
-from restapi.config import UPLOAD_PATH
+from restapi.config import DATA_PATH
 from restapi.exceptions import BadRequest, NotFound
 from restapi.rest.definition import EndpointResource
 from restapi.services.authentication import User
 from restapi.utilities.logs import log
 
-GROUP_DIR = UPLOAD_PATH.joinpath("input")
-OUTPUT_ROOT = UPLOAD_PATH.joinpath("output")
+GROUP_DIR = DATA_PATH.joinpath("input")
+OUTPUT_ROOT = DATA_PATH.joinpath("output")
 
 STUDY_NOT_FOUND = "This study cannot be found or you are not authorized to access"
 DATASET_NOT_FOUND = "This dataset cannot be found or you are not authorized to access"

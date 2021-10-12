@@ -8,7 +8,7 @@ import pandas as pd
 import snakemake as smk
 from celery.app.task import Task
 from nig.endpoints import GROUP_DIR, OUTPUT_ROOT
-from restapi.config import UPLOAD_PATH
+from restapi.config import DATA_PATH
 from restapi.connectors import neo4j
 from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
@@ -24,7 +24,7 @@ def launch_pipeline(
     task_id = self.request.id
     log.info("Start task [{}:{}]", task_id, self.name)
     # create a unique workdir for every celery task / and snakemake launch)
-    wrkdir = UPLOAD_PATH.joinpath("jobs", task_id)
+    wrkdir = DATA_PATH.joinpath("jobs", task_id)
     wrkdir.mkdir(parents=True, exist_ok=True)
     # copy the files used by snakemake in the work dir
     source_dir = Path("/snakemake")
