@@ -5,8 +5,8 @@ from typing import Dict
 
 from faker import Faker
 from nig.endpoints import GROUP_DIR
-from nig.tests.setup_tests import create_test_env, delete_test_env
 from restapi.tests import API_URI, BaseTests, FlaskClient
+from tests.custom import create_test_env, delete_test_env
 from werkzeug.test import TestResponse as Response
 
 

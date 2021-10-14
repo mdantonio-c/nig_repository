@@ -2,10 +2,10 @@ import json
 from typing import Any, Dict
 
 from faker import Faker
-from nig.tests.setup_tests import create_test_env, delete_test_env
 from restapi.connectors import neo4j
 from restapi.tests import API_URI, BaseTests, FlaskClient
 from restapi.utilities.logs import log
+from tests.custom import create_test_env, delete_test_env
 
 
 class TestApp(BaseTests):
