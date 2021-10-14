@@ -131,17 +131,13 @@ class Datasets(NIGEndpoint):
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study, user=user, read=True)
-        nodeset = study.datasets
 
         data = []
-        for dataset in nodeset.all():
+        for dataset in study.datasets.all():
 
             if not self.verifyDatasetAccess(
                 dataset, user=user, read=True, raiseError=False
             ):
-                continue
-
-            if not dataset.parent_study.is_connected(study):
                 continue
 
             data.append(dataset)

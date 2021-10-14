@@ -173,11 +173,6 @@ class Study(NIGEndpoint):
         for n in study.technicals.all():
             n.delete()
 
-        for n in study.resources.all():
-            for v in n.virtual_file.all():
-                v.delete()
-            n.delete()
-
         study.delete()
 
         # remove the study folder

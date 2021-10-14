@@ -37,7 +37,6 @@ class Study(TimestampedNode):
     technicals = RelationshipFrom(
         "TechnicalMetadata", "DEFINED_IN", cardinality=ZeroOrMore
     )
-    resources = RelationshipFrom("Resource", "CONTAINED_IN", cardinality=ZeroOrMore)
 
     datasets = RelationshipTo("Dataset", "CONTAINS", cardinality=ZeroOrMore)
     linked_datasets = RelationshipTo("Dataset", "IS_LINKED", cardinality=ZeroOrMore)
@@ -56,7 +55,6 @@ class Dataset(TimestampedNode):
     parent_study = RelationshipFrom("Study", "CONTAINS", cardinality=ZeroOrMore)
     linked_studies = RelationshipFrom("Study", "IS_LINKED", cardinality=ZeroOrMore)
     files = RelationshipTo("File", "CONTAINS", cardinality=ZeroOrMore)
-    virtualfiles = RelationshipTo("VirtualFile", "CONTAINS", cardinality=ZeroOrMore)
     phenotype = RelationshipTo("Phenotype", "IS_DESCRIBED_BY", cardinality=ZeroOrOne)
     technical = RelationshipTo(
         "TechnicalMetadata", "IS_DESCRIBED_BY", cardinality=ZeroOrOne
@@ -123,23 +121,6 @@ class File(IdentifiedNode):
     )
 
 
-class VirtualFile(IdentifiedNode):
-    name = StringProperty(required=True)
-    info = StringProperty(required=True)
-
-    dataset = RelationshipFrom("Dataset", "CONTAINS", cardinality=ZeroOrMore)
-
-    has_variant = RelationshipFrom(
-        "Variant", "OBSERVED_IN", cardinality=ZeroOrMore, model=VariantRelation
-    )
-
-    has_not_variant = RelationshipFrom(
-        "Variant", "NOT_OBSERVED_IN", cardinality=ZeroOrMore, model=VariantRelation
-    )
-
-    from_resource = RelationshipTo("Resource", "FROM", cardinality=ZeroOrOne)
-
-
 class Phenotype(TimestampedNode):
     name = StringProperty(required=True, is_restricted=True)
     age = IntegerProperty()
@@ -165,20 +146,6 @@ class TechnicalMetadata(TimestampedNode):
 
     defined_in = RelationshipTo("Study", "DEFINED_IN", cardinality=ZeroOrMore)
     describe = RelationshipFrom("Dataset", "IS_DESCRIBED_BY", cardinality=ZeroOrOne)
-
-
-# Properties copied from File
-class Resource(TimestampedNode):
-    name = StringProperty(required=True)
-    type = StringProperty()
-
-    size = IntegerProperty()
-    status = StringProperty()
-    task_id = StringProperty()
-    metadata = JSONProperty()
-    study = RelationshipTo("Study", "CONTAINED_IN", cardinality=ZeroOrMore)
-
-    virtual_file = RelationshipFrom("VirtualFile", "FROM", cardinality=ZeroOrMore)
 
 
 class Gene(TimestampedNode):
@@ -299,16 +266,8 @@ class Variant(TimestampedNode):
         "File", "OBSERVED_IN", cardinality=ZeroOrOne, model=VariantRelation
     )
 
-    virtual_extracted_from = RelationshipTo(
-        "VirtualFile", "OBSERVED_IN", cardinality=ZeroOrOne, model=VariantRelation
-    )
-
     not_extracted_from = RelationshipTo(
         "File", "NOT_OBSERVED_IN", cardinality=ZeroOrOne, model=VariantRelation
-    )
-
-    virtual_not_extracted_from = RelationshipTo(
-        "VirtualFile", "NOT_OBSERVED_IN", cardinality=ZeroOrOne, model=VariantRelation
     )
 
     confirmed_in = RelationshipTo("Phenotype", "CONFIRMED_IN")

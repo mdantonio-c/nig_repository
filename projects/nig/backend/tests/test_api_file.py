@@ -41,8 +41,11 @@ class TestApp(BaseTests):
         with open(fastq, "rb") as f:
             while True:
                 read_data = f.read(chunksize)
-                if not read_data:
-                    break  # done
+                # No more data to send, exit the loop
+                # This case is never reached because in normal conditions
+                # the loop is exited when the APIs respond with a code != 206
+                if not read_data:  # pragma: no cover
+                    break
                 if range_start != 0:
                     range_start += 1
                 range_max = range_start + chunksize
