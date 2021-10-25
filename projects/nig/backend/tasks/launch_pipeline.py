@@ -4,14 +4,14 @@ import shutil
 from pathlib import Path
 from typing import List
 
-import pandas as pd
-import snakemake as smk
 from celery.app.task import Task
 from nig.endpoints import GROUP_DIR, OUTPUT_ROOT
+from pandas import DataFrame
 from restapi.config import DATA_PATH
 from restapi.connectors import neo4j
 from restapi.connectors.celery import CeleryExt
 from restapi.utilities.logs import log
+from snakemake import snakemake
 
 
 @CeleryExt.task()
@@ -81,7 +81,7 @@ def launch_pipeline(
             )
 
     # A dataframe is created
-    df = pd.DataFrame(fastq, columns=["Sample", "Frag", "InputPath", "OutputPath"])
+    df = DataFrame(fastq, columns=["Sample", "Frag", "InputPath", "OutputPath"])
     df["Reverse"] = "No"
     df.loc[df.Frag == "R2", "Reverse"] = "Yes"
     fastq_csv_file = wrkdir.joinpath("fastq.csv")
@@ -97,7 +97,7 @@ def launch_pipeline(
     log.info("Calling Snakemake with {} cores", cores)
     snakefile_path = wrkdir.joinpath(snakefile)
 
-    smk.snakemake(
+    snakemake(
         snakefile_path, cores=cores, workdir=wrkdir, configfiles=config, forceall=force
     )
 
