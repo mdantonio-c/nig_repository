@@ -25,6 +25,6 @@ services:
       - ${DATA_DIR}/resources:/resources
       - ${PROJECT_DIR}/backend/snakemake:/snakemake
 
-  flower:
-    build: ${PROJECT_DIR}/builds/celery
-    image: nig/celery:${RAPYDO_VERSION}
+  # flower:
+  #   build: ${PROJECT_DIR}/builds/celery
+  #   image: nig/celery:${RAPYDO_VERSION}
