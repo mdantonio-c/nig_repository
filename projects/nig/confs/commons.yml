@@ -2,12 +2,12 @@ version: "3.9"
 
 services:
   backend:
-    build: ${PROJECT_DIR}/builds/backend
-    image: nig/backend:${RAPYDO_VERSION}
+    # build: ${PROJECT_DIR}/builds/backend
+    # image: nig/backend:${RAPYDO_VERSION}
     volumes:
       - ${DATA_DIR}/data:/data
-      - ${DATA_DIR}/resources:/resources
-      - ${PROJECT_DIR}/backend/snakemake:/snakemake
+      # - ${DATA_DIR}/resources:/resources
+      # - ${PROJECT_DIR}/backend/snakemake:/snakemake
     environment:
       # celery configuration for samples analysis
       CHUNKS_LIMIT: ${CHUNKS_LIMIT}
@@ -18,13 +18,13 @@ services:
       - ${DATA_DIR}/data:/var/lib/neo4j/import/repo
 
   celery:
-    build: ${PROJECT_DIR}/builds/backend
-    image: nig/backend:${RAPYDO_VERSION}
+    build: ${PROJECT_DIR}/builds/celery
+    image: nig/celery:${RAPYDO_VERSION}
     volumes:
       - ${DATA_DIR}/data:/data
       - ${DATA_DIR}/resources:/resources
       - ${PROJECT_DIR}/backend/snakemake:/snakemake
 
   flower:
-    build: ${PROJECT_DIR}/builds/backend
-    image: nig/backend:${RAPYDO_VERSION}
+    build: ${PROJECT_DIR}/builds/celery
+    image: nig/celery:${RAPYDO_VERSION}
