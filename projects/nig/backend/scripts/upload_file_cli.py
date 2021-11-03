@@ -32,7 +32,9 @@ def upload(
 
     # do login
     r = requests.post(
-        f"{url}auth/login", {"username": username, "password": pwd, "totp_code": totp}
+        f"{url}auth/login",
+        {"username": username, "password": pwd, "totp_code": totp},
+        timeout=30,
     )
 
     if r.status_code != 200:
@@ -61,7 +63,10 @@ def upload(
     # init the upload
 
     r = requests.post(
-        f"{url}api/dataset/{dataset}/files/upload", headers=headers, data=data
+        f"{url}api/dataset/{dataset}/files/upload",
+        headers=headers,
+        data=data,
+        timeout=30,
     )
     if r.status_code != 201:
         typer.echo(
@@ -90,6 +95,7 @@ def upload(
                     f"{url}api/dataset/{dataset}/files/upload/{filename}",
                     headers=headers,
                     data=read_data,
+                    timeout=30,
                 )
                 if r.status_code != 206:
                     if r.status_code == 200:
