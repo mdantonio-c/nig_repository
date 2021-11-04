@@ -1,4 +1,4 @@
-name: Backend
+name: Swarm
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
 
           export SWARM_MODE=1
 
-          rapydo run registry
+          rapydo run --pull registry
           rapydo pull --quiet
           rapydo build
           rapydo add task test_task
