@@ -44,7 +44,9 @@ jobs:
       - name: Production Mode
         run: |
           rapydo remove
+          rapydo remove registry
           rapydo --testing --prod init --force
+          rapydo start registry
           rapydo pull --quiet frontend proxy
 
           rapydo start frontend proxy
