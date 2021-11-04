@@ -46,7 +46,7 @@ jobs:
           rapydo remove
           rapydo remove registry
           rapydo --testing --prod init --force
-          rapydo start registry
+          rapydo run registry
           rapydo pull --quiet frontend proxy
 
           rapydo start frontend proxy

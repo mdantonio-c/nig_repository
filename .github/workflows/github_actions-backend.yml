@@ -20,7 +20,7 @@ jobs:
       - uses: rapydo/actions/install@v1
         with:
           project: ${PROJECT}
-          swarm: 1
+          swarm: 0
 
       - name: Run Pytest
         run: |
@@ -50,11 +50,11 @@ jobs:
       - name: Production mode
         run: |
           rapydo remove
-          rapydo remove registry
+          # rapydo remove registry
           docker volume rm $(docker volume ls -q)
           rm -rf data/graphdata/*
           rapydo --testing --prod init --force
-          rapydo run registry
+          # rapydo run registry
           rapydo pull --quiet
           rapydo ssl --volatile
           rapydo -e AUTH_LOGIN_BAN_TIME=10 start
