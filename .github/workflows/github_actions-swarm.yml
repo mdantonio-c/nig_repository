@@ -20,13 +20,11 @@ jobs:
       - uses: rapydo/actions/install@v1
         with:
           project: ${PROJECT}
+          swarm: true
 
       - name: Run Pytest
         run: |
 
-          export SWARM_MODE=1
-
-          rapydo run --pull registry
           rapydo pull --quiet
           rapydo build
           rapydo add task test_task
