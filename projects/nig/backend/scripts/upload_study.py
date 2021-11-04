@@ -3,13 +3,16 @@ import time
 from contextlib import contextmanager
 from mimetypes import MimeTypes
 from pathlib import Path
-from typing import Generator
+from typing import Any, Dict, Generator, Optional
 
 import OpenSSL.crypto
 import requests
 import typer
 
 app = typer.Typer()
+
+POST = "post"
+PUT = "put"
 
 
 @contextmanager
@@ -39,6 +42,33 @@ def pfx_to_pem(pfx_path: Path, pfx_password: str) -> Generator[str, None, None]:
         yield t_pem.name
 
 
+def request(
+    method: str,
+    url: str,
+    certfile: Path,
+    certpwd: str,
+    data: Dict[str, Any],
+    headers: Optional[Dict[str, Any]] = None,
+) -> requests.Response:
+
+    if method == POST:
+        fn = requests.post
+    elif method == PUT:
+        fn = requests.put
+
+    with pfx_to_pem(certfile, certpwd) as cert:
+        # do login
+        r = fn(
+            url,
+            data=data,
+            headers=headers,
+            timeout=30,
+            cert=cert,
+        )
+
+        return r
+
+
 def error(text: str) -> None:
     typer.secho(text, fg=typer.colors.RED)
     return None
@@ -55,7 +85,6 @@ def upload(
     url: str = typer.Option(..., prompt="Server URL", help="Server URL"),
     username: str = typer.Option(..., prompt="Your username"),
     pwd: str = typer.Option(..., prompt="Your password", hide_input=True),
-    totp: str = typer.Option(..., prompt="2FA TOTP"),
     certfile: Path = typer.Option(
         ..., prompt="Path of your certificate", help="Path of the certificate file"
     ),
@@ -65,7 +94,13 @@ def upload(
         hide_input=True,
         help="Password of the certifiate",
     ),
+    totp: str = typer.Option(..., prompt="2FA TOTP"),
 ) -> None:
+
+    if not url.startswith("https:"):
+        url = f"https://{url}"
+    if not url.endswith("/"):
+        url = f"{url}/"
 
     if not certfile.exists():
         return error(f"Certificate not found: {certfile}")
@@ -74,14 +109,13 @@ def upload(
     if not dataset.exists():
         return error(f"The specified dataset does not exists: {dataset}")
 
-    with pfx_to_pem(certfile, certpwd) as cert:
-        # do login
-        r = requests.post(
-            f"{url}auth/login",
-            {"username": username, "password": pwd, "totp_code": totp},
-            timeout=30,
-            cert=cert,
-        )
+    r = request(
+        method=POST,
+        url=f"{url}auth/login",
+        certfile=certfile,
+        certpwd=certpwd,
+        data={"username": username, "password": pwd, "totp_code": totp},
+    )
 
     if r.status_code != 200:
         if r.text:
