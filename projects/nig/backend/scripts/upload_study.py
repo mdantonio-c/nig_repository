@@ -4,7 +4,7 @@ import time
 from contextlib import contextmanager
 from mimetypes import MimeTypes
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional
+from typing import Any, Dict, Generator, Optional, Union
 
 import OpenSSL.crypto
 import requests
@@ -48,7 +48,7 @@ def request(
     url: str,
     certfile: Path,
     certpwd: str,
-    data: Dict[str, Any],
+    data: Union[bytes, Dict[str, Any]],
     headers: Optional[Dict[str, Any]] = None,
 ) -> requests.Response:
 
@@ -226,7 +226,7 @@ if __name__ == "__main__":
     app()
 
 
-def parse_file_ped(self, filename: Path) -> None:
+def parse_file_ped(filename: Path) -> None:
     with open(filename) as f:
 
         # header = None
@@ -238,17 +238,16 @@ def parse_file_ped(self, filename: Path) -> None:
                 # header = re.split(r"\t", line)
                 continue
 
-            line = line.strip()
-            line = re.split(r"\t", line)
+            data = re.split(r"\t", line.strip())
 
-            if len(line) < 5:
+            if len(data) < 5:
                 continue
 
-            # pedigree_id = line[0]
-            individual_id = line[1]
-            father = line[2]
-            mother = line[3]
-            sex = line[4]
+            # pedigree_id = data[0]
+            individual_id = data[1]
+            father = data[2]
+            mother = data[3]
+            sex = data[4]
             # + birthday ?
             # + birthplace ?
 
@@ -272,7 +271,7 @@ def parse_file_ped(self, filename: Path) -> None:
             # 4 Connect to a dataset
 
 
-def parse_file_tech(self, filename: Path) -> None:
+def parse_file_tech(filename: Path) -> None:
     with open(filename) as f:
 
         # header = None
@@ -284,17 +283,16 @@ def parse_file_tech(self, filename: Path) -> None:
                 # header = re.split(r"\t", line)
                 continue
 
-            line = line.strip()
-            line = re.split(r"\t", line)
+            data = re.split(r"\t", line.strip())
 
-            if len(line) < 4:
+            if len(data) < 4:
                 continue
 
-            name = line[0]
-            date = line[1]
-            platform = line[2]
-            kit = line[3]
-            datasets = line[4]
+            name = data[0]
+            date = data[1]
+            platform = data[2]
+            kit = data[3]
+            datasets = data[4]
 
             # 1 Verify if this technical already exists
 
