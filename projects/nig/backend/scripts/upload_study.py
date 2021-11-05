@@ -1,3 +1,4 @@
+import re
 import tempfile
 import time
 from contextlib import contextmanager
@@ -70,6 +71,13 @@ def request(
                 cert=cert,
             )
 
+        return requests.get(
+            url,
+            headers=headers,
+            timeout=30,
+            cert=cert,
+        )
+
 
 def error(text: str) -> None:
     typer.secho(text, fg=typer.colors.RED)
@@ -111,6 +119,7 @@ def upload(
     if not dataset.exists():
         return error(f"The specified dataset does not exists: {dataset}")
 
+    # Do login
     r = request(
         method=POST,
         url=f"{url}auth/login",
@@ -150,13 +159,15 @@ def upload(
     }
 
     # init the upload
-
-    r = requests.post(
-        f"{url}api/dataset/{dataset}/files/upload",
+    r = request(
+        method=POST,
+        url=f"{url}api/dataset/{dataset}/files/upload",
         headers=headers,
+        certfile=certfile,
+        certpwd=certpwd,
         data=data,
-        timeout=30,
     )
+
     if r.status_code != 201:
         return error(
             f"Can't start the upload. Status {r.status_code}, response: {r.json()}"
@@ -179,12 +190,15 @@ def upload(
                 if range_max > filesize:
                     range_max = filesize
                 headers["Content-Range"] = f"bytes {range_start}-{range_max}/{filesize}"
-                r = requests.put(
-                    f"{url}api/dataset/{dataset}/files/upload/{filename}",
+                r = request(
+                    method=POST,
+                    url=f"{url}api/dataset/{dataset}/files/upload/{filename}",
                     headers=headers,
+                    certfile=certfile,
+                    certpwd=certpwd,
                     data=read_data,
-                    timeout=30,
                 )
+
                 if r.status_code != 206:
                     if r.status_code == 200:
                         # upload is complete
@@ -210,3 +224,87 @@ def upload(
 
 if __name__ == "__main__":
     app()
+
+
+def parse_file_ped(self, filename: Path) -> None:
+    with open(filename) as f:
+
+        # header = None
+        for line in f.readlines():
+
+            if line.startswith("#"):
+                # Remove the initial #
+                line = line[1:].strip().lower()
+                # header = re.split(r"\t", line)
+                continue
+
+            line = line.strip()
+            line = re.split(r"\t", line)
+
+            if len(line) < 5:
+                continue
+
+            # pedigree_id = line[0]
+            individual_id = line[1]
+            father = line[2]
+            mother = line[3]
+            sex = line[4]
+            # + birthday ?
+            # + birthplace ?
+
+            if sex == "1":
+                sex = "male"
+            elif sex == "2":
+                sex = "female"
+
+            # 1 Verify if this phenotype already exists?
+
+            # 2 Create the phenotype ...
+            properties = {}
+            properties["name"] = individual_id
+            properties["sex"] = sex
+            properties["father"] = father
+            properties["mother"] = mother
+            ...
+
+            # 3 Connect father and mother, if any
+
+            # 4 Connect to a dataset
+
+
+def parse_file_tech(self, filename: Path) -> None:
+    with open(filename) as f:
+
+        # header = None
+        for line in f.readlines():
+
+            if line.startswith("#"):
+                # Remove the initial #
+                line = line[1:].strip().lower()
+                # header = re.split(r"\t", line)
+                continue
+
+            line = line.strip()
+            line = re.split(r"\t", line)
+
+            if len(line) < 4:
+                continue
+
+            name = line[0]
+            date = line[1]
+            platform = line[2]
+            kit = line[3]
+            datasets = line[4]
+
+            # 1 Verify if this technical already exists
+
+            # 2 Create the technical
+            properties = {}
+            properties["name"] = name
+            properties["sequencing_date"] = date
+            properties["platform"] = platform
+            properties["enrichment_kit"] = kit
+            properties["datasets"] = datasets
+            ...
+
+            # 3 Connect to datasets
