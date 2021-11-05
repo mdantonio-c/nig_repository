@@ -51,22 +51,24 @@ def request(
     headers: Optional[Dict[str, Any]] = None,
 ) -> requests.Response:
 
-    if method == POST:
-        fn = requests.post
-    elif method == PUT:
-        fn = requests.put
-
     with pfx_to_pem(certfile, certpwd) as cert:
-        # do login
-        r = fn(
-            url,
-            data=data,
-            headers=headers,
-            timeout=30,
-            cert=cert,
-        )
+        if method == POST:
+            return requests.post(
+                url,
+                data=data,
+                headers=headers,
+                timeout=30,
+                cert=cert,
+            )
 
-        return r
+        if method == PUT:
+            return requests.put(
+                url,
+                data=data,
+                headers=headers,
+                timeout=30,
+                cert=cert,
+            )
 
 
 def error(text: str) -> None:

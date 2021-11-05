@@ -25,7 +25,7 @@ jobs:
       - uses: rapydo/actions/mypy@v1
         with:
           project: ${PROJECT}
-          install: pronto typer pandas-stubs
+          install: pronto typer pandas-stubs types-pyOpenSSL
           ignore: vcf snakemake
       - name: Save Report
         uses: actions/upload-artifact@v2
