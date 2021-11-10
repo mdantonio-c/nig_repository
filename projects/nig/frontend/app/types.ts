@@ -24,9 +24,11 @@ export interface Dataset extends ResourceIdentity {
   description: string;
   files: number;
   /** @nullable */
-  technical?: number;
+  technical?: ResourceIdentity;
   /** @nullable */
   phenotype: ResourceIdentity;
+  /** @nullable */
+  status: string;
 }
 
 export interface Datasets extends Array<Dataset> {}

@@ -6,12 +6,13 @@ import { Dataset } from "@app/types";
 @Component({
   selector: "nig-datasets",
   templateUrl: "./datasets.component.html",
+  // styleUrls:["./datasets.component.css"],
 })
 export class DatasetsComponent extends BasePaginationComponent<Dataset> {
   @Input() studyUUID;
   expanded: any = {};
 
-  constructor(protected injector: Injector) {
+  constructor(protected injector: Injector, private dataService: DataService) {
     super(injector);
   }
 
@@ -28,5 +29,28 @@ export class DatasetsComponent extends BasePaginationComponent<Dataset> {
 
   onDetailToggle(event) {
     // console.log('File Panel Toggled', event);
+  }
+
+  setUploadReady(row) {
+    if (!row.status) {
+      row.uploadReady = true;
+      return false;
+    } else {
+      row.uploadReady = false;
+      return true;
+    }
+  }
+
+  onUploadReadyChange(row, event) {
+    this.dataService.sendUploadReady(row.uuid, row.uploadReady).subscribe(
+      (resp) => {
+        this.list();
+        console.log(row.status);
+      },
+      (error) => {
+        this.notify.showError(error);
+        event.target.checked = !event.target.checked;
+      }
+    );
   }
 }

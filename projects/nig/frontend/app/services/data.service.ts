@@ -33,4 +33,11 @@ export class DataService {
   deleteRelationship(uuid: string, parent: string): Observable<any> {
     return this.api.delete(`/api/phenotype/${uuid}/relationships/${parent}`);
   }
+
+  sendUploadReady(uuid: string, uploadReady: boolean): Observable<any> {
+    const status = uploadReady
+      ? { status: "UPLOAD COMPLETED" }
+      : { status: "-1" };
+    return this.api.patch(`/api/dataset/${uuid}`, status);
+  }
 }
