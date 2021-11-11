@@ -6,7 +6,7 @@ import { Dataset } from "@app/types";
 @Component({
   selector: "nig-datasets",
   templateUrl: "./datasets.component.html",
-  // styleUrls:["./datasets.component.css"],
+  styleUrls: ["./datasets.component.css"],
 })
 export class DatasetsComponent extends BasePaginationComponent<Dataset> {
   @Input() studyUUID;
@@ -45,7 +45,6 @@ export class DatasetsComponent extends BasePaginationComponent<Dataset> {
     this.dataService.sendUploadReady(row.uuid, row.uploadReady).subscribe(
       (resp) => {
         this.list();
-        console.log(row.status);
       },
       (error) => {
         this.notify.showError(error);
