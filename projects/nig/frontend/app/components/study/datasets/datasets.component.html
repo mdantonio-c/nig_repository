@@ -102,7 +102,11 @@
             [flexGrow]="0.5"
             [sortable]="false"
           >
-            <ng-template let-value="value" ngx-datatable-cell-template>
+            <ng-template
+              let-value="value"
+              let-row="row"
+              ngx-datatable-cell-template
+            >
               <span
                 class="badge badge-secondary"
                 [ngClass]="{
@@ -117,6 +121,14 @@
               >
                 {{ value }}
               </span>
+              <button
+                *ngIf="user.isAdmin && value && value != 'UPLOAD COMPLETED'"
+                class="btn p-0 mr-1 redo_btn"
+                ngbTooltip="Relaunch the analysis"
+                (click)="resetDatasetStatus(row.uuid)"
+              >
+                <i class="fa fa-sm fa-redo"></i>
+              </button>
             </ng-template>
           </ngx-datatable-column>
 
