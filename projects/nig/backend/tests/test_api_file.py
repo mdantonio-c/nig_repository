@@ -148,7 +148,7 @@ class TestApp(BaseTests):
 
         # try to upload a file with a wrong nomenclature
         fake_nomencl_file = {
-            "name": f"{faker.pystr()}.fastq.gz",
+            "name": f"{faker.pystr()}.{faker.pystr()}_R1.fastq.gz.{faker.pystr()}",
             "mimeType": "text/plain",
             "size": faker.pyint(),
             "lastModified": faker.pyint(),
@@ -157,6 +157,19 @@ class TestApp(BaseTests):
             f"{API_URI}/dataset/{dataset_B_uuid}/files/upload",
             headers=user_B1_headers,
             data=fake_nomencl_file,
+        )
+        assert r.status_code == 400
+
+        fake_nomencl_file2 = {
+            "name": f"{faker.pystr()}.{faker.pystr()}_R1.fastq.gz",
+            "mimeType": "text/plain",
+            "size": faker.pyint(),
+            "lastModified": faker.pyint(),
+        }
+        r = client.post(
+            f"{API_URI}/dataset/{dataset_B_uuid}/files/upload",
+            headers=user_B1_headers,
+            data=fake_nomencl_file2,
         )
         assert r.status_code == 400
 
