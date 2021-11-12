@@ -176,20 +176,18 @@ class FileUpload(Uploader, NIGEndpoint):
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, user=user, error_type="Dataset")
 
-        # get the file
-        file = None
-        for f in dataset.files.all():
-            if f.name == filename:
-                file = f
-        if not file:
-            raise NotFound(FILE_NOT_FOUND)
-        file.status = "importing"
-        file.save()
-
         path = self.getPath(user=user, dataset=dataset)
         completed, response = self.chunk_upload(Path(path), filename)
         log.debug("check {}", response)
         if completed:
+            # get the file
+            file = None
+            for f in dataset.files.all():
+                if f.name == filename:
+                    file = f
+            if not file:
+                raise NotFound(FILE_NOT_FOUND)
+
             # check the final size
             filepath = self.getPath(user=user, file=file)
             filesize = filepath.stat().st_size
@@ -265,7 +263,7 @@ class FileUpload(Uploader, NIGEndpoint):
             "size": kwargs["size"],
             # Currently fixed
             "type": "fastq.gz",
-            "status": "init",
+            "status": "importing",
         }
 
         file = graph.File(**properties).save()
