@@ -26,6 +26,21 @@ def verify_dataset_access(
     return {"dataset": dataset, "study": study}
 
 
+def verify_dataset_status_update(
+    endpoint: NIGEndpoint, uuid: str, user: User
+) -> Dict[str, Any]:
+    graph = neo4j.get_instance()
+    dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
+    endpoint.verifyDatasetAccess(dataset, user=user, update_status=True)
+
+    study = dataset.parent_study.single()
+    endpoint.verifyStudyAccess(
+        study, user=user, error_type="Dataset", update_dataset_status=True
+    )
+
+    return {"dataset": dataset, "study": study}
+
+
 def verify_phenotype_access(
     endpoint: NIGEndpoint, uuid: str, user: User
 ) -> Dict[str, Any]:

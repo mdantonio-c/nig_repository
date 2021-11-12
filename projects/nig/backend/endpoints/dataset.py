@@ -2,7 +2,11 @@ import shutil
 from typing import Any, Dict, Optional, Type, Union
 
 from nig.endpoints import PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND, NIGEndpoint
-from nig.endpoints._injectors import verify_dataset_access, verify_study_access
+from nig.endpoints._injectors import (
+    verify_dataset_access,
+    verify_dataset_status_update,
+    verify_study_access,
+)
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.customizer import FlaskRequest
@@ -304,7 +308,7 @@ class Dataset(NIGEndpoint):
             404: "This dataset cannot be found or you are not authorized to access",
         },
     )
-    @decorators.preload(callback=verify_dataset_access)
+    @decorators.preload(callback=verify_dataset_status_update)
     @decorators.use_kwargs(
         {
             "status": fields.Str(
@@ -323,7 +327,11 @@ class Dataset(NIGEndpoint):
     ) -> Response:
 
         # patch can only be done on dataset with status UPLOAD COMPLETED
-        if dataset.status and dataset.status != "UPLOAD COMPLETED":
+        if (
+            dataset.status
+            and dataset.status != "UPLOAD COMPLETED"
+            and not self.auth.is_admin(user)
+        ):
             raise BadRequest(f"The status of dataset {dataset.name} cannot be modified")
 
         if status == "-1":
