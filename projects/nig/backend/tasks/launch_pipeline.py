@@ -58,7 +58,7 @@ def launch_pipeline(
     fastq = []
 
     # the pattern is check also in the file upload endpoint. This is an additional check
-    pattern = r"([a-zA-Z0-9]+)_(R[12]).fastq.gz"
+    pattern = r"([a-zA-Z0-9_-]+)_(R[12]).fastq.gz"
     for filepath in file_list:
         fname = filepath.name
         if match := re.match(pattern, fname):

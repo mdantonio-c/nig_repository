@@ -250,7 +250,7 @@ class FileUpload(Uploader, NIGEndpoint):
         path = self.getPath(user=user, dataset=dataset)
 
         # check if the filename is correct
-        name_pattern = r"([a-zA-Z0-9]+)_(R[12]).fastq.gz"
+        name_pattern = r"([a-zA-Z0-9_-]+)_(R[12]).fastq.gz"
         if not re.search(name_pattern, name):
             raise BadRequest(
                 "Filename does not follow the correct naming convention: "
