@@ -1,6 +1,5 @@
 import re
 import tempfile
-import time
 from contextlib import contextmanager
 from mimetypes import MimeTypes
 from pathlib import Path
@@ -89,6 +88,12 @@ def success(text: str) -> None:
     return None
 
 
+def get_response(r: requests.Response) -> Any:
+    if r.text:
+        return r.text
+    return r.json()
+
+
 @app.command()
 def upload(
     dataset: Path = typer.Argument(..., help="Path to the dataset"),
@@ -133,7 +138,9 @@ def upload(
             print(r.text)
             return error(f"Login Failed. Status: {r.status_code}")
 
-        return error(f"Login Failed. Status: {r.status_code}, response: {r.json()}")
+        return error(
+            f"Login Failed. Status: {r.status_code}, response: {get_response(r)}"
+        )
 
     token = r.json()
     headers = {"Authorization": f"Bearer {token}"}
@@ -169,13 +176,14 @@ def upload(
     )
 
     if r.status_code != 201:
+        resp = get_response(r)
         return error(
-            f"Can't start the upload. Status {r.status_code}, response: {r.json()}"
+            f"Can't start the upload. Status {r.status_code}, response: {resp}"
         )
 
     success("Upload initialized succesfully")
 
-    chunksize = 100000  # 1kb
+    chunksize = 16 * 1024 * 1024  # 16 mb
     range_start = 0
 
     with open(file, "rb") as f:
@@ -191,7 +199,7 @@ def upload(
                     range_max = filesize
                 headers["Content-Range"] = f"bytes {range_start}-{range_max}/{filesize}"
                 r = request(
-                    method=POST,
+                    method=PUT,
                     url=f"{url}api/dataset/{dataset}/files/upload/{filename}",
                     headers=headers,
                     certfile=certfile,
@@ -204,17 +212,16 @@ def upload(
                         # upload is complete
                         progress.update(filesize)
                         break
+                    resp = get_response(r)
                     return error(
-                        f"Upload Failed. Status: {r.status_code}, response: {r.json()}"
+                        f"Upload Failed. Status: {r.status_code}, response: {resp}"
                     )
-                # update the typer progress bar
-                time.sleep(1)
                 progress.update(chunksize)
                 # update the range variable
                 range_start += chunksize
         if r.status_code != 200:
             return error(
-                f"Upload Failed. Status: {r.status_code}, response: {r.json()}"
+                f"Upload Failed. Status: {r.status_code}, response: {get_response(r)}"
             )
 
         success("Upload finished succesfully")
