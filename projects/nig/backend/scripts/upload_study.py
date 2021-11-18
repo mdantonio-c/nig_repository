@@ -96,7 +96,7 @@ def get_response(r: requests.Response) -> Any:
 
 @app.command()
 def upload(
-    dataset: Path = typer.Argument(..., help="Path to the dataset"),
+    study: Path = typer.Argument(..., help="Path to the study"),
     url: str = typer.Option(..., prompt="Server URL", help="Server URL"),
     username: str = typer.Option(..., prompt="Your username"),
     pwd: str = typer.Option(..., prompt="Your password", hide_input=True),
@@ -121,8 +121,36 @@ def upload(
         return error(f"Certificate not found: {certfile}")
 
     # check if the input file exists
-    if not dataset.exists():
-        return error(f"The specified dataset does not exists: {dataset}")
+    if not study.exists():
+        return error(f"The specified study does not exists: {study}")
+
+    study_tree = {
+        "name": study.name,
+        "phenotypes": "",
+        "technicals": "",
+        "datasets": {},
+    }
+
+    for d in study.iterdir():
+        if d.is_dir():
+            for f in d.iterdir():
+                if f.is_file() and f.name.endswith(".fastq.gz"):
+                    study_tree["datasets"].setdefault(d.name, [])
+                    study_tree["datasets"][d.name].append(f)
+
+    pedigree = study.joinpath("pedigree.txt")
+    if pedigree.is_file():
+        study_tree["phenotypes"] = pedigree
+
+    technical = study.joinpath("technical.txt")
+    if technical.is_file():
+        study_tree["technicals"] = technical
+
+    if not study_tree["datasets"]:
+        return error(f"No files found for upload in: {study}")
+
+    # Debug code
+    success(study_tree)
 
     # Do login
     r = request(
@@ -146,85 +174,118 @@ def upload(
     headers = {"Authorization": f"Bearer {token}"}
     success("Succesfully logged in")
 
-    # ####################
-    # Find the file into the dataset
-    # Temporary faked by assigned dataset to file
-    file = dataset
-    ##################
-
-    # get the data for the upload request
-    filename = file.name
-    filesize = file.stat().st_size
-    mimeType = MimeTypes().guess_type(str(file))
-    lastModified = int(file.stat().st_mtime)
-
-    data = {
-        "name": filename,
-        "mimeType": mimeType,
-        "size": filesize,
-        "lastModified": lastModified,
-    }
-
-    # init the upload
+    study_name = study_tree["name"]
     r = request(
         method=POST,
-        url=f"{url}api/dataset/{dataset}/files/upload",
+        url=f"{url}api/study",
         headers=headers,
         certfile=certfile,
         certpwd=certpwd,
-        data=data,
+        data={"name": study_name, "description": ""},
     )
-
-    if r.status_code != 201:
-        resp = get_response(r)
+    if r.status_code != 200:
         return error(
-            f"Can't start the upload. Status {r.status_code}, response: {resp}"
+            f"Study creation failed. Status: {r.status_code}, response: {get_response(r)}"
         )
 
-    success("Upload initialized succesfully")
+    success(f"Succesfully created study {study_name}")
 
-    chunksize = 16 * 1024 * 1024  # 16 mb
-    range_start = 0
+    study_uuid = r.json()
 
-    with open(file, "rb") as f:
-        with typer.progressbar(length=filesize, label="Uploading") as progress:
-            while True:
-                read_data = f.read(chunksize)
-                if not read_data:
-                    break  # done
-                if range_start != 0:
-                    range_start += 1
-                range_max = range_start + chunksize
-                if range_max > filesize:
-                    range_max = filesize
-                headers["Content-Range"] = f"bytes {range_start}-{range_max}/{filesize}"
-                r = request(
-                    method=PUT,
-                    url=f"{url}api/dataset/{dataset}/files/upload/{filename}",
-                    headers=headers,
-                    certfile=certfile,
-                    certpwd=certpwd,
-                    data=read_data,
-                )
+    for dataset_name, files in study_tree["datasets"].items():
+        r = request(
+            method=POST,
+            url=f"{url}api/study/{study_uuid}/datasets",
+            headers=headers,
+            certfile=certfile,
+            certpwd=certpwd,
+            data={"name": dataset_name, "description": ""},
+        )
 
-                if r.status_code != 206:
-                    if r.status_code == 200:
-                        # upload is complete
-                        progress.update(filesize)
-                        break
-                    resp = get_response(r)
-                    return error(
-                        f"Upload Failed. Status: {r.status_code}, response: {resp}"
-                    )
-                progress.update(chunksize)
-                # update the range variable
-                range_start += chunksize
         if r.status_code != 200:
             return error(
-                f"Upload Failed. Status: {r.status_code}, response: {get_response(r)}"
+                f"Dataset creation failed. Status: {r.status_code}, response: {get_response(r)}"
             )
 
-        success("Upload finished succesfully")
+        success(f"Succesfully created dataset {dataset_name}")
+        dataset_uuid = r.json()
+
+        for file in files:
+            # get the data for the upload request
+            filename = file.name
+            filesize = file.stat().st_size
+            mimeType = MimeTypes().guess_type(str(file))
+            lastModified = int(file.stat().st_mtime)
+
+            data = {
+                "name": filename,
+                "mimeType": mimeType,
+                "size": filesize,
+                "lastModified": lastModified,
+            }
+
+            # init the upload
+            r = request(
+                method=POST,
+                url=f"{url}api/dataset/{dataset_uuid}/files/upload",
+                headers=headers,
+                certfile=certfile,
+                certpwd=certpwd,
+                data=data,
+            )
+
+            if r.status_code != 201:
+                resp = get_response(r)
+                return error(
+                    f"Can't start the upload. Status {r.status_code}, response: {resp}"
+                )
+
+            success("Upload initialized succesfully")
+
+            chunksize = 16 * 1024 * 1024  # 16 mb
+            range_start = 0
+
+            with open(file, "rb") as f:
+                with typer.progressbar(length=filesize, label="Uploading") as progress:
+                    while True:
+                        read_data = f.read(chunksize)
+                        if not read_data:
+                            break  # done
+                        if range_start != 0:
+                            range_start += 1
+                        range_max = range_start + chunksize
+                        if range_max > filesize:
+                            range_max = filesize
+                        headers[
+                            "Content-Range"
+                        ] = f"bytes {range_start}-{range_max}/{filesize}"
+                        r = request(
+                            method=PUT,
+                            url=f"{url}api/dataset/{dataset_uuid}/files/upload/{filename}",
+                            headers=headers,
+                            certfile=certfile,
+                            certpwd=certpwd,
+                            data=read_data,
+                        )
+
+                        if r.status_code != 206:
+                            if r.status_code == 200:
+                                # upload is complete
+                                progress.update(filesize)
+                                break
+                            resp = get_response(r)
+                            return error(
+                                f"Upload Failed. Status: {r.status_code}, response: {resp}"
+                            )
+                        progress.update(chunksize)
+                        # update the range variable
+                        range_start += chunksize
+                if r.status_code != 200:
+                    return error(
+                        f"Upload Failed. Status: {r.status_code}, response: {get_response(r)}"
+                    )
+
+                success("Upload finished succesfully")
 
     return None
 

@@ -48,7 +48,7 @@ export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile> 
       endpoint: `${environment.backendURI}/api/dataset/${this.uuid}/files/upload`,
       token: this.auth.getToken(),
       allowedTypes: "application/gzip",
-      chunkSize: 16777216,
+      maxChunkSize: 16777216,
       // "application/x-zip-compressed,application/x-compressed,application/zip,multipart/x-zip",
       multiple: true,
       autoUpload: true,
