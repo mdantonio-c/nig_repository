@@ -19,7 +19,6 @@ export class StudyComponent implements OnInit {
     { title: "Datasets", fragment: "datasets", icon: "fa-database" },
     { title: "Technical", fragment: "technicals", icon: "fa-file-alt" },
     { title: "Samples", fragment: "phenotypes", icon: "fa-users" },
-    // { title: 'Resources', fragment: 'resources', icon: 'fa-archive' },
   ];
   active;
 

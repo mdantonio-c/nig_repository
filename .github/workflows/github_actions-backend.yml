@@ -60,7 +60,7 @@ jobs:
           rapydo -e AUTH_LOGIN_BAN_TIME=10 start
           sleep 60
           rapydo logs
-          cname=$(docker ps --format '{{.Names}}' | grep _proxy)
+          cname=$(docker ps --format '{{.Names}}' | grep proxy)
           docker cp ${cname}:/etc/letsencrypt/local_client.crt .
           docker cp ${cname}:/etc/letsencrypt/local_client.key .
           curl --insecure -X GET --max-time 5 --key local_client.key --cert local_client.crt https://localhost/api/status | grep "Server is alive"
