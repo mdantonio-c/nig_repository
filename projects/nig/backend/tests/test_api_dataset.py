@@ -1,5 +1,5 @@
 from faker import Faker
-from nig.endpoints import GROUP_DIR
+from nig.endpoints import INPUT_ROOT
 from nig.tests import create_test_env, delete_test_env
 from restapi.connectors import neo4j
 from restapi.tests import API_URI, BaseTests, FlaskClient
@@ -33,7 +33,7 @@ class TestApp(BaseTests):
         dataset1_uuid = self.get_content(r)
         assert isinstance(dataset1_uuid, str)
         # check the directory exists
-        dir_path = GROUP_DIR.joinpath(uuid_group_B, study1_uuid, dataset1_uuid)
+        dir_path = INPUT_ROOT.joinpath(uuid_group_B, study1_uuid, dataset1_uuid)
         assert dir_path.is_dir()
 
         # create a new dataset in a study of an other group
