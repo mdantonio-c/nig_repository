@@ -94,6 +94,7 @@ class NIGEndpoint(EndpointResource):
         error_type: str = "Study",
         read: bool = False,
         raiseError: bool = True,
+        update_dataset_status: bool = False,
     ) -> bool:
 
         not_found = self.getError(error_type)
@@ -114,9 +115,10 @@ class NIGEndpoint(EndpointResource):
         if owner == user:
             return True
 
-        # An admin has always access for readonly
-        if read and self.auth.is_admin(user):
-            return True
+        # An admin has always access for readonly or to update dataset status
+        if self.auth.is_admin(user):
+            if read or update_dataset_status:
+                return True
 
         # A member of the some group of the owner, has always access
         for group in owner.belongs_to.all():
@@ -135,6 +137,7 @@ class NIGEndpoint(EndpointResource):
         error_type: str = "Dataset",
         read: bool = False,
         raiseError: bool = True,
+        update_status: bool = False,
     ) -> bool:
 
         not_found = self.getError(error_type)
@@ -156,9 +159,10 @@ class NIGEndpoint(EndpointResource):
         if owner == user:
             return True
 
-        # An admin has always access for readonly
-        if read and self.auth.is_admin(user):
-            return True
+        # An admin has always access for readonly or to modify dataset status
+        if self.auth.is_admin(user):
+            if read or update_status:
+                return True
 
         # A member of the some group of the owner, has always access
         for group in owner.belongs_to.all():

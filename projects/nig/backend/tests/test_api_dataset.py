@@ -185,6 +185,14 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 400
 
+        # admin tries to modify a status when the dataset is running
+        r = client.patch(
+            f"{API_URI}/dataset/{dataset1_uuid}",
+            headers=admin_headers,
+            data={"status": "UPLOAD COMPLETED"},
+        )
+        assert r.status_code == 204
+
         # test dataset modification
 
         # modify a dataset you do not own

@@ -11,12 +11,14 @@ import { Dataset } from "@app/types";
 export class DatasetsComponent extends BasePaginationComponent<Dataset> {
   @Input() studyUUID;
   expanded: any = {};
+  user: any = {};
 
   constructor(protected injector: Injector, private dataService: DataService) {
     super(injector);
   }
 
   ngOnInit() {
+    this.user = this.auth.getUser();
     this.init("Dataset", `/api/study/${this.studyUUID}/datasets`, "Datasets");
     this.set_resource_endpoint("/api/dataset");
     this.initPaging(20, false);
@@ -29,6 +31,17 @@ export class DatasetsComponent extends BasePaginationComponent<Dataset> {
 
   onDetailToggle(event) {
     // console.log('File Panel Toggled', event);
+  }
+
+  resetDatasetStatus(datasetUuid) {
+    this.dataService.sendUploadReady(datasetUuid, true).subscribe(
+      (resp) => {
+        this.list();
+      },
+      (error) => {
+        this.notify.showError(error);
+      }
+    );
   }
 
   setUploadReady(row) {

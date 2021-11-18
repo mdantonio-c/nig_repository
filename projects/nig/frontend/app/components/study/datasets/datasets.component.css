@@ -1,3 +1,9 @@
 .badge {
   white-space: normal;
 }
+
+.redo_btn {
+  margin-left: 0.3rem;
+  filter: drop-shadow(0.05rem 0.05rem 0.05rem #848484);
+  color: #202020de;
+}
