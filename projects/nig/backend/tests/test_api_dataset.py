@@ -1,5 +1,5 @@
 from faker import Faker
-from nig.endpoints import INPUT_ROOT
+from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
 from nig.tests import create_test_env, delete_test_env
 from restapi.connectors import neo4j
 from restapi.tests import API_URI, BaseTests, FlaskClient
@@ -254,6 +254,11 @@ class TestApp(BaseTests):
             data={"description": faker.pystr()},
         )
         assert r.status_code == 404
+        # simulate the dataset has an output directory
+        # create the output directory in the same way is created in launch pipeline task
+        output_path = OUTPUT_ROOT.joinpath(dir_path.relative_to(INPUT_ROOT))
+        output_path.mkdir(parents=True)
+        assert output_path.is_dir()
 
         # delete a dataset
         # delete a dataset you do not own
@@ -275,6 +280,9 @@ class TestApp(BaseTests):
         not_existent_message = self.get_content(r)
         assert isinstance(not_existent_message, str)
         assert not_existent_message == not_authorized_message
+        # check directory deletion
+        assert not dir_path.is_dir()
+        assert not output_path.is_dir()
 
         # delete all the elements used by the test
         delete_test_env(
