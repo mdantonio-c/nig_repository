@@ -37,7 +37,7 @@ class NIGEndpoint(EndpointResource):
         dataset: Optional[Dataset] = None,
         file: Optional[File] = None,
         read: bool = False,
-        get_output_dir=False,
+        get_output_dir: bool = False,
     ) -> Path:
 
         if get_output_dir:

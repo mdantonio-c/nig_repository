@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytz
 from faker import Faker
-from nig.endpoints import GROUP_DIR
+from nig.endpoints import INPUT_ROOT
 from restapi.connectors import Connector, neo4j
 
 auth = Connector.get_authentication_instance()
@@ -19,7 +19,7 @@ for i in range(0, 5):
 
     s = graph.Study(name=faker.license_plate(), description=faker.text(40)).save()
 
-    study_path = GROUP_DIR.joinpath(group.uuid, s.uuid)
+    study_path = INPUT_ROOT.joinpath(group.uuid, s.uuid)
     study_path.mkdir(parents=True)
     s.ownership.connect(user)
 
