@@ -23,9 +23,9 @@ RUN conda install --yes --freeze-installed python=3.9.0 && \
     conda update -n base -c defaults conda && \
     conda install --yes --freeze-installed -c conda-forge mamba stopit && \
     mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake && \
-    conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk && \
+    conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk samtools && \
     conda install --yes --freeze-installed -c daler sratoolkit && \
     conda install --yes --freeze-installed -c conda-forge yappi && \
     conda install --yes --freeze-installed pandas && \
-    mamba install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster samtools && \
+    mamba install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster && \
     conda clean -afy
