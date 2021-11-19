@@ -4,7 +4,7 @@ from subprocess import check_call
 from typing import Dict
 
 from faker import Faker
-from nig.endpoints import GROUP_DIR
+from nig.endpoints import INPUT_ROOT
 from nig.tests import create_test_env, delete_test_env
 from restapi.tests import API_URI, BaseTests, FlaskClient
 from werkzeug.test import TestResponse as Response
@@ -194,7 +194,7 @@ class TestApp(BaseTests):
         # check the file exists and have the expected size
         filename = fastq.name
         filesize = fastq.stat().st_size
-        filepath = GROUP_DIR.joinpath(
+        filepath = INPUT_ROOT.joinpath(
             uuid_group_B, study1_uuid, dataset_B_uuid, filename
         )
         assert filepath.is_file()
@@ -242,7 +242,7 @@ class TestApp(BaseTests):
             == "File has not been uploaded correctly: final size does not correspond to total size. Please try a new upload"
         )
         # check uncomplete file has been removed
-        check_filepath = GROUP_DIR.joinpath(
+        check_filepath = INPUT_ROOT.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
@@ -262,7 +262,7 @@ class TestApp(BaseTests):
         )
         assert response.status_code == 400
         # check the empty file has been removed
-        check_filepath = GROUP_DIR.joinpath(
+        check_filepath = INPUT_ROOT.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
@@ -292,7 +292,7 @@ class TestApp(BaseTests):
         assert "gzipped" in error_message
 
         # check the empty file has been removed
-        check_filepath = GROUP_DIR.joinpath(
+        check_filepath = INPUT_ROOT.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
@@ -315,7 +315,7 @@ class TestApp(BaseTests):
         assert isinstance(error_message, str)
         assert "binary" in error_message
 
-        check_filepath = GROUP_DIR.joinpath(
+        check_filepath = INPUT_ROOT.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
@@ -338,7 +338,7 @@ class TestApp(BaseTests):
         assert isinstance(error_message, str)
         assert "header" in error_message
 
-        check_filepath = GROUP_DIR.joinpath(
+        check_filepath = INPUT_ROOT.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
@@ -361,7 +361,7 @@ class TestApp(BaseTests):
         assert isinstance(error_message, str)
         assert "separator" in error_message
 
-        check_filepath = GROUP_DIR.joinpath(
+        check_filepath = INPUT_ROOT.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
@@ -384,7 +384,7 @@ class TestApp(BaseTests):
         assert isinstance(error_message, str)
         assert "lines lengths differ" in error_message
 
-        check_filepath = GROUP_DIR.joinpath(
+        check_filepath = INPUT_ROOT.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,
@@ -407,7 +407,7 @@ class TestApp(BaseTests):
         assert isinstance(error_message, str)
         assert "header" in error_message
 
-        check_filepath = GROUP_DIR.joinpath(
+        check_filepath = INPUT_ROOT.joinpath(
             uuid_group_B,
             study1_uuid,
             dataset_B_uuid,

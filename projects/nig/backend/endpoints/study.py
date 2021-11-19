@@ -160,7 +160,8 @@ class Study(NIGEndpoint):
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study, user=user)
 
-        path = self.getPath(user=user, study=study)
+        input_path = self.getPath(user=user, study=study)
+        output_path = self.getPath(user=user, study=study, get_output_dir=True)
 
         for d in study.datasets.all():
             for f in d.files.all():
@@ -175,8 +176,11 @@ class Study(NIGEndpoint):
 
         study.delete()
 
-        # remove the study folder
-        shutil.rmtree(path)
+        # remove the study folders
+        shutil.rmtree(input_path)
+        # if there is an output dir, delete it
+        if output_path.is_dir():
+            shutil.rmtree(output_path)
 
         self.log_event(self.events.delete, study)
 

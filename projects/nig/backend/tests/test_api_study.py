@@ -1,5 +1,5 @@
 from faker import Faker
-from nig.endpoints import GROUP_DIR
+from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
 from nig.tests import create_test_env, delete_test_env
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
@@ -38,7 +38,7 @@ class TestApp(BaseTests):
         assert isinstance(study2_uuid, str)
 
         # check the directory was created
-        dir_path = GROUP_DIR.joinpath(uuid_group_A, study2_uuid)
+        dir_path = INPUT_ROOT.joinpath(uuid_group_A, study2_uuid)
         assert dir_path.is_dir()
 
         # test study access
@@ -142,6 +142,12 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         phenotype_uuid = self.get_content(r)
         assert isinstance(phenotype_uuid, str)
+        # simulate the study has an output directory
+        # create the output directory in the same way is created in launch pipeline task
+        output_path = OUTPUT_ROOT.joinpath(dataset_path.relative_to(INPUT_ROOT))
+        output_path.mkdir(parents=True)
+        assert output_path.is_dir()
+
         # delete the study
         r = client.delete(f"{API_URI}/study/{study2_uuid}", headers=user_A1_headers)
         assert r.status_code == 204
@@ -153,13 +159,14 @@ class TestApp(BaseTests):
         # check the file was deleted
         r = client.get(f"{API_URI}/file/{file_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
-
         # check the technical was deleted
         r = client.get(f"{API_URI}/technical/{techmeta_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
         # check the phenotype was deleted
         r = client.get(f"{API_URI}/phenotype/{phenotype_uuid}", headers=user_A1_headers)
         assert r.status_code == 404
+        # check the output dir was deleted
+        assert not output_path.is_dir()
 
         # delete a study own by your group
         r = client.delete(f"{API_URI}/study/{study1_uuid}", headers=user_B2_headers)

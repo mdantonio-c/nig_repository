@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 
 from celery.app.task import Task
-from nig.endpoints import GROUP_DIR, OUTPUT_ROOT
+from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
 from pandas import DataFrame
 from restapi.config import DATA_PATH
 from restapi.connectors import neo4j
@@ -41,7 +41,7 @@ def launch_pipeline(
         owner = dataset.ownership.single()
         group = owner.belongs_to.single()
         study = dataset.parent_study.single()
-        datasetDirectory = GROUP_DIR.joinpath(group.uuid, study.uuid, dataset.uuid)
+        datasetDirectory = INPUT_ROOT.joinpath(group.uuid, study.uuid, dataset.uuid)
         # check if the directory exists
         if not datasetDirectory.exists():
             # an error should be raised?
@@ -68,7 +68,7 @@ def launch_pipeline(
             # get the input path
             input_path = filepath.parent
             # create the output path
-            output_path = OUTPUT_ROOT.joinpath(input_path.relative_to(GROUP_DIR))
+            output_path = OUTPUT_ROOT.joinpath(input_path.relative_to(INPUT_ROOT))
 
             # create row for csv
             fastq_row = [file_label, fragment, input_path, output_path]

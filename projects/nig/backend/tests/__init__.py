@@ -2,7 +2,7 @@ import shutil
 from typing import Any, Dict, Optional, Tuple
 
 from faker import Faker
-from nig.endpoints import GROUP_DIR
+from nig.endpoints import INPUT_ROOT
 from restapi.services.authentication import Role
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
@@ -100,14 +100,14 @@ def delete_test_env(
     assert r.status_code == 204
 
     # group A directory
-    group_dir_path = GROUP_DIR.joinpath(uuid_group_A)
-    shutil.rmtree(group_dir_path)
+    INPUT_ROOT_path = INPUT_ROOT.joinpath(uuid_group_A)
+    shutil.rmtree(INPUT_ROOT_path)
     # group A
     r = client.delete(f"{API_URI}/admin/groups/{uuid_group_A}", headers=admin_headers)
     assert r.status_code == 204
     # group B directory
-    group_dir_path = GROUP_DIR.joinpath(uuid_group_B)
-    shutil.rmtree(group_dir_path)
+    INPUT_ROOT_path = INPUT_ROOT.joinpath(uuid_group_B)
+    shutil.rmtree(INPUT_ROOT_path)
     # group B
     r = client.delete(f"{API_URI}/admin/groups/{uuid_group_B}", headers=admin_headers)
     assert r.status_code == 204

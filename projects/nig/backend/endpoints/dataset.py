@@ -366,7 +366,8 @@ class Dataset(NIGEndpoint):
 
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, user=user, error_type="Dataset")
-        path = self.getPath(user=user, dataset=dataset)
+        input_path = self.getPath(user=user, dataset=dataset)
+        output_path = self.getPath(user=user, dataset=dataset, get_output_dir=True)
 
         for f in dataset.files.all():
             f.delete()
@@ -374,7 +375,10 @@ class Dataset(NIGEndpoint):
         dataset.delete()
 
         # remove the dataset folder
-        shutil.rmtree(path)
+        shutil.rmtree(input_path)
+        # if it's present remove the dataset folder
+        if output_path.is_dir():
+            shutil.rmtree(output_path)
 
         self.log_event(self.events.delete, dataset)
 

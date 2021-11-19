@@ -7,7 +7,7 @@ from restapi.rest.definition import EndpointResource
 from restapi.services.authentication import User
 from restapi.utilities.logs import log
 
-GROUP_DIR = DATA_PATH.joinpath("input")
+INPUT_ROOT = DATA_PATH.joinpath("input")
 OUTPUT_ROOT = DATA_PATH.joinpath("output")
 
 STUDY_NOT_FOUND = "This study cannot be found or you are not authorized to access"
@@ -37,14 +37,20 @@ class NIGEndpoint(EndpointResource):
         dataset: Optional[Dataset] = None,
         file: Optional[File] = None,
         read: bool = False,
+        get_output_dir=False,
     ) -> Path:
+
+        if get_output_dir:
+            dir_root = OUTPUT_ROOT
+        else:
+            dir_root = INPUT_ROOT
 
         group = user.belongs_to.single()
         if not group:
             raise NotFound("User group not found")
 
         if study:
-            return GROUP_DIR.joinpath(group.uuid, study.uuid)
+            return dir_root.joinpath(group.uuid, study.uuid)
 
         if dataset:
             study = dataset.parent_study.single()
@@ -52,7 +58,7 @@ class NIGEndpoint(EndpointResource):
                 # it can be an admin so i have to get the group uuid of the dataset
                 owner = dataset.ownership.single()
                 group = owner.belongs_to.single()
-            return GROUP_DIR.joinpath(group.uuid, study.uuid, dataset.uuid)
+            return dir_root.joinpath(group.uuid, study.uuid, dataset.uuid)
 
         if file:
             dataset = file.dataset.single()
@@ -62,7 +68,7 @@ class NIGEndpoint(EndpointResource):
                 owner = dataset.ownership.single()
                 group = owner.belongs_to.single()
 
-            return GROUP_DIR.joinpath(group.uuid, study.uuid, dataset.uuid, file.name)
+            return dir_root.joinpath(group.uuid, study.uuid, dataset.uuid, file.name)
 
         raise BadRequest(  # pragma: no cover
             "Can't get a path without a study specification"
