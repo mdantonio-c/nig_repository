@@ -100,7 +100,7 @@ def get_response(r: requests.Response) -> Any:
 
 
 def get_value(key: str, header: List[str], line: List[str]) -> Optional[str]:
-    if header is None:
+    if not header:
         return None
     if key not in header:
         return None
@@ -108,9 +108,7 @@ def get_value(key: str, header: List[str], line: List[str]) -> Optional[str]:
     if index >= len(line):
         return None
     value = line[index]
-    if value is None:
-        return None
-    if value == "":
+    if not value:
         return None
     if value == "-":
         return None
@@ -119,10 +117,10 @@ def get_value(key: str, header: List[str], line: List[str]) -> Optional[str]:
     return value
 
 
-def date_from_string(date: str, fmt: str = "%d/%m/%Y") -> datetime:
+def date_from_string(date: str, fmt: str = "%d/%m/%Y") -> Optional[datetime]:
 
     if date == "":
-        return ""
+        return None
     # datetime.now(pytz.utc)
     try:
         return_date = datetime.strptime(date, fmt)
@@ -176,11 +174,9 @@ def parse_file_ped(file: Path) -> None:
 
             value = get_value("birthday", header, line)
             if value is not None:
-                properties["birthday"] = date_from_string(value)
-
-            value = get_value("deathday", header, line)
-            if value is not None:
-                properties["deathday"] = date_from_string(value)
+                d = date_from_string(value)
+                if d:
+                    properties["birthday"] = d
 
             properties["birthplace"] = get_value("birthplace", header, line)
             error(f"TODO: create {individual_id} with props = {properties}")
@@ -208,7 +204,7 @@ def parse_file_tech(file: Path) -> None:
 
     with open(file) as f:
 
-        header = None
+        header: List[str] = []
         while True:
             row = f.readline()
             if not row:
@@ -308,9 +304,6 @@ def upload(
 
     if not study_tree["datasets"]:
         return error(f"No files found for upload in: {study}")
-
-    # Debug code
-    success(study_tree)
 
     # Do login
     r = request(
