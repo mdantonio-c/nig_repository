@@ -1,28 +1,28 @@
 include: "Basic.smk"
 
 # Here goes the inputs list
-df  = pd.read_csv('fastq.csv')
+df = pd.read_csv('fastq.csv')
 # Collect paired and single samples
-pair = df[ df.Reverse=='Yes' ] ; sing = df[ ~df.Sample.isin(pair.Sample) ]
-
+pair = df[df.Reverse=='Yes']
+sing = df[~df.Sample.isin(pair.Sample)]
 
 # Reference genome
-refg=config["GENOME"]["hg38"]
+refg = config["GENOME"]["hg38"]
 
 wildcard_constraints:
     Pw = '|'.join([re.escape(x) for x in pair.Sample]),
     Sw = '|'.join([re.escape(x) for x in sing.Sample]),
 
 rule all:
-	input: expand("{O}/fastqc/{S}_{F}_fastqc.html",zip,O=df.OutputPath,S=df.Sample,F=df.Frag),\
-    expand("{O}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz",zip,O=df.OutputPath,S=df.Sample)
+	input: expand("{O}/fastqc/{S}_{F}_fastqc.html", zip, O=df.OutputPath, S=df.Sample, F=df.Frag),\
+    expand("{O}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz", zip, O=df.OutputPath, S=df.Sample)
 
 
 rule Fastqc:
     message:
         "Running fastqc tool on input fastq files"
     input:
-        expand("{I}/{{S}}_{{F}}.fastq.gz",I=df.InputPath)
+        expand("{I}/{S}_{F}.fastq.gz", zip, S=df.Sample, F=df.Frag, I=df.InputPath)
     output:
         "{O}/fastqc/{S}_{F}_fastqc.html"
     log:
@@ -50,7 +50,7 @@ rule BwaS:
     message:
         "Creating sam files for unpaired samples"
     input:
-        i="{O}/seqtk/{Sw}_R1.converted.gz"
+        i = "{O}/seqtk/{Sw}_R1.converted.gz"
     output:
         "{O}/bwa/{Sw}.sam"
     log:
@@ -86,7 +86,7 @@ rule BwaP:
 rule Samsort:
     message:
         "Doing `samsort` for all samples"
-    input: 
+    input:
         "{O}/bwa/{S}.sam"
     output:
         "{O}/bwa/{S}_sort_nodup.sam"
@@ -98,7 +98,7 @@ rule Samsort:
         config["THREAD"]["samtool"]
     shell:
         "samblaster -i {input} -r --ignoreUnmated 2> {log} | samtools sort -@ {threads} -m2G -T - -o {output} \
-        >> {log} 2>&1"  
+        >> {log} 2>&1"
 
 rule Samview:
     message:
@@ -116,7 +116,7 @@ rule Samview:
 
 rule Samindex:
     input:
-        rules.Samview.output                 
+        rules.Samview.output
     output:
         "{O}/bwa/{S}_sort_nodup.bai"
     threads:
@@ -126,9 +126,9 @@ rule Samindex:
 
 rule BaseRecalibrator:
     input:
-        bam=rules.Samview.output,
-        bai=rules.Samindex.output,
-        inter=config["IFILES"]["inter"]
+        bam = rules.Samview.output,
+        bai = rules.Samindex.output,
+        inter = config["IFILES"]["inter"]
     output:
         "{O}/gatk_bsr/{S}_sort_nodup.recaldat"
     log:
@@ -137,16 +137,16 @@ rule BaseRecalibrator:
         "{O}/gatk_bsr/{S}_sort_nodup.recaldat.benchmark"
     params:
         jv = config["JAVA"]["brc"],
-        p1=Mult_Params('--known-sites',[ config["IFOLDER"]["gatk"]+name for name in config["IFILES"]["dbsnp"] ])
+        p1 = Mult_Params('--known-sites', [config["IFOLDER"]["gatk"] + name for name in config["IFILES"]["dbsnp"]])
     shell:
         '''gatk {params.jv} BaseRecalibrator --input {input.bam} --output {output} \
         --reference {refg} {params.p1} --use-original-qualities -L {input.inter} > {log} 2>&1'''
 
 rule ApplyBQSR:
     input:
-        bam=rules.Samview.output,
-        rec=rules.BaseRecalibrator.output,
-        inter=config["IFILES"]["inter"]
+        bam = rules.Samview.output,
+        rec = rules.BaseRecalibrator.output,
+        inter = config["IFILES"]["inter"]
     output:
         "{O}/gatk_bsr/{S}_sort_nodup.bqsr.bam"
     log:
@@ -155,7 +155,7 @@ rule ApplyBQSR:
         "{O}/gatk_bsr/{S}_sort_nodup.bqsr.benchmark"
     params:
         jv = config["JAVA"]["absq"],
-        p1 = Mult_Params( '--static-quantized-quals' , config["PARAMS"]["absq"] ),
+        p1 = Mult_Params('--static-quantized-quals', config["PARAMS"]["absq"]),
         p2 = '--use-original-qualities'
     shell:
         '''gatk {params.jv} ApplyBQSR --input {input.bam} --output {output} --reference {refg} \
@@ -163,8 +163,8 @@ rule ApplyBQSR:
 
 rule HaplotypeCaller:
     input:
-        bam=rules.ApplyBQSR.output,
-        inter=config["IFILES"]["inter"]
+        bam = rules.ApplyBQSR.output,
+        inter = config["IFILES"]["inter"]
     output:
         "{O}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz"
     log:
@@ -175,8 +175,8 @@ rule HaplotypeCaller:
         config["THREAD"]["hapcal"]
     params:
         jv = config["JAVA"]["hapl"],
-        p1 = Mult_Params( '-G' , config["PARAMS"]["hapl_g"] ) ,
-        p2 = Mult_Params( '-GQB' , config["PARAMS"]["hapl_gqb"] ) ,
+        p1 = Mult_Params('-G' , config["PARAMS"]["hapl_g"]) ,
+        p2 = Mult_Params('-GQB' , config["PARAMS"]["hapl_gqb"]) ,
         p3 = '-native-pair-hmm-threads'
     shell:
         '''gatk {params.jv} HaplotypeCaller -R {refg} -I {input.bam} --intervals {input.inter} \
