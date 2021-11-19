@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from mimetypes import MimeTypes
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import dateutil.parser
 import OpenSSL.crypto
@@ -99,7 +99,7 @@ def get_response(r: requests.Response) -> Any:
     return r.json()
 
 
-def get_value(key, header, line):
+def get_value(key: str, header: List[str], line: List[str]) -> Optional[str]:
     if header is None:
         return None
     if key not in header:
@@ -119,7 +119,7 @@ def get_value(key, header, line):
     return value
 
 
-def date_from_string(date, fmt="%d/%m/%Y"):
+def date_from_string(date: str, fmt: str = "%d/%m/%Y") -> datetime:
 
     if date == "":
         return ""
@@ -139,7 +139,7 @@ def date_from_string(date, fmt="%d/%m/%Y"):
 def parse_file_ped(file: Path) -> None:
     with open(file) as f:
 
-        header = None
+        header: List[str] = []
         while True:
             row = f.readline()
             if not row:
@@ -282,7 +282,7 @@ def upload(
     if not study.exists():
         return error(f"The specified study does not exists: {study}")
 
-    study_tree = {
+    study_tree: Dict[str, Any] = {
         "name": study.name,
         "phenotypes": "",
         "technicals": "",
@@ -291,10 +291,10 @@ def upload(
 
     for d in study.iterdir():
         if d.is_dir():
-            for f in d.iterdir():
-                if f.is_file() and f.name.endswith(".fastq.gz"):
+            for dat in d.iterdir():
+                if dat.is_file() and dat.name.endswith(".fastq.gz"):
                     study_tree["datasets"].setdefault(d.name, [])
-                    study_tree["datasets"][d.name].append(f)
+                    study_tree["datasets"][d.name].append(dat)
 
     pedigree = study.joinpath("pedigree.txt")
     if pedigree.is_file():
