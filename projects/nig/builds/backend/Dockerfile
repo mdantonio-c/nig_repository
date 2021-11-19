@@ -19,13 +19,17 @@ ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.9/site-packages
 # Installing snakemake directly with conda creates conflicts
 # Last packages are installed with mamba because conda installation creates conflics for them
 
+# Note about samtools reinstall, due to the error:
+# Samtools shared library libcrypto.so.1.0.0 not found
+# => https://github.com/merenlab/anvio/issues/1479
 RUN conda install --yes --freeze-installed python=3.9.0 && \
     conda update -n base -c defaults conda && \
     conda install --yes --freeze-installed -c conda-forge mamba stopit && \
     mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake && \
-    conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk samtools && \
+    conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk && \
     conda install --yes --freeze-installed -c daler sratoolkit && \
     conda install --yes --freeze-installed -c conda-forge yappi && \
     conda install --yes --freeze-installed pandas && \
     mamba install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster && \
+    conda install -c bioconda samtools=1.9 --force-reinstall && \
     conda clean -afy
