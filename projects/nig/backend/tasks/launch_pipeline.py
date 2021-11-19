@@ -70,7 +70,8 @@ def launch_pipeline(
             # create the output path
             output_path = OUTPUT_ROOT.joinpath(input_path.relative_to(INPUT_ROOT))
             output_path.mkdir(parents=True, exist_ok=True)
-            output_path.joinpath(fname).symlink_to(filepath)
+            if not output_path.joinpath(fname).exists():
+                output_path.joinpath(fname).symlink_to(filepath)
 
             # create row for csv
             fastq_row = [file_label, fragment, input_path, output_path]
