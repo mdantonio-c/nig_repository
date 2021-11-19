@@ -3,7 +3,7 @@ include: "Basic.smk"
 # Here goes the inputs list
 df = pd.read_csv('fastq.csv')
 # Collect paired and single samples
-pair = df[df.Reverse=='Yes']
+pair = df[df.Reverse == 'Yes']
 sing = df[~df.Sample.isin(pair.Sample)]
 
 # Reference genome
@@ -21,8 +21,7 @@ rule all:
 rule Fastqc:
     message:
         "Running fastqc tool on input fastq files"
-    input:
-        expand("{I}/{S}_{F}.fastq.gz", zip, S=df.Sample, F=df.Frag, I=df.InputPath)
+    input: "{O}/{S}_{F}.fastq.gz"
     output:
         "{O}/fastqc/{S}_{F}_fastqc.html"
     log:
