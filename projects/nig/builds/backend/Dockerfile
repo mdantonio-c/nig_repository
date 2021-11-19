@@ -31,5 +31,5 @@ RUN conda install --yes --freeze-installed python=3.9.0 && \
     conda install --yes --freeze-installed -c conda-forge yappi && \
     conda install --yes --freeze-installed pandas && \
     mamba install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster && \
-    conda install -c bioconda samtools=1.9 --force-reinstall && \
+    conda install -c bioconda samtools=1.11 --force-reinstall && \
     conda clean -afy
