@@ -1,11 +1,14 @@
 import re
 import tempfile
 from contextlib import contextmanager
+from datetime import datetime
 from mimetypes import MimeTypes
 from pathlib import Path
 from typing import Any, Dict, Generator, Optional, Union
 
+import dateutil.parser
 import OpenSSL.crypto
+import pytz
 import requests
 import typer
 
@@ -78,7 +81,9 @@ def request(
         )
 
 
-def error(text: str) -> None:
+def error(text: str, r: Optional[requests.Response] = None) -> None:
+    if r:
+        text += f". Status: {r.status_code}, response: {get_response(r)}"
     typer.secho(text, fg=typer.colors.RED)
     return None
 
@@ -92,6 +97,159 @@ def get_response(r: requests.Response) -> Any:
     if r.text:
         return r.text
     return r.json()
+
+
+def get_value(key, header, line):
+    if header is None:
+        return None
+    if key not in header:
+        return None
+    index = header.index(key)
+    if index >= len(line):
+        return None
+    value = line[index]
+    if value is None:
+        return None
+    if value == "":
+        return None
+    if value == "-":
+        return None
+    if value == "N/A":
+        return None
+    return value
+
+
+def date_from_string(date, fmt="%d/%m/%Y"):
+
+    if date == "":
+        return ""
+    # datetime.now(pytz.utc)
+    try:
+        return_date = datetime.strptime(date, fmt)
+    except BaseException:
+        return_date = dateutil.parser.parse(date)
+
+    # TODO: test me with: 2017-09-22T07:10:35.822772835Z
+    if return_date.tzinfo is None:
+        return pytz.utc.localize(return_date)
+
+    return return_date
+
+
+def parse_file_ped(file: Path) -> None:
+    with open(file) as f:
+
+        header = None
+        while True:
+            row = f.readline()
+            if not row:
+                break
+
+            if row.startswith("#"):
+                # Remove the initial #
+                row = row[1:].strip().lower()
+                # header = re.split(r"\s+|\t", line)
+                header = re.split(r"\t", row)
+                continue
+
+            row = row.strip()
+            # line = re.split(r"\s+|\t", line)
+            line = re.split(r"\t", row)
+
+            if len(line) < 5:
+                continue
+
+            # pedigree_id = line[0]
+            individual_id = line[1]
+            father = line[2]
+            mother = line[3]
+            sex = line[4]
+
+            if sex == "1":
+                sex = "male"
+            elif sex == "2":
+                sex = "female"
+
+            properties = {}
+            properties["name"] = individual_id
+            properties["sex"] = sex
+
+            value = get_value("birthday", header, line)
+            if value is not None:
+                properties["birthday"] = date_from_string(value)
+
+            value = get_value("deathday", header, line)
+            if value is not None:
+                properties["deathday"] = date_from_string(value)
+
+            properties["birthplace"] = get_value("birthplace", header, line)
+            error(f"TODO: create {individual_id} with props = {properties}")
+
+            if father and father != "-":
+                error(f"TODO: connect {individual_id} to {father}")
+
+            if mother and mother != "-":
+                error(f"TODO: connect {individual_id} to {mother}")
+
+            value = get_value("hpo", header, line)
+            if value is not None:
+                hpo_list = value.split(",")
+                for hpo_id in hpo_list:
+                    error(f"TODO: connect {individual_id} to {hpo_id}")
+
+            value = get_value("dataset", header, line)
+            if value is not None:
+                dataset_list = value.split(",")
+                for dataset_name in dataset_list:
+                    error(f"TODO: connect {individual_id} to {dataset_name}")
+
+
+def parse_file_tech(file: Path) -> None:
+
+    with open(file) as f:
+
+        header = None
+        while True:
+            row = f.readline()
+            if not row:
+                break
+
+            if row.startswith("#"):
+                # Remove the initial #
+                row = row[1:].strip().lower()
+                # header = re.split(r"\s+|\t", row)
+                header = re.split(r"\t", row)
+                continue
+
+            row = row.strip()
+            # line = re.split(r"\s+|\t", row)
+            line = re.split(r"\t", row)
+
+            if len(line) < 4:
+                continue
+
+            name = line[0]
+            date = line[1]
+            platform = line[2]
+            # Not used
+            # reference = line[3]
+            kit = line[4]
+
+            properties = {}
+            properties["name"] = name
+            if date and date != "-":
+                properties["sequencing_date"] = date_from_string(date)
+            else:
+                properties["sequencing_date"] = ""
+            properties["platform"] = platform
+            properties["enrichment_kit"] = kit
+            error(f"TODO: create {name} with props = {properties}")
+
+            value = get_value("dataset", header, line)
+            if value is not None:
+                dataset_list = value.split(",")
+                for dataset_name in dataset_list:
+                    error(f"TODO: connect {name} to {dataset_name}")
 
 
 @app.command()
@@ -140,10 +298,12 @@ def upload(
 
     pedigree = study.joinpath("pedigree.txt")
     if pedigree.is_file():
+        parse_file_ped(pedigree)
         study_tree["phenotypes"] = pedigree
 
     technical = study.joinpath("technical.txt")
     if technical.is_file():
+        parse_file_tech(technical)
         study_tree["technicals"] = technical
 
     if not study_tree["datasets"]:
@@ -166,9 +326,7 @@ def upload(
             print(r.text)
             return error(f"Login Failed. Status: {r.status_code}")
 
-        return error(
-            f"Login Failed. Status: {r.status_code}, response: {get_response(r)}"
-        )
+        return error("Login Failed", r)
 
     token = r.json()
     headers = {"Authorization": f"Bearer {token}"}
@@ -184,9 +342,7 @@ def upload(
         data={"name": study_name, "description": ""},
     )
     if r.status_code != 200:
-        return error(
-            f"Study creation failed. Status: {r.status_code}, response: {get_response(r)}"
-        )
+        return error("Study creation failed", r)
 
     success(f"Succesfully created study {study_name}")
 
@@ -203,12 +359,10 @@ def upload(
         )
 
         if r.status_code != 200:
-            return error(
-                f"Dataset creation failed. Status: {r.status_code}, response: {get_response(r)}"
-            )
+            return error("Dataset creation failed", r)
 
         success(f"Succesfully created dataset {dataset_name}")
-        dataset_uuid = r.json()
+        uuid = r.json()
 
         for file in files:
             # get the data for the upload request
@@ -227,7 +381,7 @@ def upload(
             # init the upload
             r = request(
                 method=POST,
-                url=f"{url}api/dataset/{dataset_uuid}/files/upload",
+                url=f"{url}api/dataset/{uuid}/files/upload",
                 headers=headers,
                 certfile=certfile,
                 certpwd=certpwd,
@@ -235,10 +389,7 @@ def upload(
             )
 
             if r.status_code != 201:
-                resp = get_response(r)
-                return error(
-                    f"Can't start the upload. Status {r.status_code}, response: {resp}"
-                )
+                return error("Can't start the upload", r)
 
             success("Upload initialized succesfully")
 
@@ -261,7 +412,7 @@ def upload(
                         ] = f"bytes {range_start}-{range_max}/{filesize}"
                         r = request(
                             method=PUT,
-                            url=f"{url}api/dataset/{dataset_uuid}/files/upload/{filename}",
+                            url=f"{url}api/dataset/{uuid}/files/upload/{filename}",
                             headers=headers,
                             certfile=certfile,
                             certpwd=certpwd,
@@ -273,104 +424,19 @@ def upload(
                                 # upload is complete
                                 progress.update(filesize)
                                 break
-                            resp = get_response(r)
-                            return error(
-                                f"Upload Failed. Status: {r.status_code}, response: {resp}"
-                            )
+                            return error("Upload Failed", r)
                         progress.update(chunksize)
                         # update the range variable
                         range_start += chunksize
                 if r.status_code != 200:
-                    return error(
-                        f"Upload Failed. Status: {r.status_code}, response: {get_response(r)}"
-                    )
+                    return error("Upload Failed", r)
 
                 success("Upload finished succesfully")
+
+        error(f"TODO: set UPLOAD COMPLETE to {dataset_name}")
 
     return None
 
 
 if __name__ == "__main__":
     app()
-
-
-def parse_file_ped(filename: Path) -> None:
-    with open(filename) as f:
-
-        # header = None
-        for line in f.readlines():
-
-            if line.startswith("#"):
-                # Remove the initial #
-                line = line[1:].strip().lower()
-                # header = re.split(r"\t", line)
-                continue
-
-            data = re.split(r"\t", line.strip())
-
-            if len(data) < 5:
-                continue
-
-            # pedigree_id = data[0]
-            individual_id = data[1]
-            father = data[2]
-            mother = data[3]
-            sex = data[4]
-            # + birthday ?
-            # + birthplace ?
-
-            if sex == "1":
-                sex = "male"
-            elif sex == "2":
-                sex = "female"
-
-            # 1 Verify if this phenotype already exists?
-
-            # 2 Create the phenotype ...
-            properties = {}
-            properties["name"] = individual_id
-            properties["sex"] = sex
-            properties["father"] = father
-            properties["mother"] = mother
-            ...
-
-            # 3 Connect father and mother, if any
-
-            # 4 Connect to a dataset
-
-
-def parse_file_tech(filename: Path) -> None:
-    with open(filename) as f:
-
-        # header = None
-        for line in f.readlines():
-
-            if line.startswith("#"):
-                # Remove the initial #
-                line = line[1:].strip().lower()
-                # header = re.split(r"\t", line)
-                continue
-
-            data = re.split(r"\t", line.strip())
-
-            if len(data) < 4:
-                continue
-
-            name = data[0]
-            date = data[1]
-            platform = data[2]
-            kit = data[3]
-            datasets = data[4]
-
-            # 1 Verify if this technical already exists
-
-            # 2 Create the technical
-            properties = {}
-            properties["name"] = name
-            properties["sequencing_date"] = date
-            properties["platform"] = platform
-            properties["enrichment_kit"] = kit
-            properties["datasets"] = datasets
-            ...
-
-            # 3 Connect to datasets
