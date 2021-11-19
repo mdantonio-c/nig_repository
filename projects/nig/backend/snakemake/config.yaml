@@ -13,7 +13,7 @@ IFILES:
     ]
   inter: "/resources/hg38_resources/wgs_calling_regions.hg38.interval_list"
 THREAD:
-  fastqc: 48
+  fastqc: 4
   bwa: 24
   samtool: 6
   samview: 6
