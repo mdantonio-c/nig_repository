@@ -27,6 +27,7 @@ for chunk in [
         args=(chunk,),
         countdown=1,
     )
+    log.info("{} datasets sent to task {}", len(chunk), task)
     # mark the related datasets as "QUEUED"
     for d in chunk:
         dataset = graph.Dataset.nodes.get_or_none(uuid=d)
