@@ -28,7 +28,7 @@ PARAMS:
   vrfl: "QD < 2.0 || FS > 30.0 || SOR > 3.0 || MQ < 40.0 || MQRankSum < -3.0 || ReadPosRankSum < -3.0"
 JAVA:
   brc: '--java-options "-XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -XX:+PrintFlagsFinal -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails -Xms4G -Xmx4G -XX:ParallelGCThreads=2 " '
-  absq: '--java-options "-XX:+PrintFlagsFinal -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xms3G -Xmx2G -XX:ParallelGCThreads=2" '
+  absq: '--java-options "-XX:+PrintFlagsFinal -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xms2G -Xmx2G -XX:ParallelGCThreads=2" '
   hapl: '--java-options "-XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xms20G -Xmx20G -XX:ParallelGCThreads=2" '
 UPDATE:
   GDBI: True
