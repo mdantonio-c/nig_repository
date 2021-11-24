@@ -1,7 +1,8 @@
 import { Component, Injector, Input } from "@angular/core";
-import { DataService } from "@app/services/data.service";
+import { DataService } from "../../../services/data.service";
 import { BasePaginationComponent } from "@rapydo/components/base.pagination.component";
 import { Dataset } from "@app/types";
+import { Subject } from "rxjs";
 
 @Component({
   selector: "nig-datasets",
@@ -64,5 +65,13 @@ export class DatasetsComponent extends BasePaginationComponent<Dataset> {
         event.target.checked = !event.target.checked;
       }
     );
+  }
+
+  list(): Subject<boolean> {
+    const res$ = super.list();
+    res$.subscribe(() => {
+      this.dataService.changeCounter(this.data.length, "datasets");
+    });
+    return res$;
   }
 }

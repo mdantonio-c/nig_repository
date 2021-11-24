@@ -4,6 +4,7 @@ import { BasePaginationComponent } from "@rapydo/components/base.pagination.comp
 import { RelationshipsModalComponent } from "../relationships-modal/relationships-modal.component";
 import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
 import { FamilyRelationships, Phenotype } from "../../../types";
+import { Subject } from "rxjs";
 
 @Component({
   selector: "nig-phenotypes",
@@ -13,7 +14,11 @@ import { FamilyRelationships, Phenotype } from "../../../types";
 export class PhenotypesComponent extends BasePaginationComponent<Phenotype> {
   @Input() studyUUID;
 
-  constructor(protected injector: Injector, protected modalService: NgbModal) {
+  constructor(
+    protected injector: Injector,
+    protected modalService: NgbModal,
+    private dataService: DataService
+  ) {
     super(injector);
   }
 
@@ -26,6 +31,14 @@ export class PhenotypesComponent extends BasePaginationComponent<Phenotype> {
     this.set_resource_endpoint("/api/phenotype");
     this.initPaging(20, false);
     this.list();
+  }
+
+  list(): Subject<boolean> {
+    const res$ = super.list();
+    res$.subscribe(() => {
+      this.dataService.changeCounter(this.data.length, "phenotypes");
+    });
+    return res$;
   }
 
   editRelationships(phenotype: Phenotype) {

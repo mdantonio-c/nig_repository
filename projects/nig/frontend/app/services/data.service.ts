@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
-import { Observable, of } from "rxjs";
+import { Observable, of, BehaviorSubject } from "rxjs";
 import { map, share } from "rxjs/operators";
 import { ApiService } from "@rapydo/services/api";
 import { Study, Stats } from "@app/types";
@@ -10,6 +10,9 @@ import { ExtendedStats } from "../types";
   providedIn: "root",
 })
 export class DataService {
+  private counterMapSource = new BehaviorSubject(new Map());
+  currentCounterMap$ = this.counterMapSource.asObservable();
+
   constructor(private api: ApiService, private http: HttpClient) {}
 
   // STUDIES
@@ -39,5 +42,11 @@ export class DataService {
       ? { status: "UPLOAD COMPLETED" }
       : { status: "-1" };
     return this.api.patch(`/api/dataset/${uuid}`, status);
+  }
+
+  changeCounter(counter: number, fragment: string) {
+    let map = new Map();
+    map.set(fragment, counter);
+    this.counterMapSource.next(map);
   }
 }

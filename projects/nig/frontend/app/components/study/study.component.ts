@@ -1,9 +1,9 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnInit, OnDestroy } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
-import { DataService } from "@app/services/data.service";
+import { DataService } from "../../services/data.service";
 import { Study } from "@app/types";
 import { NotificationService } from "@rapydo/services/notification";
-import { Observable } from "rxjs";
+import { Observable, Subscription } from "rxjs";
 import { map } from "rxjs/operators";
 import { NgbNavChangeEvent } from "@ng-bootstrap/ng-bootstrap";
 
@@ -12,8 +12,9 @@ import { NgbNavChangeEvent } from "@ng-bootstrap/ng-bootstrap";
   templateUrl: "./study.component.html",
   styleUrls: ["./study.component.css"],
 })
-export class StudyComponent implements OnInit {
+export class StudyComponent implements OnInit, OnDestroy {
   study: Study;
+  subscription: Subscription;
 
   links = [
     { title: "Datasets", fragment: "datasets", icon: "fa-database" },
@@ -55,13 +56,24 @@ export class StudyComponent implements OnInit {
   }
 
   private updateLinkCounters() {
-    this.links.forEach((link) => {
-      // console.log(`update counter for: ${link.fragment}`);
-      if (this.study && this.study.hasOwnProperty(link.fragment)) {
-        link["count"] = this.study[link.fragment];
+    this.subscription = this.dataService.currentCounterMap$.subscribe(
+      (counterMap) => {
+        counterMap.forEach((v, k) => {
+          this.study[k] = v;
+        });
+        this.links.forEach((link) => {
+          // console.log(`update counter for: ${link.fragment}`);
+          if (this.study && this.study.hasOwnProperty(link.fragment)) {
+            link["count"] = this.study[link.fragment];
+          }
+        });
       }
-    });
+    );
   }
 
   onNavChange(changeEvent: NgbNavChangeEvent) {}
+
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
+  }
 }
