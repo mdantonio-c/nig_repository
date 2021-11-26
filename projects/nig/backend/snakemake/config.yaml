@@ -14,9 +14,9 @@ IFILES:
   inter: "/resources/hg38_resources/wgs_calling_regions.hg38.interval_list"
 THREAD:
   fastqc: 4
-  bwa: 24
-  samtool: 6
-  samview: 6
+  bwa: 16
+  samtool: 4
+  samview: 4
   hapcal: 2
 PARAMS:
   bwap: '-R "@RG\tID:{Pw}\tLB:{Pw}\tSM:{Pw}\tPU:unknown\tPL:ILLUMINA" '
