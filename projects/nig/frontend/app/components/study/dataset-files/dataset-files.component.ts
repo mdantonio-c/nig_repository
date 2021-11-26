@@ -5,8 +5,8 @@ import {
   Output,
   EventEmitter,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
 } from "@angular/core";
-import { DataService } from "@app/services/data.service";
 import { BasePaginationComponent } from "@rapydo/components/base.pagination.component";
 import { DatasetFile } from "@app/types";
 import {
@@ -26,7 +26,7 @@ import { takeUntil, take } from "rxjs/operators";
 })
 export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile> {
   @Input("dataset") uuid;
-  @Input("UploadCompleted") uploadCompleted;
+  @Input() uploadCompleted;
   @Output() count: EventEmitter<number> = new EventEmitter<number>();
 
   uploadOptions: any = {};
@@ -38,7 +38,8 @@ export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile> 
 
   constructor(
     protected injector: Injector,
-    private uploadService: UploadxService
+    private uploadService: UploadxService,
+    private cdr: ChangeDetectorRef
   ) {
     super(injector);
   }
@@ -67,7 +68,11 @@ export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile> 
     this.init("File", `/api/dataset/${this.uuid}/files`, "DatasetFiles");
     this.set_resource_endpoint("/api/file");
     this.initPaging(20, false);
-    this.list();
+    const data$ = this.list();
+
+    data$.subscribe({
+      next: () => this.cdr.markForCheck(),
+    });
   }
 
   onUpload(item: UploadState) {
