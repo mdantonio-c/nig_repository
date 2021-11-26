@@ -96,7 +96,8 @@ rule Samsort:
     threads:
         config["THREAD"]["samtool"]
     shell:
-        "samblaster -i {input} -r --ignoreUnmated 2> {log} | samtools sort -@ {threads} -m2G -T - -o {output} \
+        # "samblaster -i {input} -r --ignoreUnmated 2> {log} | samtools sort -@ {threads} -m2G -T - -o {output} \
+        "samblaster -i {input} -r --ignoreUnmated 2> {log} | samtools sort -@ {threads} -m2G -o {output} \
         >> {log} 2>&1"
 
 rule Samview:
