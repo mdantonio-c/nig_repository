@@ -96,7 +96,11 @@
                     ngx-datatable-cell-template
                   >
                     <div class="btn-toolbar justify-content-end" role="toolbar">
-                      <div class="btn-group mr-1" role="group">
+                      <div
+                        *ngIf="!row.readonly"
+                        class="btn-group mr-1"
+                        role="group"
+                      >
                         <button class="btn p-0 mr-1" (click)="update(row)">
                           <i class="fa fa-edit"></i>
                         </button>
