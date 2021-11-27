@@ -9,6 +9,8 @@ export interface ResourceIdentity {
 
 export interface Study extends ResourceIdentity {
   description: string;
+  owning_group_name: string;
+  readonly: boolean;
   /** counter for existing relationships */
   /** @nullable */
   datasets?: number;

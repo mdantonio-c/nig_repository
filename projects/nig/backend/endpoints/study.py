@@ -1,6 +1,7 @@
 import shutil
 from typing import Any
 
+from marshmallow import post_dump
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
@@ -21,6 +22,8 @@ class StudyOutput(Schema):
     datasets = fields.Neo4jRelationshipToCount()
     phenotypes = fields.Neo4jRelationshipToCount()
     technicals = fields.Neo4jRelationshipToCount()
+    readonly = fields.Bool(default=True)
+    owning_group_name = fields.Str()
 
 
 class StudyInputSchema(Schema):
@@ -55,7 +58,23 @@ class Studies(NIGEndpoint):
             if not self.verifyStudyAccess(t, user=user, read=True, raiseError=False):
                 continue
 
-            data.append(t)
+            study_el = {}
+            study_el["uuid"] = t.uuid
+            study_el["name"] = t.name
+            study_el["description"] = t.description
+            study_el["datasets"] = t.datasets
+            study_el["phenotypes"] = t.phenotypes
+            study_el["technicals"] = t.technicals
+            owner = t.ownership.single()
+            if owner == user:
+                study_el["readonly"] = False
+
+            for group in owner.belongs_to.all():
+                study_el["owning_group_name"] = group.fullname
+                if group.members.is_connected(user):
+                    study_el["readonly"] = False
+
+            data.append(study_el)
 
         return self.response(data)
 

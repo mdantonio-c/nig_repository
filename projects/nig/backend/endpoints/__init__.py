@@ -121,14 +121,14 @@ class NIGEndpoint(EndpointResource):
         if owner == user:
             return True
 
-        # An admin has always access for readonly or to update dataset status
-        if self.auth.is_admin(user):
-            if read or update_dataset_status:
-                return True
-
         # A member of the some group of the owner, has always access
         for group in owner.belongs_to.all():
             if group.members.is_connected(user):
+                return True
+
+        # An admin has always access for readonly or to update dataset status
+        if self.auth.is_admin(user):
+            if read or update_dataset_status:
                 return True
 
         if raiseError:
@@ -165,14 +165,14 @@ class NIGEndpoint(EndpointResource):
         if owner == user:
             return True
 
-        # An admin has always access for readonly or to modify dataset status
-        if self.auth.is_admin(user):
-            if read or update_status:
-                return True
-
         # A member of the some group of the owner, has always access
         for group in owner.belongs_to.all():
             if group.members.is_connected(user):
+                return True
+
+        # An admin has always access for readonly or to modify dataset status
+        if self.auth.is_admin(user):
+            if read or update_status:
                 return True
 
         if raiseError:

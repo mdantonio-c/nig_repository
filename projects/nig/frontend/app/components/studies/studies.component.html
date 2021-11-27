@@ -81,6 +81,20 @@
                     <span>{{ value }}</span>
                   </ng-template>
                 </ngx-datatable-column>
+
+                <ngx-datatable-column
+                  name="Owning group"
+                  prop="owning_group_name"
+                  [flexGrow]="2"
+                >
+                  <ng-template
+                    let-value="value"
+                    let-row="row"
+                    ngx-datatable-cell-template
+                  >
+                    <span>{{ value }}</span>
+                  </ng-template>
+                </ngx-datatable-column>
                 <!-- Controls -->
                 <ngx-datatable-column
                   width="60"
@@ -96,7 +110,11 @@
                     ngx-datatable-cell-template
                   >
                     <div class="btn-toolbar justify-content-end" role="toolbar">
-                      <div class="btn-group mr-1" role="group">
+                      <div
+                        *ngIf="!row.readonly"
+                        class="btn-group mr-1"
+                        role="group"
+                      >
                         <button class="btn p-0 mr-1" (click)="update(row)">
                           <i class="fa fa-edit"></i>
                         </button>
