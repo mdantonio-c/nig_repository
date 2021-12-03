@@ -61,7 +61,7 @@ def getInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
     attributes: Dict[str, Union[fields.Field, type]] = {}
 
     attributes["name"] = fields.Str(required=True)
-    attributes["age"] = fields.Integer(allow_none=True)
+    attributes["age"] = fields.Integer(allow_none=True, validate=validate.Range(min=0))
     attributes["sex"] = fields.Str(
         required=True, validate=validate.OneOf(SEX), metadata={"description": ""}
     )

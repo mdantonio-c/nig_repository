@@ -25,12 +25,21 @@ class TestApp(BaseTests):
             study2_uuid,
         ) = create_test_env(client, faker, study=True)
 
-        # create a new phenotype
+        # create a new phenotype with wrong age
         phenotype1 = {
             "name": faker.pystr(),
-            "age": faker.pyint(0, 100),
+            "age": -2,
             "sex": "male",
         }
+        r = client.post(
+            f"{API_URI}/study/{study1_uuid}/phenotypes",
+            headers=user_B1_headers,
+            data=phenotype1,
+        )
+        assert r.status_code == 400
+
+        # create a new phenotype
+        phenotype1["age"] = faker.pyint(0, 100)
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
             headers=user_B1_headers,
@@ -165,6 +174,16 @@ class TestApp(BaseTests):
             data={"name": faker.pystr(), "sex": "female"},
         )
         assert r.status_code == 404
+
+        # modify a phenotype using a wrong age
+        phenotype1["age"] = -8
+        r = client.put(
+            f"{API_URI}/phenotype/{phenotype1_uuid}",
+            headers=user_B1_headers,
+            data=phenotype1,
+        )
+        assert r.status_code == 400
+
         # modify a phenotype you own
         phenotype1["age"] = faker.pyint(0, 100)
         r = client.put(
