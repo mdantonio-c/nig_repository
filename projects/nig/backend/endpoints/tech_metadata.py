@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any
 
 import pytz
+from marshmallow import pre_load
 from nig.endpoints import TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
@@ -34,8 +35,14 @@ class TechmetaInputSchema(Schema):
 class TechmetaPutSchema(Schema):
     name = fields.Str(required=False)
     sequencing_date = fields.Date(format=DATE_FORMAT)
-    platform = fields.Str(validate=validate.OneOf(PLATFORMS))
+    platform = fields.Str(allow_none=True, validate=validate.OneOf(PLATFORMS))
     enrichment_kit = fields.Str()
+
+    @pre_load
+    def null_platform(self, data, **kwargs):
+        if "platform" in data and data["platform"] == "":
+            data["platform"] = None
+        return data
 
 
 class TechmetaOutputSchema(Schema):
