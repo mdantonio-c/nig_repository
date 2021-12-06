@@ -29,14 +29,17 @@
                 <nig-datasets
                   *ngSwitchCase="'datasets'"
                   [studyUUID]="study.uuid"
+                  [readonly]="study.readonly"
                 ></nig-datasets>
                 <nig-technicals
                   *ngSwitchCase="'technicals'"
                   [studyUUID]="study.uuid"
+                  [readonly]="study.readonly"
                 ></nig-technicals>
                 <nig-phenotypes
                   *ngSwitchCase="'phenotypes'"
                   [studyUUID]="study.uuid"
+                  [readonly]="study.readonly"
                 ></nig-phenotypes>
               </container-element>
             </ng-template>

@@ -13,6 +13,7 @@ import { Subject } from "rxjs";
 })
 export class PhenotypesComponent extends BasePaginationComponent<Phenotype> {
   @Input() studyUUID;
+  @Input() readonly;
 
   constructor(
     protected injector: Injector,

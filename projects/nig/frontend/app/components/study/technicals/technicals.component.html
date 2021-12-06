@@ -76,7 +76,11 @@
               let-row="row"
               ngx-datatable-cell-template
             >
-              <div class="btn-toolbar justify-content-end" role="toolbar">
+              <div
+                *ngIf="!readonly"
+                class="btn-toolbar justify-content-end"
+                role="toolbar"
+              >
                 <div class="btn-group mr-1" role="group">
                   <button class="btn p-0 mr-1" (click)="update(row)">
                     <i class="fa fa-edit"></i>
@@ -94,7 +98,7 @@
   </div>
   <div class="card-footer text-muted">
     <div class="col-12 text-right">
-      <button class="btn btn-info" (click)="create()">
+      <button *ngIf="!readonly" class="btn btn-info" (click)="create()">
         <!-- <i class="fas fa-plus"></i> -->
         Add {{ resource_name }}
       </button>

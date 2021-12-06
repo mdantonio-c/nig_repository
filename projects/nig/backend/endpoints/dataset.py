@@ -37,6 +37,7 @@ class DatasetOutput(Schema):
     technical = fields.Neo4jRelationshipToSingle(TechnicalMetadata)
     phenotype = fields.Neo4jRelationshipToSingle(Phenotype)
     files = fields.Neo4jRelationshipToCount()
+    readonly = fields.Bool(default=True)
     # for now only the number of related files,
     # can be useful also a list of some files metadata?
     # virtual files?
@@ -143,8 +144,24 @@ class Datasets(NIGEndpoint):
                 dataset, user=user, read=True, raiseError=False
             ):
                 continue
+            dataset_el = {}
+            dataset_el["uuid"] = dataset.uuid
+            dataset_el["name"] = dataset.name
+            dataset_el["description"] = dataset.description
+            dataset_el["status"] = dataset.status
+            dataset_el["technical"] = dataset.technical
+            dataset_el["phenotype"] = dataset.phenotype
+            dataset_el["files"] = dataset.files
 
-            data.append(dataset)
+            owner = dataset.ownership.single()
+            if owner == user:
+                dataset_el["readonly"] = False
+
+            for group in owner.belongs_to.all():
+                if group.members.is_connected(user):
+                    dataset_el["readonly"] = False
+
+            data.append(dataset_el)
 
         return self.response(data)
 

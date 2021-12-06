@@ -11,6 +11,7 @@ import { Subject } from "rxjs";
 })
 export class DatasetsComponent extends BasePaginationComponent<Dataset> {
   @Input() studyUUID;
+  @Input() readonly;
   expanded: any = {};
   user: any = {};
 

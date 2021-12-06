@@ -10,6 +10,7 @@ import { Subject } from "rxjs";
 })
 export class TechnicalsComponent extends BasePaginationComponent<TechnicalMetadata> {
   @Input() studyUUID;
+  @Input() readonly;
 
   constructor(protected injector: Injector, private dataService: DataService) {
     super(injector);

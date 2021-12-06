@@ -25,6 +25,7 @@ export interface Studies extends Array<Study> {}
 export interface Dataset extends ResourceIdentity {
   description: string;
   files: number;
+  readonly: boolean;
   /** @nullable */
   technical?: ResourceIdentity;
   /** @nullable */

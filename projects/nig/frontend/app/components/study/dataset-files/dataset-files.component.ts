@@ -26,6 +26,7 @@ import { takeUntil, take } from "rxjs/operators";
 })
 export class DatasetFilesComponent extends BasePaginationComponent<DatasetFile> {
   @Input("dataset") uuid;
+  @Input("readOnly") readonly;
   @Input() uploadCompleted;
   @Output() count: EventEmitter<number> = new EventEmitter<number>();
 
