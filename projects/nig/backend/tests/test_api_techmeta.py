@@ -23,7 +23,7 @@ class TestApp(BaseTests):
         # create a new techmeta
         techmeta1 = {
             "name": faker.pystr(),
-            "sequencing_date": f"{faker.iso8601()}.000Z",
+            "sequencing_date": faker.date(),
             "platform": "Other",
         }
         r = client.post(
@@ -46,7 +46,7 @@ class TestApp(BaseTests):
         # create a new technical as admin not belonging to study group
         techmeta2 = {
             "name": faker.pystr(),
-            "sequencing_date": f"{faker.iso8601()}.000Z",
+            "sequencing_date": faker.date(),
             "platform": "Other",
         }
         r = client.post(
@@ -136,7 +136,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/technical/{techmeta1_uuid}",
             headers=user_B1_headers,
-            data={"name": faker.pystr(), "sequencing_date": f"{faker.iso8601()}.000Z"},
+            data={"name": faker.pystr(), "sequencing_date": faker.date()},
         )
         assert r.status_code == 204
 

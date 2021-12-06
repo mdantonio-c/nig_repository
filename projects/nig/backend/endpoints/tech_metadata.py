@@ -6,11 +6,12 @@ from nig.endpoints import TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import NotFound
-from restapi.models import ISO8601UTC, Schema, fields, validate
+from restapi.models import Schema, fields, validate
 from restapi.rest.definition import Response
 from restapi.services.authentication import User
 
 # from restapi.utilities.logs import log
+DATE_FORMAT = "%Y-%m-%d"
 
 PLATFORMS = [
     "Illumina",
@@ -25,14 +26,14 @@ PLATFORMS = [
 
 class TechmetaInputSchema(Schema):
     name = fields.Str(required=True)
-    sequencing_date = fields.DateTime(format=ISO8601UTC)
+    sequencing_date = fields.Date(format=DATE_FORMAT)
     platform = fields.Str(validate=validate.OneOf(PLATFORMS))
     enrichment_kit = fields.Str()
 
 
 class TechmetaPutSchema(Schema):
     name = fields.Str(required=False)
-    sequencing_date = fields.DateTime(format=ISO8601UTC)
+    sequencing_date = fields.Date(format=DATE_FORMAT)
     platform = fields.Str(validate=validate.OneOf(PLATFORMS))
     enrichment_kit = fields.Str()
 
@@ -40,7 +41,7 @@ class TechmetaPutSchema(Schema):
 class TechmetaOutputSchema(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
-    sequencing_date = fields.DateTime(format=ISO8601UTC)
+    sequencing_date = fields.Date(format=DATE_FORMAT)
     platform = fields.Str()
     enrichment_kit = fields.Str()
 
@@ -77,11 +78,6 @@ class TechnicalMetadatas(NIGEndpoint):
 
 
 class TechnicalMetadata(NIGEndpoint):
-    @staticmethod
-    def check_timezone(date: datetime) -> datetime:
-        if date.tzinfo is None:
-            date = pytz.utc.localize(date)
-        return date
 
     labels = ["technicals"]
 
@@ -126,10 +122,6 @@ class TechnicalMetadata(NIGEndpoint):
 
         graph = neo4j.get_instance()
 
-        # parse date
-        if "sequencing_date" in kwargs:
-            kwargs["sequencing_date"] = self.check_timezone(kwargs["sequencing_date"])
-
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study, user=user)
 
@@ -169,10 +161,6 @@ class TechnicalMetadata(NIGEndpoint):
         # kit = v.get("enrichment_kit", None)
         # if kit is not None and "value" in kit:
         #     v["enrichment_kit"] = kit["value"]
-
-        # parse date
-        if "sequencing_date" in kwargs:
-            kwargs["sequencing_date"] = self.check_timezone(kwargs["sequencing_date"])
 
         graph.update_properties(techmeta, kwargs)
         techmeta.save()

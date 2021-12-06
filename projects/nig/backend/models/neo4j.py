@@ -1,7 +1,7 @@
 from neomodel import (  # UniqueIdProperty
     ArrayProperty,
     BooleanProperty,
-    DateTimeProperty,
+    DateProperty,
     FloatProperty,
     IntegerProperty,
     JSONProperty,
@@ -140,7 +140,7 @@ class Phenotype(TimestampedNode):
 
 class TechnicalMetadata(TimestampedNode):
     name = StringProperty(required=True)
-    sequencing_date = DateTimeProperty()
+    sequencing_date = DateProperty()
     platform = StringProperty()
     enrichment_kit = StringProperty()
 
