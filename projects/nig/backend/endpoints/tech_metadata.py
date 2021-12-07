@@ -1,7 +1,5 @@
-from datetime import datetime
-from typing import Any
+from typing import Any, Dict
 
-import pytz
 from marshmallow import pre_load
 from nig.endpoints import TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
@@ -39,7 +37,7 @@ class TechmetaPutSchema(Schema):
     enrichment_kit = fields.Str()
 
     @pre_load
-    def null_platform(self, data, **kwargs):
+    def null_platform(self, data: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
         if "platform" in data and data["platform"] == "":
             data["platform"] = None
         return data
