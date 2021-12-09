@@ -100,8 +100,15 @@ def launch_pipeline(
     log.info("Calling Snakemake with {} cores", cores)
     snakefile_path = wrkdir.joinpath(snakefile)
 
+    # https://snakemake.readthedocs.io/en/stable/api_reference/snakemake.html
     snakemake(
-        snakefile_path, cores=cores, workdir=wrkdir, configfiles=config, forceall=force
+        snakefile_path,
+        cores=cores,
+        workdir=wrkdir,
+        configfiles=config,
+        forceall=force,
+        # Go on with independent jobs if a job fails. (default: False)
+        keepgoing=True,
     )
 
     return None
