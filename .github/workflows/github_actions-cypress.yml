@@ -22,6 +22,8 @@ jobs:
       - uses: rapydo/actions/install@v1
         with:
           project: ${PROJECT}
+          # No need to test cypress in swarm mode!
+          # swarm: 1
 
       - uses: rapydo/actions/setup-cypress@v1
         with:
