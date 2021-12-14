@@ -50,11 +50,9 @@ jobs:
       - name: Production mode
         run: |
           rapydo remove
-          rapydo remove registry
-          docker volume rm $(docker volume ls -q)
           rm -rf data/graphdata/*
           rapydo --testing --prod init --force
-          rapydo run registry
+          rapydo password registry --random
           rapydo pull --quiet
           rapydo ssl --volatile
           rapydo -e AUTH_LOGIN_BAN_TIME=10 start
