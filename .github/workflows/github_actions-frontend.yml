@@ -22,7 +22,7 @@ jobs:
       - uses: rapydo/actions/install@v1
         with:
           project: ${PROJECT}
-          swarm: 0
+          swarm: 1
 
       - name: Run Karma
         run: |
@@ -44,9 +44,8 @@ jobs:
       - name: Production Mode
         run: |
           rapydo remove
-          # rapydo remove registry
           rapydo --testing --prod init --force
-          # rapydo run registry
+          rapydo password registry --random
           rapydo pull --quiet frontend proxy
 
           rapydo start frontend proxy
