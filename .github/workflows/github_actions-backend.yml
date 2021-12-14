@@ -56,7 +56,10 @@ jobs:
           rapydo pull --quiet
           rapydo ssl --volatile
           rapydo -e AUTH_LOGIN_BAN_TIME=10 start
-          sleep 90
+          # compose:
+          # sleep 60
+          # swarm:
+          sleep 120
           rapydo logs
           cname=$(docker ps --format '{{.Names}}' | grep proxy)
           docker cp ${cname}:/etc/letsencrypt/local_client.crt .
