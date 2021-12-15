@@ -52,6 +52,7 @@ jobs:
           # In swarm mode --follow no longer stop when the container exits
           # rapydo logs --follow frontend
           sleep 300
+          rapydo logs
           rapydo logs --tail 6 frontend | grep "files have been compressed."
           rapydo logs --tail 20 proxy
           curl --insecure -X GET https://localhost
