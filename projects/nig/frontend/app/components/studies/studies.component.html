@@ -84,7 +84,7 @@
                 </ngx-datatable-column>
 
                 <ngx-datatable-column
-                  name="Owning group"
+                  name="Owner"
                   prop="owning_group_name"
                   [flexGrow]="2"
                 >
@@ -93,7 +93,9 @@
                     let-row="row"
                     ngx-datatable-cell-template
                   >
-                    <span>{{ value }}</span>
+                    <span *ngbTooltip="{{row.owning_group_name}}">{{
+                      value
+                    }}</span>
                   </ng-template>
                 </ngx-datatable-column>
                 <!-- Controls -->

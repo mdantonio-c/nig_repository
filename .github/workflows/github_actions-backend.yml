@@ -62,6 +62,7 @@ jobs:
           # rabbit and neo4j are both very slow in startup...
           sleep 180
           rapydo logs
+          rapydo status
           cname=$(docker ps --format '{{.Names}}' | grep proxy)
           docker cp ${cname}:/etc/letsencrypt/local_client.crt .
           docker cp ${cname}:/etc/letsencrypt/local_client.key .
