@@ -2,7 +2,7 @@ FROM rapydo/backend:2.2
 
 ENV PYTHONDONTWRITEBYTECODE "true"
 
-RUN pip install --upgrade --no-cache-dir https://github.com/mdantonio/PyVCF/archive/master.zip
+# RUN pip install --upgrade --no-cache-dir https://github.com/mdantonio/PyVCF/archive/master.zip
 
 # Miniconda installation
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
