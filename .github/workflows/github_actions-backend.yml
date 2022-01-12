@@ -55,6 +55,7 @@ jobs:
           rm -rf data/graphdata/*
           rapydo --testing --prod init --force
           rapydo password registry --random
+          rapydo password rabbit --random
           rapydo pull --quiet
           rapydo ssl --volatile
           rapydo -e AUTH_LOGIN_BAN_TIME=10 start
