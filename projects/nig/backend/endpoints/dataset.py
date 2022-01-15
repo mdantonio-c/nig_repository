@@ -37,7 +37,7 @@ class DatasetOutput(Schema):
     technical = fields.Neo4jRelationshipToSingle(TechnicalMetadata)
     phenotype = fields.Neo4jRelationshipToSingle(Phenotype)
     files = fields.Neo4jRelationshipToCount()
-    readonly = fields.Bool(default=True)
+    readonly = fields.Bool(dump_default=True)
     # for now only the number of related files,
     # can be useful also a list of some files metadata?
     # virtual files?

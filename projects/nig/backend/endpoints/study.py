@@ -1,7 +1,6 @@
 import shutil
 from typing import Any
 
-from marshmallow import post_dump
 from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
@@ -22,7 +21,7 @@ class StudyOutput(Schema):
     datasets = fields.Neo4jRelationshipToCount()
     phenotypes = fields.Neo4jRelationshipToCount()
     technicals = fields.Neo4jRelationshipToCount()
-    readonly = fields.Bool(default=True)
+    readonly = fields.Bool(dump_default=True)
     owning_group_name = fields.Str()
 
 
