@@ -53,8 +53,12 @@ jobs:
       - name: Production mode
         run: |
           rapydo remove
+          # Remove containers, networks, volumes and images
+          docker rm -f $(docker ps -a -q) || true
+          docker volume rm $(docker volume ls -q) || true
+          docker network rm $(docker network ls -q) || true
           rm -rf data/graphdata/*
-          docker volume rm $(docker volume ls -q)
+
           rapydo --testing --prod init --force
           # rapydo password registry --random
           rapydo pull --quiet
