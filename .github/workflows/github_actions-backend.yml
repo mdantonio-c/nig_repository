@@ -59,10 +59,10 @@ jobs:
           rapydo pull --quiet
           rapydo ssl --volatile
           rapydo -e AUTH_LOGIN_BAN_TIME=10 start
-          sleep 20
+          sleep 30
           rapydo password rabbit --random
           # compose:
-          # sleep 40
+          # sleep 30
           # swarm:
           # rabbit and neo4j are both very slow at startup...
           sleep 150
