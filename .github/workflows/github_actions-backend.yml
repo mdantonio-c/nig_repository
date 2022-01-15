@@ -54,18 +54,17 @@ jobs:
         run: |
           rapydo remove
           rm -rf data/graphdata/*
+          docker volume rm $(docker volume ls -q)
           rapydo --testing --prod init --force
-          rapydo password registry --random
+          # rapydo password registry --random
           rapydo pull --quiet
           rapydo ssl --volatile
           rapydo -e AUTH_LOGIN_BAN_TIME=10 start
-          sleep 30
-          rapydo password rabbit --random
           # compose:
-          # sleep 30
+          # sleep 60
           # swarm:
           # rabbit and neo4j are both very slow at startup...
-          sleep 150
+          sleep 180
           rapydo logs
           rapydo status
           cname=$(docker ps --format '{{.Names}}' | grep proxy)
