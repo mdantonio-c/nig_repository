@@ -60,6 +60,7 @@ jobs:
           rm -rf data/graphdata/*
 
           rapydo --testing --prod init --force
+          rapydo run registry
           # rapydo password registry --random
           rapydo pull --quiet
           rapydo ssl --volatile
