@@ -18,7 +18,7 @@ from snakemake import snakemake
 def launch_pipeline(
     self: Task,
     dataset_list: List[str],
-    snakefile: str = "Single_Sample_V2.smk",
+    snakefile: str = "Single_Sample.smk",
     force: bool = False,
 ) -> None:
     task_id = self.request.id
