@@ -71,7 +71,7 @@ rule BwaP:
         i1 = "{O}/seqtk/{Pw}_R1.converted.gz",
         i2 = "{O}/seqtk/{Pw}_R2.converted.gz"
     output:
-        temp({O}/bwa/{Pw}.sam")
+        temp("{O}/bwa/{Pw}.sam")
     log:
         "{O}/bwa/{Pw}.log"
     benchmark:
