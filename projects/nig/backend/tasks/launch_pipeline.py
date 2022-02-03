@@ -109,6 +109,8 @@ def launch_pipeline(
         forceall=force,
         # Go on with independent jobs if a job fails. (default: False)
         keepgoing=True,
+        # force the re-creation of incomplete files (default False)
+        force_incomplete=True,
     )
 
     return None
