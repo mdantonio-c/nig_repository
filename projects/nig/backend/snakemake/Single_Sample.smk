@@ -14,7 +14,7 @@ wildcard_constraints:
     Sw = '|'.join([re.escape(x) for x in sing.Sample])
 
 rule all:
-	input: expand("{O}/fastqc_out/{S}_{F}_fastqc.html",zip, O=df.OutputPath, S=df.Sample,F=df.Frag),\
+	input: expand("{O}/fastqc/{S}_{F}_fastqc.html",zip, O=df.OutputPath, S=df.Sample,F=df.Frag),\
     expand("{O}/gatk_gvcf/{S}_sort_nodup.g.vcf.gz",zip, O=df.OutputPath, S=df.Sample)
 
 
