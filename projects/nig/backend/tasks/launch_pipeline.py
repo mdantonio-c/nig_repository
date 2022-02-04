@@ -111,6 +111,8 @@ def launch_pipeline(
         keepgoing=True,
         # force the re-creation of incomplete files (default False)
         force_incomplete=True,
+        # lock the working directory when executing the workflow (default True)
+        lock=False,
     )
 
     return None
