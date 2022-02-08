@@ -14,7 +14,7 @@ from restapi.utilities.logs import log
 from snakemake import snakemake
 
 
-@CeleryExt.task(idempotent=True, autoretry_for=(ConnectionResetError,))
+@CeleryExt.task(idempotent=False, autoretry_for=(ConnectionResetError,))
 def launch_pipeline(
     self: Task,
     dataset_list: List[str],
