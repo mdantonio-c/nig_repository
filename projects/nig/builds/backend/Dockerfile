@@ -28,7 +28,7 @@ ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.9/site-packages
 RUN conda install --yes --freeze-installed python=3.9.0 && \
     conda update -n base -c defaults conda && \
     conda install --yes --freeze-installed -c conda-forge mamba stopit && \
-    mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake==6.4.0 pytest==6.2.5 && \
+    mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake==6.4.0 && \
     conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk && \
     conda install --yes --freeze-installed -c daler sratoolkit && \
     conda install --yes --freeze-installed -c conda-forge yappi && \
