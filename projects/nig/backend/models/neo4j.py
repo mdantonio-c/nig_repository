@@ -59,6 +59,12 @@ class Dataset(TimestampedNode):
     technical = RelationshipTo(
         "TechnicalMetadata", "IS_DESCRIBED_BY", cardinality=ZeroOrOne
     )
+    job = RelationshipTo("Job", "ANALYZED_BY", cardinality=ZeroOrMore)
+
+
+class Job(TimestampedNode):
+    uuid = StringProperty(required=True)
+    status = StringProperty()
 
 
 class VariantRelation(StructuredRel):  # type: ignore
