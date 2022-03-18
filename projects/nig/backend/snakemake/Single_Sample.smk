@@ -169,7 +169,7 @@ rule HaplotypeCaller:
     output:
         "{O}/gatk_gvcf/tmp_{S}_sort_nodup.g.vcf.gz"
     log:
-        "{O}/gatk_gvcf/tmp_{S}_sort_nodup.g.vcf.log"
+        "{O}/gatk_gvcf/{S}_sort_nodup.g.vcf.log"
     benchmark:
         "{O}/gatk_gvcf/tmp_{S}_sort_nodup.g.vcf.benchmark"
     threads:
