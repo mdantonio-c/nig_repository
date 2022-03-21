@@ -23,6 +23,10 @@ def launch_pipeline(
 ) -> None:
     task_id = self.request.id
     log.info("Start task [{}:{}]", task_id, self.name)
+    # create a job node related to the task
+    graph = neo4j.get_instance()
+    job = graph.Job(uuid=task_id, status="STARTED").save()
+
     # create a unique workdir for every celery task / and snakemake launch)
     wrkdir = DATA_PATH.joinpath("jobs", task_id)
     wrkdir.mkdir(parents=True, exist_ok=True)
@@ -34,7 +38,6 @@ def launch_pipeline(
 
     # get the file list from the dataset list
     file_list = []
-    graph = neo4j.get_instance()
     for d in dataset_list:
         # get the path of the dataset directory
         dataset = graph.Dataset.nodes.get_or_none(uuid=d)
@@ -52,6 +55,8 @@ def launch_pipeline(
             file_list.append(f)
         # mark the dataset as running
         dataset.status = "RUNNING"
+        # connect the dataset to the job node
+        dataset.job.connect(job)
         dataset.save()
 
     # create a list of fastq files as csv file: fastq.csv
