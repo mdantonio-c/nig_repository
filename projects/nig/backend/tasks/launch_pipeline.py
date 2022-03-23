@@ -25,7 +25,7 @@ def launch_pipeline(
     log.info("Start task [{}:{}]", task_id, self.name)
     # create a job node related to the task
     graph = neo4j.get_instance()
-    job = graph.Job(uuid=task_id, status="STARTED").save()
+    job = graph.Job(uuid=task_id, status="RUNNING").save()
 
     # create a unique workdir for every celery task / and snakemake launch)
     wrkdir = DATA_PATH.joinpath("jobs", task_id)
