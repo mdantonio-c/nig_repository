@@ -64,7 +64,7 @@ class ResultDownload(NIGEndpoint):
             raise NotFound(f"file .{file} for dataset {uuid} not found")
 
         # save the action in the log event
-        self.log_event(self.events.access, dataset, str(filepath))
+        self.log_event(self.events.access, dataset, {"downloaded_file": str(filepath)})
 
         # download the file as a response attachment
         return send_from_directory(
