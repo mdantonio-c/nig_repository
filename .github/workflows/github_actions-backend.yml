@@ -65,7 +65,9 @@ jobs:
           # sleep 60
           # swarm:
           # rabbit and neo4j are both very slow at startup...
-          sleep 180
+          # sleep 180
+          # raised from 180 to 240 after enabling gds
+          sleep 240
           rapydo logs
           rapydo status
           cname=$(docker ps --format '{{.Names}}' | grep proxy)
