@@ -38,8 +38,8 @@ jobs:
           rapydo -e API_AUTOSTART=1 start;
 
           # sleep 20
-          # raised from 20 to 60 after enabling gds
-          sleep 60
+          # raised from 20 to 90 after enabling gds
+          sleep 90
           rapydo logs
 
           rapydo shell backend "bash nig/scripts/init_hpo.sh"
