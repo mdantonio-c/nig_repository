@@ -12,7 +12,7 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
     # create a group with one user
     uuid_group_A, _ = BaseTests.create_group(client)
     user_A1_uuid, data = BaseTests.create_user(
-        client, data={"group": uuid_group_A}, roles=[Role.USER]
+        client, json={"group": uuid_group_A}, roles=[Role.USER]
     )
     user_A1_headers, _ = BaseTests.do_login(
         client, data.get("email"), data.get("password")
@@ -22,7 +22,7 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
     uuid_group_B, _ = BaseTests.create_group(client)
 
     user_B1_uuid, data = BaseTests.create_user(
-        client, data={"group": uuid_group_B}, roles=[Role.USER]
+        client, json={"group": uuid_group_B}, roles=[Role.USER]
     )
     user_B1_headers, _ = BaseTests.do_login(
         client, data.get("email"), data.get("password")
@@ -30,7 +30,7 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
 
     # create a second user for the group 2
     user_B2_uuid, data = BaseTests.create_user(
-        client, data={"group": uuid_group_B}, roles=[Role.USER]
+        client, json={"group": uuid_group_B}, roles=[Role.USER]
     )
     user_B2_headers, _ = BaseTests.do_login(
         client, data.get("email"), data.get("password")
@@ -41,13 +41,13 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
     if study:
         # create a study in group B
         study1 = {"name": faker.pystr(), "description": faker.pystr()}
-        r = client.post(f"{API_URI}/study", headers=user_B1_headers, data=study1)
+        r = client.post(f"{API_URI}/study", headers=user_B1_headers, json=study1)
         assert r.status_code == 200
         study1_uuid = BaseTests.get_content(r)
 
         # create a study in group A
         study2 = {"name": faker.pystr(), "description": faker.pystr()}
-        r = client.post(f"{API_URI}/study", headers=user_A1_headers, data=study2)
+        r = client.post(f"{API_URI}/study", headers=user_A1_headers, json=study2)
         assert r.status_code == 200
         study2_uuid = BaseTests.get_content(r)
 
