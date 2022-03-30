@@ -31,7 +31,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
             headers=user_B1_headers,
-            data=phenotype_father,
+            json=phenotype_father,
         )
         assert r.status_code == 200
         phenotype_father_uuid = self.get_content(r)
@@ -45,7 +45,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
             headers=user_B1_headers,
-            data=phenotype_mother,
+            json=phenotype_mother,
         )
         assert r.status_code == 200
         phenotype_mother_uuid = self.get_content(r)
@@ -59,7 +59,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
             headers=user_B1_headers,
-            data=phenotype_son_B,
+            json=phenotype_son_B,
         )
         assert r.status_code == 200
         phenotype_son_B_uuid = self.get_content(r)
@@ -73,7 +73,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/phenotypes",
             headers=user_A1_headers,
-            data=phenotype_son_A,
+            json=phenotype_son_A,
         )
         assert r.status_code == 200
         phenotype_son_A_uuid = self.get_content(r)

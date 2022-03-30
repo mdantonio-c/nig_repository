@@ -24,7 +24,7 @@ class TestApp(BaseTests):
         # create a new study for the group B
         random_name = faker.pystr()
         study1 = {"name": random_name, "description": faker.pystr()}
-        r = client.post(f"{API_URI}/study", headers=user_B1_headers, data=study1)
+        r = client.post(f"{API_URI}/study", headers=user_B1_headers, json=study1)
         assert r.status_code == 200
         study1_uuid = self.get_content(r)
         assert isinstance(study1_uuid, str)
@@ -32,7 +32,7 @@ class TestApp(BaseTests):
         # create a new study for the group A
         random_name2 = faker.pystr()
         study2 = {"name": random_name2, "description": faker.pystr()}
-        r = client.post(f"{API_URI}/study", headers=user_A1_headers, data=study2)
+        r = client.post(f"{API_URI}/study", headers=user_A1_headers, json=study2)
         assert r.status_code == 200
         study2_uuid = self.get_content(r)
         assert isinstance(study2_uuid, str)
@@ -70,14 +70,14 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/study/{study1_uuid}",
             headers=user_A1_headers,
-            data={"description": faker.pystr()},
+            json={"description": faker.pystr()},
         )
         assert r.status_code == 404
         # modify a study you own
         r = client.put(
             f"{API_URI}/study/{study1_uuid}",
             headers=user_B1_headers,
-            data={"description": faker.pystr()},
+            json={"description": faker.pystr()},
         )
         assert r.status_code == 204
 
@@ -91,7 +91,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/datasets",
             headers=user_A1_headers,
-            data=dataset,
+            json=dataset,
         )
         assert r.status_code == 200
         dataset_uuid = self.get_content(r)
@@ -109,7 +109,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/dataset/{dataset_uuid}/files/upload",
             headers=user_A1_headers,
-            data=file_data,
+            json=file_data,
         )
         assert r.status_code == 201
         # get the file uuid
@@ -127,7 +127,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/technicals",
             headers=user_A1_headers,
-            data=techmeta,
+            json=techmeta,
         )
         assert r.status_code == 200
         techmeta_uuid = self.get_content(r)
@@ -137,7 +137,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/phenotypes",
             headers=user_A1_headers,
-            data=phenotype,
+            json=phenotype,
         )
         assert r.status_code == 200
         phenotype_uuid = self.get_content(r)

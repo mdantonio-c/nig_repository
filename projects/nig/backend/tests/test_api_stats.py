@@ -26,7 +26,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/datasets",
             headers=user_A1_headers,
-            data=dataset_A,
+            json=dataset_A,
         )
         assert r.status_code == 200
         dataset_A_uuid = self.get_content(r)
@@ -36,7 +36,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
             headers=user_B1_headers,
-            data=dataset_B,
+            json=dataset_B,
         )
         assert r.status_code == 200
         dataset_B_uuid = self.get_content(r)
@@ -53,7 +53,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/dataset/{dataset_A_uuid}/files/upload",
             headers=user_A1_headers,
-            data=fake_file,
+            json=fake_file,
         )
         assert r.status_code == 201
         # init an upload in dataset B
@@ -61,7 +61,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/dataset/{dataset_B_uuid}/files/upload",
             headers=user_B1_headers,
-            data=fake_file,
+            json=fake_file,
         )
         assert r.status_code == 201
 

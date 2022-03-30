@@ -30,7 +30,7 @@ class TestApp(BaseTests):
         }
 
         r_post: Response = client.post(
-            f"{API_URI}/dataset/{dataset_uuid}/files/upload", headers=headers, data=data
+            f"{API_URI}/dataset/{dataset_uuid}/files/upload", headers=headers, json=data
         )
         if r_post.status_code != 201:
             return r_post
@@ -56,7 +56,7 @@ class TestApp(BaseTests):
                     r: Response = client.put(
                         f"{API_URI}/dataset/{dataset_uuid}/files/upload/{filename}",
                         headers=headers,
-                        data=read_data,
+                        json=read_data,
                     )
                 else:
                     # do not read data to test final size!=expected size
@@ -103,7 +103,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
             headers=user_B1_headers,
-            data=dataset_B,
+            json=dataset_B,
         )
         assert r.status_code == 200
         dataset_B_uuid = self.get_content(r)
@@ -120,7 +120,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/dataset/{dataset_B_uuid}/files/upload",
             headers=user_A1_headers,
-            data=fake_file,
+            json=fake_file,
         )
         assert r.status_code == 404
 
@@ -128,7 +128,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/dataset/{dataset_B_uuid}/files/upload",
             headers=admin_headers,
-            data=fake_file,
+            json=fake_file,
         )
         assert r.status_code == 404
 
@@ -142,7 +142,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/dataset/{dataset_B_uuid}/files/upload",
             headers=user_B1_headers,
-            data=fake_format,
+            json=fake_format,
         )
         assert r.status_code == 400
 
@@ -156,7 +156,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/dataset/{dataset_B_uuid}/files/upload",
             headers=user_B1_headers,
-            data=fake_nomencl_file,
+            json=fake_nomencl_file,
         )
         assert r.status_code == 400
 
@@ -169,7 +169,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/dataset/{dataset_B_uuid}/files/upload",
             headers=user_B1_headers,
-            data=fake_nomencl_file2,
+            json=fake_nomencl_file2,
         )
         assert r.status_code == 400
 
@@ -212,7 +212,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
             headers=user_B1_headers,
-            data=dataset_B2,
+            json=dataset_B2,
         )
         assert r.status_code == 200
         dataset_B2_uuid = self.get_content(r)

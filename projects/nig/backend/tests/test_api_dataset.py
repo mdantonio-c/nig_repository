@@ -27,7 +27,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
             headers=user_B1_headers,
-            data=dataset1,
+            json=dataset1,
         )
         assert r.status_code == 200
         dataset1_uuid = self.get_content(r)
@@ -40,7 +40,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/datasets",
             headers=user_B1_headers,
-            data=dataset1,
+            json=dataset1,
         )
         assert r.status_code == 404
 
@@ -48,7 +48,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
             headers=user_B1_headers,
-            data={"name": faker.pystr()},
+            json={"name": faker.pystr()},
         )
         assert r.status_code == 200
         technical_uuid = self.get_content(r)
@@ -57,7 +57,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
             headers=user_B1_headers,
-            data={"name": faker.pystr(), "sex": "male"},
+            json={"name": faker.pystr(), "sex": "male"},
         )
         assert r.status_code == 200
         phenotype_uuid = self.get_content(r)
@@ -73,14 +73,14 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
             headers=admin_headers,
-            data=dataset2,
+            json=dataset2,
         )
         assert r.status_code == 404
 
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
             headers=user_B1_headers,
-            data=dataset2,
+            json=dataset2,
         )
         assert r.status_code == 200
         dataset2_uuid = self.get_content(r)
@@ -149,7 +149,7 @@ class TestApp(BaseTests):
         r = client.patch(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_B1_headers,
-            data={"status": "UPLOAD COMPLETED"},
+            json={"status": "UPLOAD COMPLETED"},
         )
         assert r.status_code == 204
         # check new status in get response
@@ -163,7 +163,7 @@ class TestApp(BaseTests):
         r = client.patch(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_B1_headers,
-            data={"status": "-1"},
+            json={"status": "-1"},
         )
         assert r.status_code == 204
         # check status has been removed
@@ -181,7 +181,7 @@ class TestApp(BaseTests):
         r = client.patch(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_B1_headers,
-            data={"status": "UPLOAD COMPLETED"},
+            json={"status": "UPLOAD COMPLETED"},
         )
         assert r.status_code == 400
 
@@ -189,7 +189,7 @@ class TestApp(BaseTests):
         r = client.patch(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=admin_headers,
-            data={"status": "UPLOAD COMPLETED"},
+            json={"status": "UPLOAD COMPLETED"},
         )
         assert r.status_code == 204
 
@@ -199,21 +199,21 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_A1_headers,
-            data={"description": faker.pystr()},
+            json={"description": faker.pystr()},
         )
         assert r.status_code == 404
         # modify a dataset you own
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_B1_headers,
-            data={"description": faker.pystr()},
+            json={"description": faker.pystr()},
         )
         assert r.status_code == 204
         # modify a dataset of your group assigning a technical and a phenotype
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_B2_headers,
-            data={
+            json={
                 "name": faker.pystr(),
                 "technical": technical_uuid,
                 "phenotype": phenotype_uuid,
@@ -235,7 +235,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=user_B2_headers,
-            data={"technical": "-1", "phenotype": "-1"},
+            json={"technical": "-1", "phenotype": "-1"},
         )
         assert r.status_code == 204
         # check technical was correctly removed
@@ -251,7 +251,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/dataset/{dataset1_uuid}",
             headers=admin_headers,
-            data={"description": faker.pystr()},
+            json={"description": faker.pystr()},
         )
         assert r.status_code == 404
         # simulate the dataset has an output directory

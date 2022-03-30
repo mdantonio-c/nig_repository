@@ -34,7 +34,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
             headers=user_B1_headers,
-            data=phenotype1,
+            json=phenotype1,
         )
         assert r.status_code == 400
 
@@ -43,7 +43,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
             headers=user_B1_headers,
-            data=phenotype1,
+            json=phenotype1,
         )
         assert r.status_code == 200
         phenotype1_uuid = self.get_content(r)
@@ -53,7 +53,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/phenotypes",
             headers=user_B1_headers,
-            data=phenotype1,
+            json=phenotype1,
         )
         assert r.status_code == 404
 
@@ -66,7 +66,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
             headers=admin_headers,
-            data=phenotype2,
+            json=phenotype2,
         )
         assert r.status_code == 404
 
@@ -84,7 +84,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/phenotypes",
             headers=user_B1_headers,
-            data=phenotype2,
+            json=phenotype2,
         )
         assert r.status_code == 200
         phenotype2_uuid = self.get_content(r)
@@ -164,14 +164,14 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/phenotype/{random_phenotype}",
             headers=user_A1_headers,
-            data={"name": faker.pystr(), "sex": "female"},
+            json={"name": faker.pystr(), "sex": "female"},
         )
         assert r.status_code == 404
         # modify a phenotype you do not own
         r = client.put(
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=user_A1_headers,
-            data={"name": faker.pystr(), "sex": "female"},
+            json={"name": faker.pystr(), "sex": "female"},
         )
         assert r.status_code == 404
 
@@ -180,7 +180,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=user_B1_headers,
-            data=phenotype1,
+            json=phenotype1,
         )
         assert r.status_code == 400
 
@@ -189,7 +189,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=user_B1_headers,
-            data=phenotype1,
+            json=phenotype1,
         )
         assert r.status_code == 204
 
@@ -197,7 +197,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/phenotype/{phenotype1_uuid}",
             headers=admin_headers,
-            data={"name": faker.pystr(), "sex": "female"},
+            json={"name": faker.pystr(), "sex": "female"},
         )
         assert r.status_code == 404
 
@@ -212,7 +212,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/phenotype/{phenotype2_uuid}",
             headers=user_B1_headers,
-            data=phenotype2,
+            json=phenotype2,
         )
         assert r.status_code == 204
         r = client.get(
@@ -228,7 +228,7 @@ class TestApp(BaseTests):
         data.pop("birth_place", None)
         data.pop("hpo", None)
         r = client.put(
-            f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B1_headers, data=data
+            f"{API_URI}/phenotype/{phenotype2_uuid}", headers=user_B1_headers, json=data
         )
         assert r.status_code == 204
         r = client.get(
@@ -244,7 +244,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/phenotype/{phenotype2_uuid}",
             headers=user_B1_headers,
-            data=phenotype2,
+            json=phenotype2,
         )
         assert r.status_code == 400
 

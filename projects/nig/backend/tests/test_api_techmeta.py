@@ -29,7 +29,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
             headers=user_B1_headers,
-            data=techmeta1,
+            json=techmeta1,
         )
         assert r.status_code == 200
         techmeta1_uuid = self.get_content(r)
@@ -39,7 +39,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/technicals",
             headers=user_B1_headers,
-            data=techmeta1,
+            json=techmeta1,
         )
         assert r.status_code == 404
 
@@ -52,14 +52,14 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
             headers=admin_headers,
-            data=techmeta2,
+            json=techmeta2,
         )
         assert r.status_code == 404
 
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
             headers=user_B1_headers,
-            data=techmeta2,
+            json=techmeta2,
         )
         assert r.status_code == 200
         techmeta2_uuid = self.get_content(r)
@@ -122,21 +122,21 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/technical/{random_technical}",
             headers=user_A1_headers,
-            data={"name": faker.pystr()},
+            json={"name": faker.pystr()},
         )
         assert r.status_code == 404
         # modify a technical you do not own
         r = client.put(
             f"{API_URI}/technical/{techmeta1_uuid}",
             headers=user_A1_headers,
-            data={"name": faker.pystr()},
+            json={"name": faker.pystr()},
         )
         assert r.status_code == 404
         # modify a technical you own
         r = client.put(
             f"{API_URI}/technical/{techmeta1_uuid}",
             headers=user_B1_headers,
-            data={"name": faker.pystr(), "sequencing_date": faker.date()},
+            json={"name": faker.pystr(), "sequencing_date": faker.date()},
         )
         assert r.status_code == 204
 
@@ -144,7 +144,7 @@ class TestApp(BaseTests):
         r = client.put(
             f"{API_URI}/technical/{techmeta1_uuid}",
             headers=admin_headers,
-            data={"name": faker.pystr()},
+            json={"name": faker.pystr()},
         )
         assert r.status_code == 404
 

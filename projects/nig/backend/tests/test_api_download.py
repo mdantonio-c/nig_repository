@@ -29,7 +29,7 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/datasets",
             headers=user_B1_headers,
-            data=dataset1,
+            json=dataset1,
         )
         assert r.status_code == 200
         dataset1_uuid = self.get_content(r)
