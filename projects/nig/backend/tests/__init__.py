@@ -12,7 +12,7 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
     # create a group with one user
     uuid_group_A, _ = BaseTests.create_group(client)
     user_A1_uuid, data = BaseTests.create_user(
-        client, json={"group": uuid_group_A}, roles=[Role.USER]
+        client, data={"group": uuid_group_A}, roles=[Role.USER]
     )
     user_A1_headers, _ = BaseTests.do_login(
         client, data.get("email"), data.get("password")
@@ -22,7 +22,7 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
     uuid_group_B, _ = BaseTests.create_group(client)
 
     user_B1_uuid, data = BaseTests.create_user(
-        client, json={"group": uuid_group_B}, roles=[Role.USER]
+        client, data={"group": uuid_group_B}, roles=[Role.USER]
     )
     user_B1_headers, _ = BaseTests.do_login(
         client, data.get("email"), data.get("password")
@@ -30,7 +30,7 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
 
     # create a second user for the group 2
     user_B2_uuid, data = BaseTests.create_user(
-        client, json={"group": uuid_group_B}, roles=[Role.USER]
+        client, data={"group": uuid_group_B}, roles=[Role.USER]
     )
     user_B2_headers, _ = BaseTests.do_login(
         client, data.get("email"), data.get("password")
