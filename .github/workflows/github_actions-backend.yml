@@ -81,6 +81,7 @@ jobs:
         run: |
 
           rapydo --testing --prod init --force
+          rapydo password registry --random
           rapydo pull --quiet
           rapydo build
           rapydo ssl --volatile
