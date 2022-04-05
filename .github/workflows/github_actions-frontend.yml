@@ -9,7 +9,7 @@ env:
   PROJECT: nig
 
 jobs:
-  frontend-tests:
+  Development-mode:
     runs-on: ubuntu-20.04
     timeout-minutes: 20
 
@@ -41,9 +41,23 @@ jobs:
           project: ${PROJECT}
           step: frontend
 
+  Production-mode:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      - uses: rapydo/actions/install@v1
+        with:
+          project: ${PROJECT}
+          swarm: 1
+
       - name: Production Mode
         run: |
-          rapydo remove
           rapydo --testing --prod init --force
           rapydo password registry --random
           rapydo pull --quiet frontend proxy
