@@ -7,7 +7,7 @@ env:
   PROJECT: nig
 
 jobs:
-  backend-tests:
+  Development-mode:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
 
@@ -50,22 +50,61 @@ jobs:
           project: ${PROJECT}
           step: backend
 
+      - name: Print Logs
+        if: failure()
+        run: tail -100 data/logs/backend-server.log
+
+      - name: Print Events
+        if: failure()
+        run: tail -100 data/logs/security-events.log
+
+      - name: Docker Logs
+        if: failure()
+        run: rapydo logs
+
+  Production-mode:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      - uses: rapydo/actions/install@v1
+        with:
+          project: ${PROJECT}
+          swarm: 1
+
+      - name: Run Pytest
+        run: |
+
+          rapydo pull --quiet
+          rapydo add task test_task
+
+          rapydo -e AUTH_LOGIN_BAN_TIME=10 start
+          # rabbit and neo4j are both very slow at startup...
+          # sleep 60
+          sleep 90
+          rapydo shell backend 'restapi wait'
+
+          rapydo shell backend "bash nig/scripts/init_hpo.sh"
+
+          rapydo shell backend 'restapi tests --wait --destroy'
+
+          LOGURU_LEVEL=WARNING rapydo list services
+          # This should fail if at least one container is in Exit status
+          [[ ! $(LOGURU_LEVEL=WARNING rapydo list services | grep -E "Exit|Restarting|Created") ]]
+
       - name: Production mode
         run: |
-          rapydo remove
-          rm -rf data/graphdata/*
-          docker volume rm nig_rabbitdata
 
           rapydo --testing --prod init --force
-          rapydo password registry --random
           rapydo pull --quiet
+          rapydo build
           rapydo ssl --volatile
           rapydo -e AUTH_LOGIN_BAN_TIME=10 start
-          # compose:
-          # sleep 60
-          # swarm:
-          # rabbit and neo4j are both very slow at startup...
-          # sleep 180
           # raised from 180 to 240 after enabling gds
           sleep 240
           rapydo logs
@@ -91,5 +130,4 @@ jobs:
 
       - name: Docker Logs
         if: failure()
-        run: |
-          rapydo logs
+        run: rapydo logs
