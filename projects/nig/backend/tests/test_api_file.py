@@ -56,7 +56,7 @@ class TestApp(BaseTests):
                     r: Response = client.put(
                         f"{API_URI}/dataset/{dataset_uuid}/files/upload/{filename}",
                         headers=headers,
-                        json=read_data,
+                        data=read_data,
                     )
                 else:
                     # do not read data to test final size!=expected size

@@ -9,7 +9,7 @@ env:
   PROJECT: nig
 
 jobs:
-  integration-tests:
+  Cypress:
     runs-on: ubuntu-20.04
     timeout-minutes: 90
 
