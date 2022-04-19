@@ -21,6 +21,7 @@ jobs:
         with:
           project: ${PROJECT}
           swarm: 1
+          extra_options: "-e ACTIVATE_ANGULAR=0"
 
       - name: Run Pytest
         run: |
@@ -80,7 +81,7 @@ jobs:
       - name: Production mode
         run: |
 
-          rapydo --testing --prod init --force
+          rapydo --testing --prod -e ACTIVATE_ANGULAR=0 init --force
           rapydo password registry --random
           rapydo pull --quiet
           rapydo build
