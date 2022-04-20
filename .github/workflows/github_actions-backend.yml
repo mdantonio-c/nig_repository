@@ -21,7 +21,7 @@ jobs:
         with:
           project: ${PROJECT}
           swarm: 1
-          extra_options: "-e ACTIVATE_ANGULAR=0"
+          extra_options: "-e FRONTEND_FRAMEWORK=nofrontend"
 
       - name: Run Pytest
         run: |
