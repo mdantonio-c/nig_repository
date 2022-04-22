@@ -56,10 +56,8 @@ def launch_pipeline(
         # mark the dataset as running
         dataset.status = "RUNNING"
         # connect the dataset to the job node
-        rel = dataset.job.relationship(job)
-        rel.status = "RUNNING"
+        dataset.job.connect(job, {"status": "RUNNING"})
         dataset.save()
-        rel.save()
 
     # create a list of fastq files as csv file: fastq.csv
     fastq = []

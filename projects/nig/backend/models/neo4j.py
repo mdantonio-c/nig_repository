@@ -72,6 +72,9 @@ class Dataset(TimestampedNode):
 
 class Job(TimestampedNode):
     uuid = StringProperty(required=True)
+    datasets = RelationshipFrom(
+        "Dataset", "ANALYZED_BY", cardinality=ZeroOrMore, model=JobRelation
+    )
 
 
 class VariantRelation(StructuredRel):  # type: ignore
