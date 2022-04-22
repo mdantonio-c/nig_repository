@@ -42,12 +42,18 @@ class Study(TimestampedNode):
     linked_datasets = RelationshipTo("Dataset", "IS_LINKED", cardinality=ZeroOrMore)
 
 
+class JobRelation(StructuredRel):
+    status = StringProperty()
+    error_message = StringProperty()
+
+
 class Dataset(TimestampedNode):
     name = StringProperty(required=True)
     # unique_name = StringProperty(required=True, unique_index=True)
     description = StringProperty()
     is_proband = BooleanProperty()
     status = StringProperty()
+    error_message = StringProperty()
 
     ownership = RelationshipTo(
         "restapi.connectors.neo4j.models.User", "IS_OWNED_BY", cardinality=ZeroOrMore
@@ -59,12 +65,13 @@ class Dataset(TimestampedNode):
     technical = RelationshipTo(
         "TechnicalMetadata", "IS_DESCRIBED_BY", cardinality=ZeroOrOne
     )
-    job = RelationshipTo("Job", "ANALYZED_BY", cardinality=ZeroOrMore)
+    job = RelationshipTo(
+        "Job", "ANALYZED_BY", cardinality=ZeroOrMore, model=JobRelation
+    )
 
 
 class Job(TimestampedNode):
     uuid = StringProperty(required=True)
-    status = StringProperty()
 
 
 class VariantRelation(StructuredRel):  # type: ignore
