@@ -24,3 +24,9 @@ services:
       placement:
         constraints:
           - "node.role==manager"
+
+  frontend:
+    deploy:
+      placement:
+        constraints:
+          - "node.role==manager"
