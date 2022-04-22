@@ -1,3 +1,14 @@
+# imports from the check script
+import sys
+
+sys.path.insert(1, "/resources/JuanMataNaranjo")
+from fastqc import Fastqc
+from bwa import Bwa
+from samsort import SamSort
+from baserecalibrator import BaseRecalibrator
+from applybqsr import ApplyBQSR
+from haplotype import HaploType
+
 import os
 import re
 import shutil
@@ -119,5 +130,98 @@ def launch_pipeline(
         # lock the working directory when executing the workflow (default True)
         lock=False,
     )
+
+    # check the status of the analysed datasets
+    input_parameter_path = "/resources/JuanMataNaranjo/template_recaldat.log"
+    for d in dataset_list:
+        # get the output path
+        dataset = graph.Dataset.nodes.get_or_none(uuid=d)
+        if not dataset:
+            log.warning(f"no dataset with id {d} was found")
+            continue
+        owner = dataset.ownership.single()
+        group = owner.belongs_to.single()
+        study = dataset.parent_study.single()
+        output_path = OUTPUT_ROOT.joinpath(group.uuid, study.uuid, dataset.uuid)
+
+        # get the name of the sample
+        sample = "N/A"
+        for f in dataset.files.all():
+            sample = re.findall(pattern, f.name)[0][0]
+            break
+
+        check_list = [
+            "Fastqc",
+            "Bwa",
+            "SamSort",
+            "BaseRecalibrator",
+            "ApplyBQSR",
+            "HaploType",
+        ]
+        check_passed = None
+        error_message = None
+        try:
+            # log.info(f"checking for sample {sample} in {output_path}")
+            # check all the logs
+            Fastqc(path=f"{output_path}/fastqc/", sample=sample).check_log()
+            check_passed = "Fastqc"
+            Bwa(
+                path=f"{output_path}/bwa/", sample=sample, table_path=fastq_csv_file
+            ).check_log()
+            check_passed = "Bwa"
+            SamSort(
+                path=f"{output_path}/bwa/", sample=sample, table_path=fastq_csv_file
+            ).check_log()
+            check_passed = "SamSort"
+            BaseRecalibrator(
+                path=f"{output_path}/gatk_bsr/",
+                sample=sample,
+                table_path=fastq_csv_file,
+                input_parameter_path=input_parameter_path,
+            ).check_log()
+            check_passed = "BaseRecalibrator"
+            ApplyBQSR(
+                path=f"{output_path}/gatk_bsr/",
+                sample=sample,
+                input_parameter_path=input_parameter_path,
+            ).check_log()
+            check_passed = "ApplyBQSR"
+            HaploType(
+                path=f"{output_path}/gatk_gvcf/",
+                sample=sample,
+                table_path=fastq_csv_file,
+            ).check_log()
+            check_passed = "HaploType"
+
+            # if all the checks are passed set the dataset status as COMPLETED
+            dataset_status = "COMPLETED"
+        except Exception as exc:
+            # get the check that raised the exception
+            if check_passed:
+                last_checked = check_list.index(check_passed)
+                check_failed_index = last_checked + 1
+            else:
+                check_failed_index = 0
+            error_message = f"Step {check_list[check_failed_index]}: {exc}"
+            # log.error(error_message)
+
+            # if the datasets has not passed all the checks its status will be ERROR
+            dataset_status = "ERROR"
+
+        # update the dataset status in the db
+        dataset.status = dataset_status
+        if error_message:
+            dataset.error_message = error_message
+        dataset.save()
+        # log.info(f"set status for dataset {d} as {dataset_status}")
+
+        # update the job relationship
+        rel = dataset.job.relationship(job)
+        rel.status = dataset_status
+        if error_message:
+            rel.error_message = error_message
+        rel.save()
+
+    log.info(f"check for job {task_id} completed")
 
     return None
