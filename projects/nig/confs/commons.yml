@@ -16,6 +16,9 @@ services:
     volumes:
       - ${DATA_DIR}/graphdata:/data
       - ${DATA_DIR}/data:/var/lib/neo4j/import/repo
+    ports:
+      - ${NEO4J_EXPOSED_WEB_INTERFACE_PORT}:${NEO4J_WEB_INTERFACE_PORT}
+      - 7687:7687
 
   celery:
     build: ${PROJECT_DIR}/builds/backend
