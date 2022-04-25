@@ -9,6 +9,11 @@ variables:
   roles:
     staff_user: disabled
 
+  submodules:
+    quality-checks:
+      online_url: https://github.com/JuanMataNaranjo/CINECA_repo
+      branch: main
+
   env:
     CHUNKS_LIMIT: 16
     CRONTAB_ENABLE: 1
