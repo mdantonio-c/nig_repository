@@ -8,6 +8,7 @@ services:
       - ${DATA_DIR}/data:/data
       - ${DATA_DIR}/resources:/resources
       - ${PROJECT_DIR}/backend/snakemake:/snakemake
+      - ${SUBMODULE_DIR}/quality-checks:/code/juan
     environment:
       # celery configuration for samples analysis
       CHUNKS_LIMIT: ${CHUNKS_LIMIT}
