@@ -45,6 +45,9 @@ def launch_pipeline(
 
     # get the file list from the dataset list
     file_list = []
+    # the pattern is check also in the file upload endpoint. This is an additional check
+    pattern = r"([a-zA-Z0-9_-]+)_(R[12]).fastq.gz"
+    analized_datasets = []
     for d in dataset_list:
         # get the path of the dataset directory
         dataset = graph.Dataset.nodes.get_or_none(uuid=d)
@@ -57,43 +60,63 @@ def launch_pipeline(
             # an error should be raised?
             log.warning("Folder for dataset {} not found", d)
             continue
-        # append the contained files in the file list
+        dataset_files = []
         for f in datasetDirectory.iterdir():
-            file_list.append(f)
+            # check if the pattern is respected
+            fname = f.name
+            if re.match(pattern, fname):
+                dataset_files.append(f)
+            else:
+                log.info(
+                    "fastq {} should follow correct naming convention: "
+                    "SampleName_R1/R2.fastq.gz",
+                    f,
+                )
+                continue
+        # check if in case of a single file it is of R1 type
+        if len(dataset_files) == 1:
+            fname = dataset_files[0].name
+            match = re.match(pattern, fname)
+            if match.group(2) == "R2":
+                # mark the dataset as error
+                msg = "R1 file is missing"
+                dataset.status = "ERROR"
+                dataset.error_message = msg
+                # connect the dataset to the job node
+                dataset.job.connect(job, {"status": "ERROR", "error_message": msg})
+                dataset.save()
+                continue
+        if dataset_files:
+            for f in dataset_files:
+                # append the contained files in the file list
+                file_list.append(f)
         # mark the dataset as running
         dataset.status = "RUNNING"
         # connect the dataset to the job node
         dataset.job.connect(job, {"status": "RUNNING"})
         dataset.save()
+        analized_datasets.append(d)
 
     # create a list of fastq files as csv file: fastq.csv
     fastq = []
 
-    # the pattern is check also in the file upload endpoint. This is an additional check
-    pattern = r"([a-zA-Z0-9_-]+)_(R[12]).fastq.gz"
     for filepath in file_list:
         fname = filepath.name
-        if match := re.match(pattern, fname):
-            file_label = match.group(1)
-            fragment = match.group(2)
+        match = re.match(pattern, fname)
+        file_label = match.group(1)
+        fragment = match.group(2)
 
-            # get the input path
-            input_path = filepath.parent
-            # create the output path
-            output_path = OUTPUT_ROOT.joinpath(input_path.relative_to(INPUT_ROOT))
-            output_path.mkdir(parents=True, exist_ok=True)
-            if not output_path.joinpath(fname).exists():
-                output_path.joinpath(fname).symlink_to(filepath)
+        # get the input path
+        input_path = filepath.parent
+        # create the output path
+        output_path = OUTPUT_ROOT.joinpath(input_path.relative_to(INPUT_ROOT))
+        output_path.mkdir(parents=True, exist_ok=True)
+        if not output_path.joinpath(fname).exists():
+            output_path.joinpath(fname).symlink_to(filepath)
 
-            # create row for csv
-            fastq_row = [file_label, fragment, input_path, output_path]
-            fastq.append(fastq_row)
-        else:
-            log.info(
-                "fastq {} should follow correct naming convention: "
-                "SampleName_R1/R2.fastq.gz",
-                filepath,
-            )
+        # create row for csv
+        fastq_row = [file_label, fragment, input_path, output_path]
+        fastq.append(fastq_row)
 
     # A dataframe is created
     df = DataFrame(fastq, columns=["Sample", "Frag", "InputPath", "OutputPath"])
@@ -129,7 +152,7 @@ def launch_pipeline(
 
     # check the status of the analysed datasets
     input_parameter_path = "/code/juan/template_recaldat.log"
-    for d in dataset_list:
+    for d in analized_datasets:
         # get the output path
         dataset = graph.Dataset.nodes.get_or_none(uuid=d)
         if not dataset:
