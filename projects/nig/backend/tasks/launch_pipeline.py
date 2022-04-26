@@ -1,14 +1,4 @@
 # imports from the check script
-import sys
-
-sys.path.insert(1, "/resources/JuanMataNaranjo")
-from fastqc import Fastqc
-from bwa import Bwa
-from samsort import SamSort
-from baserecalibrator import BaseRecalibrator
-from applybqsr import ApplyBQSR
-from haplotype import HaploType
-
 import os
 import re
 import shutil
@@ -16,6 +6,12 @@ from pathlib import Path
 from typing import List
 
 from celery.app.task import Task
+from juan.qc.applybqsr import ApplyBQSR
+from juan.qc.baserecalibrator import BaseRecalibrator
+from juan.qc.bwa import Bwa
+from juan.qc.fastqc import Fastqc
+from juan.qc.haplotype import HaploType
+from juan.qc.samsort import SamSort
 from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
 from pandas import DataFrame
 from restapi.config import DATA_PATH
@@ -132,7 +128,7 @@ def launch_pipeline(
     )
 
     # check the status of the analysed datasets
-    input_parameter_path = "/resources/JuanMataNaranjo/template_recaldat.log"
+    input_parameter_path = "/code/juan/template_recaldat.log"
     for d in dataset_list:
         # get the output path
         dataset = graph.Dataset.nodes.get_or_none(uuid=d)
