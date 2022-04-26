@@ -113,7 +113,7 @@ rule Samsort:
     threads:
         config["THREAD"]["samtool"]
     shell:
-        "samtools sort -@ {threads} -m100G {input} -O BAM -o {output} > {log} 2>&1"
+        "samtools sort -@ {threads} -m24G {input} -O BAM -o {output} > {log} 2>&1"
 
 rule Samindex:
     input:
