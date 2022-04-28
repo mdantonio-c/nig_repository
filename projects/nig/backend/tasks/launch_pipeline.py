@@ -249,10 +249,10 @@ def launch_pipeline(
                 template="dataset_error.html",
                 to_address=None,
                 data={
-                    "job_id": job.id,
-                    "dataset_id": dataset.id,
+                    "job_id": job.uuid,
+                    "dataset_id": dataset.uuid,
                     "dataset_name": dataset.name,
-                    "study_id": study.id,
+                    "study_id": study.uuid,
                     "study_name": study.name,
                     "error_message": error_message,
                 },
