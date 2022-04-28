@@ -17,6 +17,7 @@ from pandas import DataFrame
 from restapi.config import DATA_PATH
 from restapi.connectors import neo4j
 from restapi.connectors.celery import CeleryExt
+from restapi.connectors.smtp.notifications import send_notification
 from restapi.utilities.logs import log
 from snakemake import snakemake
 
@@ -240,6 +241,22 @@ def launch_pipeline(
         if error_message:
             rel.error_message = error_message
         rel.save()
+
+        if dataset_status == "ERROR":
+            # send notification email
+            send_notification(
+                subject="A dataset analysis ended in an error",
+                template="dataset_error.html",
+                to_address=None,
+                data={
+                    "job_id": job.id,
+                    "dataset_id": dataset.id,
+                    "dataset_name": dataset.name,
+                    "study_id": study.id,
+                    "study_name": study.name,
+                    "error_message": error_message,
+                },
+            )
 
     log.info(f"check for job {task_id} completed")
 
