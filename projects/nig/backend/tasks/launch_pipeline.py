@@ -1,4 +1,3 @@
-# imports from the check script
 import os
 import re
 import shutil
@@ -78,7 +77,7 @@ def launch_pipeline(
         if len(dataset_files) == 1:
             fname = dataset_files[0].name
             match = re.match(pattern, fname)
-            if match.group(2) == "R2":
+            if match and match.group(2) == "R2":
                 # mark the dataset as error
                 msg = "R1 file is missing"
                 dataset.status = "ERROR"
@@ -104,8 +103,11 @@ def launch_pipeline(
     for filepath in file_list:
         fname = filepath.name
         match = re.match(pattern, fname)
-        file_label = match.group(1)
-        fragment = match.group(2)
+        file_label = None
+        fragment = None
+        if match:
+            file_label = match.group(1)
+            fragment = match.group(2)
 
         # get the input path
         input_path = filepath.parent
@@ -249,12 +251,13 @@ def launch_pipeline(
                 template="dataset_error.html",
                 to_address=None,
                 data={
-                    "job_id": job.uuid,
                     "dataset_id": dataset.uuid,
                     "dataset_name": dataset.name,
                     "study_id": study.uuid,
                     "study_name": study.name,
                     "error_message": error_message,
+                    "output_path": output_path,
+                    "job_path": wrkdir,
                 },
             )
 
