@@ -5,12 +5,12 @@ from pathlib import Path
 from typing import List
 
 from celery.app.task import Task
-from juan.qc.applybqsr import ApplyBQSR
-from juan.qc.baserecalibrator import BaseRecalibrator
-from juan.qc.bwa import Bwa
-from juan.qc.fastqc import Fastqc
-from juan.qc.haplotype import HaploType
-from juan.qc.samsort import SamSort
+from juan.qc.applybqsr import ApplyBQSR  # type: ignore
+from juan.qc.baserecalibrator import BaseRecalibrator  # type: ignore
+from juan.qc.bwa import Bwa  # type: ignore
+from juan.qc.fastqc import Fastqc  # type: ignore
+from juan.qc.haplotype import HaploType  # type: ignore
+from juan.qc.samsort import SamSort  # type: ignore
 from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
 from pandas import DataFrame
 from restapi.config import DATA_PATH
