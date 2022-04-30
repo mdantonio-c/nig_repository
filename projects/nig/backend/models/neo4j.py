@@ -42,7 +42,7 @@ class Study(TimestampedNode):
     linked_datasets = RelationshipTo("Dataset", "IS_LINKED", cardinality=ZeroOrMore)
 
 
-class JobRelation(StructuredRel):
+class JobRelation(StructuredRel):  # type: ignore
     status = StringProperty()
     error_message = StringProperty()
 

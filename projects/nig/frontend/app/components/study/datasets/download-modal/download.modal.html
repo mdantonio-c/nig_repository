@@ -1,0 +1,48 @@
+<div class="modal-header modal-warning bg-light">
+  <h2 class="modal-title smaller" id="modal-title">
+    Choose a file to download
+  </h2>
+  <button
+    type="button"
+    class="close"
+    aria-describedby="modal-title"
+    (click)="modal.dismiss('Cross click')"
+  >
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div class="modal-body text-center">
+  <div class="btn-group mr-3" style="width: 100%">
+    <button type="button" class="btn btn-outline-secondary">
+      {{ selectedFileformat }}
+    </button>
+    <div ngbDropdown class="btn-group">
+      <button
+        type="button"
+        class="btn btn-outline-secondary dropdown-toggle-split"
+        id="file-format"
+        ngbDropdownToggle
+      ></button>
+      <div ngbDropdownMenu aria-labelledby="file to download">
+        <button
+          type="button"
+          ngbDropdownItem
+          *ngFor="let fileFormat of fileFormats"
+          (click)="setFileFormat(fileFormat)"
+        >
+          {{ fileFormat }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-footer text-center">
+  <button
+    type="button"
+    ngbAutofocus
+    class="btn btn-m btn-primary"
+    (click)="downloadFile()"
+  >
+    Download
+  </button>
+</div>

@@ -11,13 +11,14 @@ from restapi.rest.definition import Response
 from restapi.services.authentication import User
 
 FILE_TO_DOWNLOAD = ["bam", "g.vcf"]
+RESOURCE_FOLDER = {"bam": "bwa", "g.vcf": "gatk_gvcf"}
 
 
 class ResultDownload(NIGEndpoint):
 
     labels = ["download"]
 
-    @decorators.auth.require()
+    @decorators.auth.require(allow_access_token_parameter=True)
     @decorators.use_kwargs(
         {"file": fields.Str(required=True, validate=validate.OneOf(FILE_TO_DOWNLOAD))},
         location="query",
@@ -50,12 +51,14 @@ class ResultDownload(NIGEndpoint):
             user=user, dataset=dataset, get_output_dir=True
         )
 
+        resource_dir = Path(dataset_output_dir, RESOURCE_FOLDER[file])
+
         # check if the output dir exists and if it is not empty
-        if not dataset_output_dir.is_dir():
+        if not resource_dir.is_dir():
             raise NotFound("Directory for dataset output not found")
 
         filepath: Optional[Path] = None
-        for f in dataset_output_dir.iterdir():
+        for f in resource_dir.iterdir():
             if f.suffix == f".{file}":
                 filepath = f
                 break
@@ -67,6 +70,4 @@ class ResultDownload(NIGEndpoint):
         self.log_event(self.events.access, dataset, {"downloaded_file": str(filepath)})
 
         # download the file as a response attachment
-        return send_from_directory(
-            dataset_output_dir, filepath.name, as_attachment=True
-        )
+        return send_from_directory(resource_dir, filepath.name, as_attachment=True)

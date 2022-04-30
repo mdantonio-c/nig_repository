@@ -1,4 +1,6 @@
 import { Component, Injector, Input } from "@angular/core";
+import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
+import { DownloadModal } from "./download-modal/download.modal";
 import { DataService } from "../../../services/data.service";
 import { BasePaginationComponent } from "@rapydo/components/base.pagination.component";
 import { Dataset } from "@app/types";
@@ -12,6 +14,7 @@ import { Subject } from "rxjs";
 export class DatasetsComponent extends BasePaginationComponent<Dataset> {
   @Input() studyUUID;
   @Input() readonly;
+  protected modalService: NgbModal;
   expanded: any = {};
   user: any = {};
 
@@ -74,5 +77,10 @@ export class DatasetsComponent extends BasePaginationComponent<Dataset> {
       this.dataService.changeCounter(this.data.length, "datasets");
     });
     return res$;
+  }
+
+  download(dataset_uuid) {
+    const modalRef = this.modalService.open(DownloadModal);
+    modalRef.componentInstance.dataset = dataset_uuid;
   }
 }

@@ -1,4 +1,3 @@
-# imports from the check script
 import os
 import re
 import shutil
@@ -6,17 +5,18 @@ from pathlib import Path
 from typing import List
 
 from celery.app.task import Task
-from juan.qc.applybqsr import ApplyBQSR
-from juan.qc.baserecalibrator import BaseRecalibrator
-from juan.qc.bwa import Bwa
-from juan.qc.fastqc import Fastqc
-from juan.qc.haplotype import HaploType
-from juan.qc.samsort import SamSort
+from juan.qc.applybqsr import ApplyBQSR  # type: ignore
+from juan.qc.baserecalibrator import BaseRecalibrator  # type: ignore
+from juan.qc.bwa import Bwa  # type: ignore
+from juan.qc.fastqc import Fastqc  # type: ignore
+from juan.qc.haplotype import HaploType  # type: ignore
+from juan.qc.samsort import SamSort  # type: ignore
 from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
 from pandas import DataFrame
 from restapi.config import DATA_PATH
 from restapi.connectors import neo4j
 from restapi.connectors.celery import CeleryExt
+from restapi.connectors.smtp.notifications import send_notification
 from restapi.utilities.logs import log
 from snakemake import snakemake
 
@@ -77,7 +77,7 @@ def launch_pipeline(
         if len(dataset_files) == 1:
             fname = dataset_files[0].name
             match = re.match(pattern, fname)
-            if match.group(2) == "R2":
+            if match and match.group(2) == "R2":
                 # mark the dataset as error
                 msg = "R1 file is missing"
                 dataset.status = "ERROR"
@@ -103,8 +103,11 @@ def launch_pipeline(
     for filepath in file_list:
         fname = filepath.name
         match = re.match(pattern, fname)
-        file_label = match.group(1)
-        fragment = match.group(2)
+        file_label = None
+        fragment = None
+        if match:
+            file_label = match.group(1)
+            fragment = match.group(2)
 
         # get the input path
         input_path = filepath.parent
@@ -240,6 +243,23 @@ def launch_pipeline(
         if error_message:
             rel.error_message = error_message
         rel.save()
+
+        if dataset_status == "ERROR":
+            # send notification email
+            send_notification(
+                subject="A dataset analysis ended in an error",
+                template="dataset_error.html",
+                to_address=None,
+                data={
+                    "dataset_id": dataset.uuid,
+                    "dataset_name": dataset.name,
+                    "study_id": study.uuid,
+                    "study_name": study.name,
+                    "error_message": error_message,
+                    "output_path": output_path,
+                    "job_path": wrkdir,
+                },
+            )
 
     log.info(f"check for job {task_id} completed")
 

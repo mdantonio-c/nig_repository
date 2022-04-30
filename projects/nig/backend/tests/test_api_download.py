@@ -83,13 +83,21 @@ class TestApp(BaseTests):
         assert dir_not_found_message != uncompleted_message
 
         # create the output dir
-        output_path = OUTPUT_ROOT.joinpath(uuid_group_B, study1_uuid, dataset1_uuid)
-        output_path.mkdir(parents=True)
-        assert output_path.is_dir()
+        bam_output_path = OUTPUT_ROOT.joinpath(
+            uuid_group_B, study1_uuid, dataset1_uuid, "bwa"
+        )
+        bam_output_path.mkdir(parents=True)
+        assert bam_output_path.is_dir()
+
+        gvcf_output_path = OUTPUT_ROOT.joinpath(
+            uuid_group_B, study1_uuid, dataset1_uuid, "gatk_gvcf"
+        )
+        gvcf_output_path.mkdir(parents=True)
+        assert gvcf_output_path.is_dir()
 
         # create the file
         bam_content = "I am a .bam file"
-        filepath = Path(output_path, faker.pystr()).with_suffix(".bam")
+        filepath = Path(bam_output_path, faker.pystr()).with_suffix(".bam")
         with open(filepath, "w") as f:
             f.write(bam_content)
 
@@ -104,7 +112,7 @@ class TestApp(BaseTests):
 
         # create a second file (to test later if the downloaded file is the requested one)
         gvcf_content = "I am a .g.vcf file"
-        filepath = Path(output_path, faker.pystr()).with_suffix(".g.vcf")
+        filepath = Path(gvcf_output_path, faker.pystr()).with_suffix(".g.vcf")
         with open(filepath, "w") as f:
             f.write(gvcf_content)
 
