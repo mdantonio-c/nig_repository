@@ -59,7 +59,7 @@ class ResultDownload(NIGEndpoint):
 
         filepath: Optional[Path] = None
         for f in resource_dir.iterdir():
-            if f.suffix == f".{file}":
+            if f.suffix == f".{file}" or f.name.endswith(f".{file}.gz"):
                 filepath = f
                 break
 
