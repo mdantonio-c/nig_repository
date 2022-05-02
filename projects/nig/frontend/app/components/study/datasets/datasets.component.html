@@ -165,7 +165,7 @@
 
           <!-- Controls -->
           <ngx-datatable-column
-            width="60"
+            width="80"
             headerClass="px-0"
             [resizeable]="false"
             [sortable]="false"
@@ -183,6 +183,13 @@
                 role="toolbar"
               >
                 <div class="btn-group mr-1" role="group">
+                  <button
+                    *ngIf="row.status == 'COMPLETED'"
+                    class="btn p-0 mr-1"
+                    (click)="download(row.uuid)"
+                  >
+                    <i class="fa fa-download"></i>
+                  </button>
                   <button class="btn p-0 mr-1" (click)="update(row)">
                     <i class="fa fa-edit"></i>
                   </button>
