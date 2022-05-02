@@ -9,6 +9,7 @@ from restapi.exceptions import NotFound
 from restapi.models import fields, validate
 from restapi.rest.definition import Response
 from restapi.services.authentication import User
+from restapi.services.download import Downloader
 
 FILE_TO_DOWNLOAD = ["bam", "g.vcf"]
 RESOURCE_FOLDER = {"bam": "bwa", "g.vcf": "gatk_gvcf"}
@@ -70,4 +71,5 @@ class ResultDownload(NIGEndpoint):
         self.log_event(self.events.access, dataset, {"downloaded_file": str(filepath)})
 
         # download the file as a response attachment
-        return send_from_directory(resource_dir, filepath.name, as_attachment=True)
+        #return send_from_directory(resource_dir, filepath.name, as_attachment=True)
+        return Downloader.send_file_streamed(filepath.name, subfolder=resource_dir)
