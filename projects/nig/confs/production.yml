@@ -7,6 +7,13 @@ services:
         constraints:
           - "node.role==manager"
 
+  celery:
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - "node.role==worker"
+
   neo4j:
     deploy:
       placement:
