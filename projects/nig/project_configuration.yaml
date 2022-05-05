@@ -19,7 +19,7 @@ variables:
     CRONTAB_ENABLE: 1
     DATA_PATH: /data
 
-    BACKEND_BUILD_MODE: backend-legacy
+    BACKEND_BUILD_MODE: backend-legacy39
     PYTHON_PATH: /usr/local/lib/python3.9/dist-packages
     FRONTEND_FRAMEWORK: angular
     AUTH_SERVICE: neo4j
