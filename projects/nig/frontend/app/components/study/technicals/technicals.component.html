@@ -1,10 +1,10 @@
 <div class="card mt-2">
   <div class="card-header">
     <h4 class="mb-0">
-      <i class="fas fa-file-alt"></i> Technical Metadata
-      <span class="float-right"
+      <i class="fas fa-file-lines"></i> Technical Metadata
+      <span class="float-end"
         ><i
-          class="fas fa-sync-alt clickable fa-sm"
+          class="fas fa-rotate clickable fa-sm"
           ngbTooltip="Reload the list of metadata"
           (click)="list()"
         ></i
@@ -12,95 +12,93 @@
     </h4>
   </div>
   <div class="card-body px-2">
-    <div class="table-responsive">
-      <div class="table-wrapper" #tableWrapper>
-        <ngx-spinner
-          [fullScreen]="false"
-          type="ball-scale-multiple"
-        ></ngx-spinner>
-        <ngx-datatable
-          #samplesTable
-          class="bootstrap expandable"
-          [rows]="data"
-          [columns]="columns"
-          [columnMode]="ColumnMode.flex"
-          [headerHeight]="40"
-          [footerHeight]="40"
-          [externalPaging]="true"
-          [count]="paging.dataLength"
-          [limit]="paging.itemsPerPage"
-          [offset]="paging.page"
-          [rowHeight]="'auto'"
+    <div class="table-responsive" #tableWrapper>
+      <ngx-spinner
+        [fullScreen]="false"
+        type="ball-scale-multiple"
+      ></ngx-spinner>
+      <ngx-datatable
+        #samplesTable
+        class="bootstrap expandable"
+        [rows]="data"
+        [columns]="columns"
+        [columnMode]="ColumnMode.flex"
+        [headerHeight]="40"
+        [footerHeight]="40"
+        [externalPaging]="true"
+        [count]="paging.dataLength"
+        [limit]="paging.itemsPerPage"
+        [offset]="paging.page"
+        [rowHeight]="'auto'"
+      >
+        <!-- Column Templates -->
+        <!-- Name -->
+        <ngx-datatable-column prop="name" [flexGrow]="1">
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ value }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Sequencing Date-->
+        <ngx-datatable-column
+          prop="sequencing_date"
+          name="Sequencing Date"
+          [flexGrow]="1"
         >
-          <!-- Column Templates -->
-          <!-- Name -->
-          <ngx-datatable-column prop="name" [flexGrow]="1">
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Sequencing Date-->
-          <ngx-datatable-column
-            prop="sequencing_date"
-            name="Sequencing Date"
-            [flexGrow]="1"
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ (value | amFromUtc | date: "dd-MM-yyyy") || "-" }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Platform -->
+        <ngx-datatable-column prop="platform" [flexGrow]="1">
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ value || "-" }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Platform -->
+        <ngx-datatable-column
+          prop="enrichment_kit"
+          name="Enrichment Kit"
+          [flexGrow]="1"
+        >
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ value || "-" }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Controls -->
+        <ngx-datatable-column
+          width="60"
+          headerClass="px-0"
+          [resizeable]="false"
+          [sortable]="false"
+          [draggable]="false"
+          [canAutoResize]="false"
+        >
+          <ng-template
+            let-value="value"
+            let-row="row"
+            ngx-datatable-cell-template
           >
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ (value | amFromUtc | date: "dd-MM-yyyy") || "-" }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Platform -->
-          <ngx-datatable-column prop="platform" [flexGrow]="1">
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value || "-" }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Platform -->
-          <ngx-datatable-column
-            prop="enrichment_kit"
-            name="Enrichment Kit"
-            [flexGrow]="1"
-          >
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value || "-" }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Controls -->
-          <ngx-datatable-column
-            width="60"
-            headerClass="px-0"
-            [resizeable]="false"
-            [sortable]="false"
-            [draggable]="false"
-            [canAutoResize]="false"
-          >
-            <ng-template
-              let-value="value"
-              let-row="row"
-              ngx-datatable-cell-template
+            <div
+              *ngIf="!readonly"
+              class="btn-toolbar justify-content-end"
+              role="toolbar"
             >
-              <div
-                *ngIf="!readonly"
-                class="btn-toolbar justify-content-end"
-                role="toolbar"
-              >
-                <div class="btn-group mr-1" role="group">
-                  <button class="btn p-0 mr-1" (click)="update(row)">
-                    <i class="fa fa-edit"></i>
-                  </button>
-                  <button class="btn p-0" (click)="delete(row.uuid)">
-                    <i class="fa fa-trash red"></i>
-                  </button>
-                </div>
+              <div class="btn-group me-1" role="group">
+                <button class="btn p-0 me-1" (click)="update(row)">
+                  <i class="fa fa-pen-to-square"></i>
+                </button>
+                <button class="btn p-0" (click)="delete(row.uuid)">
+                  <i class="fa fa-trash red"></i>
+                </button>
               </div>
-            </ng-template>
-          </ngx-datatable-column>
-        </ngx-datatable>
-      </div>
+            </div>
+          </ng-template>
+        </ngx-datatable-column>
+      </ngx-datatable>
     </div>
   </div>
   <div class="card-footer text-muted">
-    <div class="col-12 text-right">
+    <div class="col-12 text-end">
       <button *ngIf="!readonly" class="btn btn-info" (click)="create()">
         <!-- <i class="fas fa-plus"></i> -->
         Add {{ resource_name }}

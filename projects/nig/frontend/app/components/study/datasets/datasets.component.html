@@ -2,9 +2,9 @@
   <div class="card-header">
     <h4 class="mb-0">
       <i class="fas fa-database"></i> Datasets
-      <span class="float-right"
+      <span class="float-end"
         ><i
-          class="fas fa-sync-alt clickable fa-sm"
+          class="fas fa-rotate clickable fa-sm"
           ngbTooltip="Reload the list of datasets"
           (click)="list()"
         ></i
@@ -12,224 +12,211 @@
     </h4>
   </div>
   <div class="card-body px-2">
-    <div class="table-responsive">
-      <div class="table-wrapper" #tableWrapper>
-        <ngx-spinner
-          [fullScreen]="false"
-          type="ball-scale-multiple"
-        ></ngx-spinner>
-        <ngx-datatable
-          #datasetsTable
-          class="bootstrap expandable"
-          [rows]="data"
-          [columns]="columns"
-          [columnMode]="ColumnMode.flex"
-          [headerHeight]="40"
-          [footerHeight]="40"
-          [externalPaging]="true"
-          [count]="paging.dataLength"
-          [limit]="paging.itemsPerPage"
-          [offset]="paging.page"
-          [rowHeight]="'auto'"
+    <div class="table-responsive" #tableWrapper>
+      <ngx-spinner
+        [fullScreen]="false"
+        type="ball-scale-multiple"
+      ></ngx-spinner>
+      <ngx-datatable
+        #datasetsTable
+        class="bootstrap expandable"
+        [rows]="data"
+        [columns]="columns"
+        [columnMode]="ColumnMode.flex"
+        [headerHeight]="40"
+        [footerHeight]="40"
+        [externalPaging]="true"
+        [count]="paging.dataLength"
+        [limit]="paging.itemsPerPage"
+        [offset]="paging.page"
+        [rowHeight]="'auto'"
+      >
+        <!-- Column Templates -->
+        <!-- show details -->
+        <ngx-datatable-column
+          [width]="30"
+          [resizeable]="false"
+          [sortable]="false"
+          [draggable]="false"
+          [canAutoResize]="false"
         >
-          <!-- Column Templates -->
-          <!-- show details -->
-          <ngx-datatable-column
-            [width]="30"
-            [resizeable]="false"
-            [sortable]="false"
-            [draggable]="false"
-            [canAutoResize]="false"
+          <ng-template
+            let-row="row"
+            let-expanded="expanded"
+            ngx-datatable-cell-template
           >
-            <ng-template
-              let-row="row"
-              let-expanded="expanded"
-              ngx-datatable-cell-template
+            <button
+              class="btn p-0"
+              [class.datatable-icon-right]="!expanded"
+              [class.datatable-icon-down]="expanded"
+              title="Show/Hide Files"
+              (click)="toggleExpandRow(row)"
+            ></button>
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Name -->
+        <ngx-datatable-column prop="name" [flexGrow]="1">
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ value }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Description -->
+        <ngx-datatable-column prop="description" [flexGrow]="1.5">
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ value }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Metadata -->
+        <ngx-datatable-column
+          prop="technical"
+          name="Metadata"
+          [flexGrow]="0.5"
+          [sortable]="false"
+        >
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ value.name }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Phenotypes -->
+        <ngx-datatable-column
+          prop="phenotype"
+          name="Sample"
+          [flexGrow]="0.5"
+          [sortable]="false"
+        >
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ value.name }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Files -->
+        <ngx-datatable-column prop="files" [flexGrow]="0.5" [sortable]="false">
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ value }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Status -->
+        <ngx-datatable-column prop="status" [flexGrow]="0.5" [sortable]="false">
+          <ng-template
+            let-value="value"
+            let-row="row"
+            ngx-datatable-cell-template
+          >
+            <span
+              class="badge bg-secondary"
+              [ngClass]="{
+                'badge-success':
+                  value == 'UPLOAD COMPLETED' || value == 'COMPLETED',
+                'badge-danger': value == 'ERROR',
+                'badge-info': value == 'RUNNING',
+                'badge-warning': value == 'QUEUED'
+              }"
+              *ngIf="value; else noStatus"
+              placement="left"
             >
-              <button
-                class="btn p-0"
-                [class.datatable-icon-right]="!expanded"
-                [class.datatable-icon-down]="expanded"
-                title="Show/Hide Files"
-                (click)="toggleExpandRow(row)"
-              ></button>
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Name -->
-          <ngx-datatable-column prop="name" [flexGrow]="1">
-            <ng-template let-value="value" ngx-datatable-cell-template>
               {{ value }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Description -->
-          <ngx-datatable-column prop="description" [flexGrow]="1.5">
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Metadata -->
-          <ngx-datatable-column
-            prop="technical"
-            name="Metadata"
-            [flexGrow]="0.5"
-            [sortable]="false"
-          >
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value.name }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Phenotypes -->
-          <ngx-datatable-column
-            prop="phenotype"
-            name="Sample"
-            [flexGrow]="0.5"
-            [sortable]="false"
-          >
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value.name }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Files -->
-          <ngx-datatable-column
-            prop="files"
-            [flexGrow]="0.5"
-            [sortable]="false"
-          >
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Status -->
-          <ngx-datatable-column
-            prop="status"
-            [flexGrow]="0.5"
-            [sortable]="false"
-          >
-            <ng-template
-              let-value="value"
-              let-row="row"
-              ngx-datatable-cell-template
+            </span>
+            <button
+              *ngIf="user.isAdmin && value && value != 'UPLOAD COMPLETED'"
+              class="btn p-0 me-1 redo_btn"
+              ngbTooltip="Relaunch the analysis"
+              (click)="resetDatasetStatus(row.uuid)"
             >
-              <span
-                class="badge badge-secondary"
-                [ngClass]="{
-                  'badge-success':
-                    value == 'UPLOAD COMPLETED' || value == 'COMPLETED',
-                  'badge-danger': value == 'ERROR',
-                  'badge-info': value == 'RUNNING',
-                  'badge-warning': value == 'QUEUED'
-                }"
-                *ngIf="value; else noStatus"
-                placement="left"
-              >
-                {{ value }}
-              </span>
-              <button
-                *ngIf="user.isAdmin && value && value != 'UPLOAD COMPLETED'"
-                class="btn p-0 mr-1 redo_btn"
-                ngbTooltip="Relaunch the analysis"
-                (click)="resetDatasetStatus(row.uuid)"
-              >
-                <i class="fa fa-sm fa-redo"></i>
-              </button>
-            </ng-template>
-          </ngx-datatable-column>
+              <i class="fa fa-sm fa-arrow-rotate-right"></i>
+            </button>
+          </ng-template>
+        </ngx-datatable-column>
 
-          <!-- Upload complete -->
-          <ngx-datatable-column
-            [flexGrow]="0.5"
-            name=" Upload <br> Complete"
-            headerClass="px-0"
-            [resizeable]="false"
-            [sortable]="false"
-            [draggable]="false"
-            [canAutoResize]="false"
+        <!-- Upload complete -->
+        <ngx-datatable-column
+          [flexGrow]="0.5"
+          name=" Upload <br> Complete"
+          headerClass="px-0"
+          [resizeable]="false"
+          [sortable]="false"
+          [draggable]="false"
+          [canAutoResize]="false"
+        >
+          <ng-template
+            let-value="value"
+            let-row="row"
+            ngx-datatable-cell-template
           >
-            <ng-template
-              let-value="value"
-              let-row="row"
-              ngx-datatable-cell-template
+            <div>
+              <input
+                type="checkbox"
+                [checked]="setUploadReady(row)"
+                [disabled]="
+                  !row.status || row.status == 'UPLOAD COMPLETED' ? null : true
+                "
+                (change)="onUploadReadyChange(row, $event)"
+              />
+            </div>
+          </ng-template>
+        </ngx-datatable-column>
+
+        <!-- Controls -->
+        <ngx-datatable-column
+          width="80"
+          headerClass="px-0"
+          [resizeable]="false"
+          [sortable]="false"
+          [draggable]="false"
+          [canAutoResize]="false"
+        >
+          <ng-template
+            let-value="value"
+            let-row="row"
+            ngx-datatable-cell-template
+          >
+            <div
+              *ngIf="!row.readonly"
+              class="btn-toolbar justify-content-end"
+              role="toolbar"
             >
-              <div>
-                <input
-                  class="mst--input-checkbox"
-                  type="checkbox"
-                  [checked]="setUploadReady(row)"
-                  [disabled]="
-                    !row.status || row.status == 'UPLOAD COMPLETED'
-                      ? null
-                      : true
-                  "
-                  (change)="onUploadReadyChange(row, $event)"
-                />
+              <div class="btn-group me-1" role="group">
+                <button
+                  *ngIf="row.status == 'COMPLETED'"
+                  class="btn p-0 me-1"
+                  (click)="download(row.uuid)"
+                >
+                  <i class="fa fa-download"></i>
+                </button>
+                <button class="btn p-0 me-1" (click)="update(row)">
+                  <i class="fa fa-pen-to-square"></i>
+                </button>
+                <button class="btn p-0" (click)="delete(row.uuid)">
+                  <i class="fa fa-trash red"></i>
+                </button>
               </div>
-            </ng-template>
-          </ngx-datatable-column>
+            </div>
+          </ng-template>
+        </ngx-datatable-column>
 
-          <!-- Controls -->
-          <ngx-datatable-column
-            width="80"
-            headerClass="px-0"
-            [resizeable]="false"
-            [sortable]="false"
-            [draggable]="false"
-            [canAutoResize]="false"
+        <!-- Row File Template-->
+        <ngx-datatable-row-detail
+          [rowHeight]="'100%'"
+          #fileRow
+          (toggle)="onDetailToggle($event)"
+        >
+          <ng-template
+            let-row="row"
+            let-expanded="expanded"
+            ngx-datatable-row-detail-template
           >
-            <ng-template
-              let-value="value"
-              let-row="row"
-              ngx-datatable-cell-template
-            >
-              <div
-                *ngIf="!row.readonly"
-                class="btn-toolbar justify-content-end"
-                role="toolbar"
-              >
-                <div class="btn-group mr-1" role="group">
-                  <button
-                    *ngIf="row.status == 'COMPLETED'"
-                    class="btn p-0 mr-1"
-                    (click)="download(row.uuid)"
-                  >
-                    <i class="fa fa-download"></i>
-                  </button>
-                  <button class="btn p-0 mr-1" (click)="update(row)">
-                    <i class="fa fa-edit"></i>
-                  </button>
-                  <button class="btn p-0" (click)="delete(row.uuid)">
-                    <i class="fa fa-trash red"></i>
-                  </button>
-                </div>
-              </div>
-            </ng-template>
-          </ngx-datatable-column>
-
-          <!-- Row File Template-->
-          <ngx-datatable-row-detail
-            [rowHeight]="'100%'"
-            #fileRow
-            (toggle)="onDetailToggle($event)"
-          >
-            <ng-template
-              let-row="row"
-              let-expanded="expanded"
-              ngx-datatable-row-detail-template
-            >
-              <nig-dataset-files
-                [dataset]="row.uuid"
-                [uploadCompleted]="row.uploadReady"
-                [readOnly]="row.readonly"
-                (count)="row.files = $event"
-              ></nig-dataset-files>
-            </ng-template>
-          </ngx-datatable-row-detail>
-          <ng-template #noStatus> <b>-</b> </ng-template>
-        </ngx-datatable>
-      </div>
+            <nig-dataset-files
+              [dataset]="row.uuid"
+              [uploadCompleted]="row.uploadReady"
+              [readOnly]="row.readonly"
+              (count)="row.files = $event"
+            ></nig-dataset-files>
+          </ng-template>
+        </ngx-datatable-row-detail>
+        <ng-template #noStatus> <b>-</b> </ng-template>
+      </ngx-datatable>
     </div>
   </div>
   <div class="card-footer text-muted">
-    <div class="col-12 text-right">
+    <div class="col-12 text-end">
       <button *ngIf="!readonly" class="btn btn-info" (click)="create()">
         <!-- <i class="fas fa-plus"></i> -->
         Add {{ resource_name }}

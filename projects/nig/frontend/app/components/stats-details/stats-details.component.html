@@ -1,13 +1,13 @@
-<div class="stats-detail" *ngIf="stats$ | async as stats">
+<div *ngIf="stats$ | async as stats">
   <table class="table table-hover table-condensed">
     <tbody>
       <tr>
         <th>Number of contributors</th>
-        <td class="ng-binding">{{ stats?.num_users }}</td>
+        <td>{{ stats?.num_users }}</td>
       </tr>
       <tr>
         <th>Number of studies</th>
-        <td class="ng-binding">{{ stats?.num_studies }}</td>
+        <td>{{ stats?.num_studies }}</td>
       </tr>
       <tr>
         <th>Number of datasets</th>
@@ -25,7 +25,7 @@
       </tr>
       <tr>
         <th>Number of samples with genetic data</th>
-        <td class="ng-binding">
+        <td>
           {{ stats?.num_datasets_with_vcf }}
         </td>
       </tr>
@@ -43,7 +43,7 @@
       </tr>
       <tr *ngIf="extended && stats.num_datasets_with_gvcf">
         <th>Number of datasets with g.vcf files</th>
-        <td class="ng-binding">
+        <td>
           {{ stats.num_datasets_with_gvcf }}
         </td>
       </tr>
@@ -61,7 +61,7 @@
       </tr>
       <tr>
         <th>Number of files</th>
-        <td class="ng-binding">{{ stats?.num_files }}</td>
+        <td>{{ stats?.num_files }}</td>
       </tr>
     </tbody>
   </table>

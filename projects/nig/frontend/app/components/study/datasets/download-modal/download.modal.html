@@ -1,10 +1,10 @@
-<div class="modal-header modal-warning bg-light">
+<div class="modal-header bg-light">
   <h2 class="modal-title smaller" id="modal-title">
     Choose a file to download
   </h2>
   <button
     type="button"
-    class="close"
+    class="btn-close"
     aria-describedby="modal-title"
     (click)="modal.dismiss('Cross click')"
   >
@@ -12,7 +12,7 @@
   </button>
 </div>
 <div class="modal-body text-center">
-  <div class="btn-group mr-3" style="width: 100%">
+  <div class="btn-group me-3" style="width: 100%">
     <button type="button" class="btn btn-outline-secondary">
       {{ selectedFileformat }}
     </button>
@@ -40,7 +40,7 @@
   <button
     type="button"
     ngbAutofocus
-    class="btn btn-m btn-primary"
+    class="btn btn-primary"
     (click)="downloadFile()"
   >
     Download

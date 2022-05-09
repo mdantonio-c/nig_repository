@@ -13,7 +13,7 @@
       <div class="col">
         <form #relForm="ngForm" (ngSubmit)="save()">
           <div class="form-group">
-            <label><i class="fa fa-female fa-lg mr-2"></i>Mother</label>
+            <label><i class="fa fa-person-dress fa-lg me-2"></i>Mother</label>
             <ng-select
               [items]="females"
               bindLabel="name"
@@ -24,7 +24,7 @@
             </ng-select>
           </div>
           <div class="form-group">
-            <label><i class="fa fa-male fa-lg mr-2"></i>Father</label>
+            <label><i class="fa fa-person fa-lg me-2"></i>Father</label>
             <ng-select
               [items]="males"
               bindLabel="name"
@@ -36,7 +36,7 @@
           </div>
           <button
             type="submit"
-            class="btn btn-info float-right"
+            class="btn btn-info float-end"
             [disabled]="!hasChanged()"
           >
             Save

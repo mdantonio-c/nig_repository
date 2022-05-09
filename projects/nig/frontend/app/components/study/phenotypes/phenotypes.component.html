@@ -2,9 +2,9 @@
   <div class="card-header">
     <h4 class="mb-0">
       <i class="fas fa-users"></i> Samples
-      <span class="float-right"
+      <span class="float-end"
         ><i
-          class="fas fa-sync-alt clickable fa-sm"
+          class="fas fa-rotate clickable fa-sm"
           ngbTooltip="Reload the list of samples"
           (click)="list()"
         ></i
@@ -12,145 +12,143 @@
     </h4>
   </div>
   <div class="card-body px-2">
-    <div class="table-responsive">
-      <div class="table-wrapper" #tableWrapper>
-        <ngx-spinner
-          [fullScreen]="false"
-          type="ball-scale-multiple"
-        ></ngx-spinner>
-        <ngx-datatable
-          #samplesTable
-          class="bootstrap expandable"
-          [rows]="data"
-          [columns]="columns"
-          [columnMode]="ColumnMode.flex"
-          [headerHeight]="40"
-          [footerHeight]="40"
-          [externalPaging]="true"
-          [count]="paging.dataLength"
-          [limit]="paging.itemsPerPage"
-          [offset]="paging.page"
-          [rowHeight]="'auto'"
+    <div class="table-responsive" #tableWrapper>
+      <ngx-spinner
+        [fullScreen]="false"
+        type="ball-scale-multiple"
+      ></ngx-spinner>
+      <ngx-datatable
+        #samplesTable
+        class="bootstrap expandable"
+        [rows]="data"
+        [columns]="columns"
+        [columnMode]="ColumnMode.flex"
+        [headerHeight]="40"
+        [footerHeight]="40"
+        [externalPaging]="true"
+        [count]="paging.dataLength"
+        [limit]="paging.itemsPerPage"
+        [offset]="paging.page"
+        [rowHeight]="'auto'"
+      >
+        <!-- Column Templates -->
+        <!-- Sex -->
+        <ngx-datatable-column
+          prop="sex"
+          [width]="20"
+          [resizeable]="false"
+          [sortable]="false"
+          [draggable]="false"
+          [canAutoResize]="false"
         >
-          <!-- Column Templates -->
-          <!-- Sex -->
-          <ngx-datatable-column
-            prop="sex"
-            [width]="20"
-            [resizeable]="false"
-            [sortable]="false"
-            [draggable]="false"
-            [canAutoResize]="false"
-          >
-            <ng-template
-              let-column="column"
-              ngx-datatable-header-template
-            ></ng-template>
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              <i class="fas fa-{{ value }} fa-lg"></i>
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Name -->
-          <ngx-datatable-column prop="name" [flexGrow]="1">
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Birth Place-->
-          <ngx-datatable-column
-            prop="birth_place"
-            name="Birth Place"
-            [flexGrow]="0.6"
-          >
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              {{ value.province || "-" }}
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Age -->
-          <ngx-datatable-column prop="age" name="Age" [flexGrow]="0.4">
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              <span *ngIf="value; else noValue">{{ value }}</span>
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- HPO -->
-          <ngx-datatable-column
-            prop="hpo"
-            name="HPO"
-            [flexGrow]="1"
-            [sortable]="false"
-          >
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              <ng-container *ngIf="value && value.length > 0; else noValue">
-                <span class="badge badge-secondary" *ngFor="let hpo of value">
-                  {{ hpo.label }}
-                </span>
-              </ng-container>
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Relationships -->
-          <ngx-datatable-column
-            name="Relationships"
-            [flexGrow]="1"
-            [sortable]="false"
-          >
-            <ng-template let-value="value" ngx-datatable-cell-template>
-              <ng-container *ngFor="let rel of value | keyvalue">
-                <span
-                  class="badge badge-secondary"
-                  *ngIf="['mother', 'father'].includes(rel.key)"
-                >
-                  <i
-                    class="fas fa-lg mr-1"
-                    [ngClass]="{
-                      'fa-male': rel.key === 'father',
-                      'fa-female': rel.key === 'mother'
-                    }"
-                  ></i
-                  >{{ rel.value.name }}
-                </span>
-              </ng-container>
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Controls -->
-          <ngx-datatable-column
-            width="80"
-            headerClass="px-0"
-            [resizeable]="false"
-            [sortable]="false"
-            [draggable]="false"
-            [canAutoResize]="false"
-          >
-            <ng-template
-              let-value="value"
-              let-row="row"
-              ngx-datatable-cell-template
-            >
-              <div
-                *ngIf="!readonly"
-                class="btn-toolbar justify-content-end"
-                role="toolbar"
+          <ng-template
+            let-column="column"
+            ngx-datatable-header-template
+          ></ng-template>
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            <i class="fas fa-{{ value }} fa-lg"></i>
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Name -->
+        <ngx-datatable-column prop="name" [flexGrow]="1">
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ value }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Birth Place-->
+        <ngx-datatable-column
+          prop="birth_place"
+          name="Birth Place"
+          [flexGrow]="0.6"
+        >
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            {{ value.province || "-" }}
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Age -->
+        <ngx-datatable-column prop="age" name="Age" [flexGrow]="0.4">
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            <span *ngIf="value; else noValue">{{ value }}</span>
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- HPO -->
+        <ngx-datatable-column
+          prop="hpo"
+          name="HPO"
+          [flexGrow]="1"
+          [sortable]="false"
+        >
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            <ng-container *ngIf="value && value.length > 0; else noValue">
+              <span class="badge bg-secondary" *ngFor="let hpo of value">
+                {{ hpo.label }}
+              </span>
+            </ng-container>
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Relationships -->
+        <ngx-datatable-column
+          name="Relationships"
+          [flexGrow]="1"
+          [sortable]="false"
+        >
+          <ng-template let-value="value" ngx-datatable-cell-template>
+            <ng-container *ngFor="let rel of value | keyvalue">
+              <span
+                class="badge bg-secondary"
+                *ngIf="['mother', 'father'].includes(rel.key)"
               >
-                <div class="btn-group mr-1" role="group">
-                  <button class="btn p-0 mr-1" (click)="editRelationships(row)">
-                    <i class="fas fa-people-arrows"></i>
-                  </button>
-                  <button class="btn p-0 mr-1" (click)="update(row)">
-                    <i class="fa fa-edit"></i>
-                  </button>
-                  <button class="btn p-0" (click)="delete(row.uuid)">
-                    <i class="fa fa-trash red"></i>
-                  </button>
-                </div>
+                <i
+                  class="fas fa-lg me-1"
+                  [ngClass]="{
+                    'fa-male': rel.key === 'father',
+                    'fa-female': rel.key === 'mother'
+                  }"
+                ></i
+                >{{ rel.value.name }}
+              </span>
+            </ng-container>
+          </ng-template>
+        </ngx-datatable-column>
+        <!-- Controls -->
+        <ngx-datatable-column
+          width="80"
+          headerClass="px-0"
+          [resizeable]="false"
+          [sortable]="false"
+          [draggable]="false"
+          [canAutoResize]="false"
+        >
+          <ng-template
+            let-value="value"
+            let-row="row"
+            ngx-datatable-cell-template
+          >
+            <div
+              *ngIf="!readonly"
+              class="btn-toolbar justify-content-end"
+              role="toolbar"
+            >
+              <div class="btn-group me-1" role="group">
+                <button class="btn p-0 me-1" (click)="editRelationships(row)">
+                  <i class="fas fa-people-arrows-left-right"></i>
+                </button>
+                <button class="btn p-0 me-1" (click)="update(row)">
+                  <i class="fa fa-pen-to-square"></i>
+                </button>
+                <button class="btn p-0" (click)="delete(row.uuid)">
+                  <i class="fa fa-trash red"></i>
+                </button>
               </div>
-            </ng-template>
-          </ngx-datatable-column>
-        </ngx-datatable>
-        <ng-template #noValue>-</ng-template>
-      </div>
+            </div>
+          </ng-template>
+        </ngx-datatable-column>
+      </ngx-datatable>
+      <ng-template #noValue>-</ng-template>
     </div>
   </div>
   <div class="card-footer text-muted">
-    <div class="col-12 text-right">
+    <div class="col-12 text-end">
       <button *ngIf="!readonly" class="btn btn-info" (click)="create()">
         <!-- <i class="fas fa-plus"></i> -->
         Add {{ resource_name }}

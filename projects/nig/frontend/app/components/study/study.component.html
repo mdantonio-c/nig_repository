@@ -1,6 +1,6 @@
 <div class="d-flex" id="wrapper" *ngIf="study">
   <!-- Sidebar -->
-  <div class="bg-light border-right" id="sidebar-wrapper">
+  <div class="bg-light border-end" id="sidebar-wrapper">
     <div class="px-3 mt-4 mb-2 border-bottom">
       <h4 class="mb-0">Study: {{ study?.name }}</h4>
       <p class="text-muted">{{ study?.description }}</p>
@@ -20,7 +20,7 @@
                 <i class="fas" [ngClass]="link.icon"></i>
               </div>
               <span>{{ link.title }}</span>
-              <span class="badge badge-secondary float-right">{{
+              <span class="badge bg-secondary float-end">{{
                 link?.count
               }}</span>
             </a>
