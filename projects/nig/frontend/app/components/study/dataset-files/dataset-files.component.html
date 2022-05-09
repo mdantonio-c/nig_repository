@@ -3,18 +3,15 @@
     <span class="input-group-text">
       <i class="fas fa-upload"></i>
     </span>
-    <div class="custom-file">
-      <input
-        id="inputGroupFile"
-        *ngIf="uploadOptions"
-        type="file"
-        [uploadx]="uploadOptions"
-        (state)="onUpload($event)"
-      />
-      <label class="custom-file-label clickable" for="inputGroupFile"
-        >Choose file</label
-      >
-    </div>
+    <input
+      id="inputGroupFile"
+      *ngIf="uploadOptions"
+      type="file"
+      [uploadx]="uploadOptions"
+      (state)="onUpload($event)"
+      class="form-control"
+      aria-label="Upload"
+    />
   </div>
 
   <div *ngFor="let item of uploadProgress | keyvalue">
@@ -39,7 +36,7 @@
   <ngx-spinner [fullScreen]="false" type="ball-scale-multiple"></ngx-spinner>
   <ngx-datatable
     #filesTable
-    class="bootstrap expandable"
+    class="bootstrap"
     [rows]="data"
     [columns]="columns"
     [columnMode]="ColumnMode.flex"

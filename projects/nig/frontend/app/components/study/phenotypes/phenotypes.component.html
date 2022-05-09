@@ -19,7 +19,7 @@
       ></ngx-spinner>
       <ngx-datatable
         #samplesTable
-        class="bootstrap expandable"
+        class="bootstrap"
         [rows]="data"
         [columns]="columns"
         [columnMode]="ColumnMode.flex"
@@ -149,7 +149,7 @@
   </div>
   <div class="card-footer text-muted">
     <div class="col-12 text-end">
-      <button *ngIf="!readonly" class="btn btn-info" (click)="create()">
+      <button *ngIf="!readonly" class="btn btn-primary" (click)="create()">
         <!-- <i class="fas fa-plus"></i> -->
         Add {{ resource_name }}
       </button>

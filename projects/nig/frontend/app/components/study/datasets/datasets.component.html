@@ -19,7 +19,7 @@
       ></ngx-spinner>
       <ngx-datatable
         #datasetsTable
-        class="bootstrap expandable"
+        class="bootstrap"
         [rows]="data"
         [columns]="columns"
         [columnMode]="ColumnMode.flex"
@@ -104,11 +104,11 @@
             <span
               class="badge bg-secondary"
               [ngClass]="{
-                'badge-success':
+                'bg-success':
                   value == 'UPLOAD COMPLETED' || value == 'COMPLETED',
-                'badge-danger': value == 'ERROR',
-                'badge-info': value == 'RUNNING',
-                'badge-warning': value == 'QUEUED'
+                'bg-danger': value == 'ERROR',
+                'bg-primary': value == 'RUNNING',
+                'bg-warning': value == 'QUEUED'
               }"
               *ngIf="value; else noStatus"
               placement="left"
@@ -217,7 +217,7 @@
   </div>
   <div class="card-footer text-muted">
     <div class="col-12 text-end">
-      <button *ngIf="!readonly" class="btn btn-info" (click)="create()">
+      <button *ngIf="!readonly" class="btn btn-primary" (click)="create()">
         <!-- <i class="fas fa-plus"></i> -->
         Add {{ resource_name }}
       </button>
