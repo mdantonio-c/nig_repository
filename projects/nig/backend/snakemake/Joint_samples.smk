@@ -52,11 +52,11 @@ rule VariantFiltration:
         i1=rules.GenotypeGVCFs.output,
         i2=config["IFILES"]["inter"]
     output:
-        "gatk_filtered_multisamples/multisample_filtered_vars.vcf"
+        "/data/output/gatk_filtered_multisamples/multisample_filtered_vars.vcf"
     log:
-        "gatk_filtered_multisamples/multisample_filtered_vars.log"
+        "/data/output/gatk_filtered_multisamples/multisample_filtered_vars.log"
     benchmark:
-        "gatk_filtered_multisamples/multisample_filtered_vars.benchmark"
+        "/data/output/gatk_filtered_multisamples/multisample_filtered_vars.benchmark"
     params:
         p1=config["PARAMS"]["vrfl"]
     shell:
