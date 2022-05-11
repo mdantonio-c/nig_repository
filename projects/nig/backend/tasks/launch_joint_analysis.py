@@ -54,7 +54,8 @@ def launch_joint_analysis(
 
         for f in datasetDirectory.iterdir():
             fname = f.name
-            file_label = fname.split(".")[0]
+            sample_name = fname.split(".")[0]
+            file_label = sample_name.split("_")[0]
             output_path = OUTPUT_ROOT.joinpath(datasetDirectory.relative_to(INPUT_ROOT))
             fastq_row = [file_label, output_path]
             fastq.append(fastq_row)
