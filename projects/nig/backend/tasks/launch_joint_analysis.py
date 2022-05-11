@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 from pathlib import Path
 from typing import List
@@ -38,6 +39,7 @@ def launch_joint_analysis(
             shutil.copy(snk_file, wrkdir)
 
     # get the file list from the dataset list
+    pattern = r"([a-zA-Z0-9_-]+)_(R[12]).fastq.gz"
     fastq = []
     for d in dataset_list:
         # get the path of the dataset directory
@@ -54,8 +56,10 @@ def launch_joint_analysis(
 
         for f in datasetDirectory.iterdir():
             fname = f.name
-            sample_name = fname.split(".")[0]
-            file_label = sample_name.split("_")[0]
+            match = re.match(pattern, fname)
+            file_label = None
+            if match:
+                file_label = match.group(1)
             output_path = OUTPUT_ROOT.joinpath(datasetDirectory.relative_to(INPUT_ROOT))
             fastq_row = [file_label, output_path]
             fastq.append(fastq_row)
