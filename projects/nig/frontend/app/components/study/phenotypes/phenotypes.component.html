@@ -46,7 +46,13 @@
             ngx-datatable-header-template
           ></ng-template>
           <ng-template let-value="value" ngx-datatable-cell-template>
-            <i class="fas fa-{{ value }} fa-lg"></i>
+            <i
+              class="fas fa-lg"
+              [ngClass]="{
+                'fa-person-dress': value == 'female',
+                'fa-person': value == 'male'
+              }"
+            ></i>
           </ng-template>
         </ngx-datatable-column>
         <!-- Name -->
