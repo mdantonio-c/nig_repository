@@ -10,7 +10,7 @@ env:
 
 jobs:
   Development-mode:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
@@ -42,7 +42,7 @@ jobs:
           step: frontend
 
   Production-mode:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
