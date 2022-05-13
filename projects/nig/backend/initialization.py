@@ -11,7 +11,7 @@ class Initializer:
         # enter GeoData in neo4j
         attributes: Optional[List[str]] = None
         graph = neo4j.get_instance()
-        with open(DATA_PATH.joinpath("geodata.tsv")) as fd:
+        with open(DATA_PATH.joinpath("resources_for_db_setup", "geodata.tsv")) as fd:
             rd = csv.reader(fd, delimiter="\t", quotechar='"')
             for row in rd:
                 if not attributes:
