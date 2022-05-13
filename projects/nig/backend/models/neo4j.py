@@ -1,6 +1,6 @@
-from neomodel import (  # UniqueIdProperty
+from neomodel import BooleanProperty  # UniqueIdProperty
+from neomodel import (
     ArrayProperty,
-    BooleanProperty,
     DateProperty,
     FloatProperty,
     IntegerProperty,
@@ -54,6 +54,7 @@ class Dataset(TimestampedNode):
     is_proband = BooleanProperty()
     status = StringProperty()
     error_message = StringProperty()
+    joint_analysis = BooleanProperty()
 
     ownership = RelationshipTo(
         "restapi.connectors.neo4j.models.User", "IS_OWNED_BY", cardinality=ZeroOrMore
@@ -68,6 +69,7 @@ class Dataset(TimestampedNode):
     job = RelationshipTo(
         "Job", "ANALYZED_BY", cardinality=ZeroOrMore, model=JobRelation
     )
+    joint_analysis_job = RelationshipTo("Job", "ANALYZED_BY", cardinality=ZeroOrMore)
 
 
 class Job(TimestampedNode):
@@ -75,6 +77,10 @@ class Job(TimestampedNode):
     datasets = RelationshipFrom(
         "Dataset", "ANALYZED_BY", cardinality=ZeroOrMore, model=JobRelation
     )
+
+
+class JointAnalysisJob(Job):
+    datasets = RelationshipFrom("Dataset", "ANALYZED_BY", cardinality=ZeroOrMore)
 
 
 class VariantRelation(StructuredRel):  # type: ignore

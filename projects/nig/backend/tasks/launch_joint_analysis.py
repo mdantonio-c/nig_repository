@@ -26,8 +26,7 @@ def launch_joint_analysis(
     log.info("Start joint analysis task [{}:{}]", task_id, self.name)
     # create a job node related to the task
     graph = neo4j.get_instance()
-    # TODO how to save these jobs in the db?
-    # job = graph.Job(uuid=task_id).save()
+    job = graph.JointAnalysisJob(uuid=task_id).save()
 
     # create a unique workdir for every celery task / and snakemake launch)
     wrkdir = DATA_PATH.joinpath("jobs", task_id)
@@ -63,6 +62,12 @@ def launch_joint_analysis(
             output_path = OUTPUT_ROOT.joinpath(datasetDirectory.relative_to(INPUT_ROOT))
             fastq_row = [file_label, output_path]
             fastq.append(fastq_row)
+
+        # mark that a joint analysis has been launched on this dataset
+        dataset.joint_analysis = True
+        # connect the dataset to the job node
+        dataset.job.connect(job)
+        dataset.save()
 
     # A dataframe is created
     df = DataFrame(fastq, columns=["Sample", "OutputPath"])
