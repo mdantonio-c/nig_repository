@@ -13,15 +13,15 @@ def Mult_Params(patern='Dummy', flist=['a','b']):
 # Function to get samples to be processed by GenomicsDBImport
 update = config["UPDATE"]["GDBI"]
 def call_json(update=update):
+    # All samples in .csv files
+    df = pd.read_csv('fastq.csv')
+    sall  = set( df.Sample )
     if not update:
-        # get all the vcf
-        gvcf = glob.glob( OUTPUT_ROOT + '/*/*/*/gatk_gvcf/*g.vcf.gz')
+        # get all the vcf in the csv file
+        samples_to_joint = [ name for name in sall]
     else:
-        # All samples in .csv files
-        df = pd.read_csv('fastq.csv')
-        sall  = set( df.Sample )
-
         callset_file = Path ( OUTPUT_ROOT,'gatk_db','callset.json')
+        # check if the file exists. if not get all samples in the csv
         if callset_file.is_file():
             with open(callset_file) as f:
                 data = json.load(f)
@@ -33,8 +33,8 @@ def call_json(update=update):
         else:
             #first run
             samples_to_joint = [ name for name in sall]
-        gvcf = []
-        for s in samples_to_joint:
-            output_path = df[df['Sample'].str.contains(s)]['OutputPath'].values[0]
-            gvcf.append(f"{output_path}/gatk_gvcf/{s}_sort_nodup.g.vcf.gz")
+    gvcf = []
+    for s in samples_to_joint:
+        output_path = df[df['Sample'].str.contains(s)]['OutputPath'].values[0]
+        gvcf.append(f"{output_path}/gatk_gvcf/{s}_sort_nodup.g.vcf.gz")
     return gvcf
