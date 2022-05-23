@@ -34,11 +34,11 @@ rule GenotypeGVCFs:
     input:
        i1=rules.GenomicsDBImport.log
     output:
-        "gatk_genotype_gvcf/multisample_vars.vcf.gz"
+        "/data/output/gatk_genotype_gvcf/multisample_vars.vcf.gz"
     log:
-        "gatk_genotype_gvcf/multisample_vars.vcf.log"
+        "/data/output/gatk_genotype_gvcf/multisample_vars.vcf.log"
     benchmark:
-       "gatk_genotype_gvcf/multisample_vars.vcf.benchmark"
+       "/data/output/gatk_genotype_gvcf/multisample_vars.vcf.benchmark"
     params:
         p1="-G StandardAnnotation -G StandardHCAnnotation -G AS_StandardAnnotation ",
         p2="--filter-expression 'QD < 2.0 || FS > 30.0 || SOR > 3.0 || MQ < 40.0 || MQRankSum < -3.0 || \
