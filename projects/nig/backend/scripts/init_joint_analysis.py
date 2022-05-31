@@ -30,7 +30,7 @@ log.info("Sending joint analysis for datasets: {}", datasets_uuid)
 source_dir = Path("/snakemake")
 config_file = source_dir.joinpath("config.yaml")
 with open(config_file) as f:
-    config = yaml.load(f)
+    config = yaml.load(f, Loader=yaml.FullLoader)
 
 force = config["UPDATE"]["GDBI"]
 
