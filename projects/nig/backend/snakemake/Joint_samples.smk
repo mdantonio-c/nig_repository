@@ -28,7 +28,7 @@ rule GenomicsDBImport:
     shell:
         '''gatk --java-options "-Xmx4g -Xms4g -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" GenomicsDBImport \
         -R {refg} {params.p1} {params.p2} {params.p3} /data/output/gatk_db \
-        -L {input.inter} > all_samples.vcf.log 2>&1 && cp all_samples.vcf.log /data/output/gatk_db/ '''
+        -L {input.inter} > all_samples.vcf.log 2>&1 '''
 
 rule GenotypeGVCFs:
     input:
