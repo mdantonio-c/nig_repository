@@ -25,7 +25,7 @@ PARAMS:
   hapl_g:
     ["StandardAnnotation", "StandardHCAnnotation", "AS_StandardAnnotation"]
   hapl_gqb: [10, 20, 30, 40, 50, 60, 70, 80, 90]
-  vrfl: "QD < 2.0 || FS > 30.0 || SOR > 3.0 || MQ < 40.0 || MQRankSum < -3.0 || ReadPosRankSum < -3.0"
+  vrfl: "'QD < 2.0 || FS > 30.0 || SOR > 3.0 || MQ < 40.0 || MQRankSum < -3.0 || ReadPosRankSum < -3.0'"
 JAVA:
   brc: '--java-options "-XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -XX:+PrintFlagsFinal -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails -Xms20G -Xmx20G -XX:ParallelGCThreads=2 " '
   absq: '--java-options "-XX:+PrintFlagsFinal -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xms10G -Xmx10G -XX:ParallelGCThreads=2" '

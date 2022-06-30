@@ -37,6 +37,10 @@ def launch_joint_analysis(
         if snk_file.is_file():
             shutil.copy(snk_file, wrkdir)
 
+    #create the tmp dir used by gatk
+    tmp_dir = wrkdir.joinpath("tmp")
+    tmp_dir.mkdir()
+
     # get the file list from the dataset list
     pattern = r"([a-zA-Z0-9_-]+)_(R[12]).fastq.gz"
     fastq = []
@@ -82,7 +86,7 @@ def launch_joint_analysis(
     config = [wrkdir.joinpath("config.yaml")]
 
     cores = os.cpu_count()
-    log.info("Calling Snakemake with {} cores", cores)
+    log.info("Calling Snakemake with {} cores and forceall {}", cores,force)
     snakefile_path = wrkdir.joinpath(snakefile)
 
     # https://snakemake.readthedocs.io/en/stable/api_reference/snakemake.html
