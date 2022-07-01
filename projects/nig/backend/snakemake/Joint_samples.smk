@@ -6,9 +6,12 @@ gvcfs = call_json()
 print('****Samples yet to be processed*****')
 print(gvcfs)
 
-# Check if GenomicsDBImport needs to be run on new samples
+# Check if GenomicsDBImport to run on new samples
 update = config["UPDATE"]["GDBI"]
-GDBI = '--genomicsdb-workspace-path'
+print('Update is')
+print(update)
+
+GDBI = '--genomicsdb-workspace-path -L hg38_resources/wgs_calling_regions.hg38.interval_list'
 if update:
     GDBI = '--genomicsdb-update-workspace-path'
 
@@ -27,8 +30,7 @@ rule GenomicsDBImport:
         p3 = GDBI
     shell:
         '''gatk --java-options "-Xmx4g -Xms4g -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" GenomicsDBImport \
-        -R {refg} {params.p1} {params.p2} {params.p3} /data/output/gatk_db \
-        -L {input.inter} > all_samples.vcf.log 2>&1 '''
+        -R {refg} {params.p1} {params.p2} {params.p3} /data/output/gatk_db > all_samples.vcf.log 2>&1 '''
 
 rule GenotypeGVCFs:
     input:
