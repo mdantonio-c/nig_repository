@@ -25,14 +25,20 @@ ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.9/site-packages
 # Note about samtools reinstall, due to the error:
 # Samtools shared library libcrypto.so.1.0.0 not found
 # => https://github.com/merenlab/anvio/issues/1479
+# imagemagick is installed explicitely because is needed for the snakemake installation and without an explicit installation mamba could't find it
+# Samtool is installed before snakemake otherwise it creates conflicts
 RUN conda install --yes --freeze-installed python=3.9.0 && \
     conda update -n base -c defaults conda && \
     conda install --yes --freeze-installed -c conda-forge mamba stopit && \
+    conda install --yes -c bioconda samtools=1.11 --force-reinstall && \
+    mamba install -c conda-forge imagemagick=7.1 && \
     mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake==6.4.0 && \
     conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk && \
     conda install --yes --freeze-installed -c daler sratoolkit && \
     conda install --yes --freeze-installed -c conda-forge yappi && \
     conda install --yes --freeze-installed pandas && \
     mamba install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster && \
-    conda install -c bioconda samtools=1.11 --force-reinstall && \
     conda clean -afy
+
+# needed by quality checks
+RUN pip3 install --upgrade --no-cache-dir matplotlib
