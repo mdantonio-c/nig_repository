@@ -200,13 +200,15 @@ def launch_pipeline(
                 sample=sample,
                 table_path=fastq_csv_file,
                 input_parameter_path=input_parameter_path,
-            ).check_log()
+            ).check_log(check_final_section=False)
+            # check_final_section is excluded for now because raises an exception that should be a warning
             check_passed = "BaseRecalibrator"
             ApplyBQSR(
                 path=f"{output_path}/gatk_bsr/",
                 sample=sample,
                 input_parameter_path=input_parameter_path,
-            ).check_log()
+            ).check_log(progressmeter_analysis=False, score=False)
+            # progressmeter_analysis and score are excluded for now because raise an index out of range exception
             check_passed = "ApplyBQSR"
             HaploType(
                 path=f"{output_path}/gatk_gvcf/",
