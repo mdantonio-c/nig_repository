@@ -65,7 +65,7 @@ jobs:
           rapydo start frontend proxy
           # In swarm mode --follow no longer stop when the container exits
           # rapydo logs --follow frontend
-          sleep 300
+          sleep 600
           rapydo status
           rapydo logs --tail 20 proxy
           rapydo logs --tail 20 frontend
