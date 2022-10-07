@@ -14,12 +14,12 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
-      - uses: rapydo/actions/install@v1
+      - uses: rapydo/actions/install@v2
         with:
           project: ${PROJECT}
           swarm: 1
@@ -35,7 +35,7 @@ jobs:
           rapydo shell frontend "yarn run test:single"
 
       - name: Coverage
-        uses: rapydo/actions/coverage@v1
+        uses: rapydo/actions/coverage@v2
         with:
           repository: projects/${PROJECT}
           project: ${PROJECT}
@@ -46,12 +46,12 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
-      - uses: rapydo/actions/install@v1
+      - uses: rapydo/actions/install@v2
         with:
           project: ${PROJECT}
           swarm: 1
@@ -65,7 +65,7 @@ jobs:
           rapydo start frontend proxy
           # In swarm mode --follow no longer stop when the container exits
           # rapydo logs --follow frontend
-          sleep 300
+          sleep 600
           rapydo status
           rapydo logs --tail 20 proxy
           rapydo logs --tail 20 frontend

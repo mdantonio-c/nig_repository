@@ -4,7 +4,6 @@ import shutil
 from pathlib import Path
 from typing import List
 
-from celery.app.task import Task
 from juan.qc.applybqsr import ApplyBQSR  # type: ignore
 from juan.qc.baserecalibrator import BaseRecalibrator  # type: ignore
 from juan.qc.bwa import Bwa  # type: ignore
@@ -15,7 +14,7 @@ from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
 from pandas import DataFrame
 from restapi.config import DATA_PATH
 from restapi.connectors import neo4j
-from restapi.connectors.celery import CeleryExt
+from restapi.connectors.celery import CeleryExt, Task
 from restapi.connectors.smtp.notifications import send_notification
 from restapi.utilities.logs import log
 from snakemake import snakemake
@@ -23,7 +22,7 @@ from snakemake import snakemake
 
 @CeleryExt.task(idempotent=True, autoretry_for=(ConnectionResetError,))
 def launch_pipeline(
-    self: Task,
+    self: Task[[List[str], str, bool], None],
     dataset_list: List[str],
     snakefile: str = "Single_Sample.smk",
     force: bool = False,

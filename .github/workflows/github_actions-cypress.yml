@@ -14,18 +14,18 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
-      - uses: rapydo/actions/install@v1
+      - uses: rapydo/actions/install@v2
         with:
           project: ${PROJECT}
           # No need to test cypress in swarm mode!
           # swarm: 1
 
-      - uses: rapydo/actions/setup-cypress@v1
+      - uses: rapydo/actions/setup-cypress@v2
         with:
           id: ${{ secrets.CYPRESS_PROJECT_ID }}
           key: ${{ secrets.CYPRESS_RECORD_KEY }}
@@ -54,7 +54,7 @@ jobs:
           rapydo shell frontend "npx nyc --all report --reporter=lcov --report-dir /coverage"
 
       - name: Coverage
-        uses: rapydo/actions/coverage@v1
+        uses: rapydo/actions/coverage@v2
         with:
           repository: projects/${PROJECT}
           project: ${PROJECT}
