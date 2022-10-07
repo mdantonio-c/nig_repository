@@ -27,10 +27,11 @@ rule GenomicsDBImport:
     params:
         p1 = Mult_Params( '-V' , gvcfs ),
         p2 = '--reader-threads 48',
-        p3 = GDBI
+        p3 = GDBI,
+	p4 = '--batch-size 50'
     shell:
-        '''gatk --java-options "-Xmx4g -Xms4g -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" GenomicsDBImport \
-        -R {refg} {params.p1} {params.p2} {params.p3} /data/output/gatk_db > all_samples.vcf.log 2>&1 '''
+        '''gatk --java-options "-Xmx88g -Xms10g -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" GenomicsDBImport \
+        -R {refg} {params.p1} {params.p2} {params.p3} /data/output/gatk_db {params.p4} > all_samples.vcf.log 2>&1 '''
 
 rule GenotypeGVCFs:
     input:
