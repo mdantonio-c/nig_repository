@@ -30,10 +30,12 @@ variables:
     # ACTIVATE_FLOWER: 1
     CELERY_ENABLE_CONNECTOR: 1
 
+    # 6 hours
+    AUTH_JWT_TOKEN_TTL: 21600
     # 24 hours
     # AUTH_JWT_TOKEN_TTL: 86400
     # temporary raised to 1 month to ease the upload of the archives
-    AUTH_JWT_TOKEN_TTL: 2592000
+    # AUTH_JWT_TOKEN_TTL: 2592000
     AUTH_FORCE_FIRST_PASSWORD_CHANGE: 1
     AUTH_MAX_PASSWORD_VALIDITY: 60
     AUTH_MIN_PASSWORD_LENGTH: 10
