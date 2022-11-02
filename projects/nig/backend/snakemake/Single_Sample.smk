@@ -105,7 +105,7 @@ rule Samsort:
     input:
         "{O}/bwa/{S}_samblaster.sam"
     output:
-        temp("{O}/bwa/{S}_sort_nodup.bam")
+        "{O}/bwa/{S}_sort_nodup.bam"
     log:
         "{O}/bwa/{S}_sort_nodup.sam.log"
     benchmark:
