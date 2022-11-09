@@ -85,9 +85,14 @@ export class DownloadModal implements OnInit {
       },
     };
 
-    const filename = `${this.dataset}.${this.selectedFileformat}`;
+    let filename = null;
+    if (this.selectedFileformat === "g.vcf") {
+      filename = `${this.dataset}.${this.selectedFileformat}.gz`;
+    } else {
+      filename = `${this.dataset}.${this.selectedFileformat}`;
+    }
 
-    console.log(`download total size : ${this.download_totalsize}`);
+    //console.log(`download total size : ${this.download_totalsize}`);
 
     this.api.get<any>(this.download_endpoint, {}, options).subscribe(
       (response) => {
