@@ -21,7 +21,12 @@ class ResultDownload(NIGEndpoint):
 
     @decorators.auth.require(allow_access_token_parameter=True)
     @decorators.use_kwargs(
-        {"file": fields.Str(required=True, validate=validate.OneOf(FILE_TO_DOWNLOAD))},
+        {
+            "file": fields.Str(
+                required=True, validate=validate.OneOf(FILE_TO_DOWNLOAD)
+            ),
+            "get_total_size": fields.Bool(required=False),
+        },
         location="query",
     )
     @decorators.endpoint(
@@ -30,7 +35,9 @@ class ResultDownload(NIGEndpoint):
         responses={200: "Found the file to download", 404: "File not found"},
     )
     # 200: {'schema': {'$ref': '#/definitions/Fileoutput'}}
-    def get(self, uuid: str, user: User, file: str) -> Response:
+    def get(
+        self, uuid: str, user: User, file: str, get_total_size: bool = False
+    ) -> Response:
 
         # check dataset ownership
         graph = neo4j.get_instance()
@@ -67,9 +74,14 @@ class ResultDownload(NIGEndpoint):
         if not filepath:
             raise NotFound(f"file .{file} for dataset {uuid} not found")
 
+        if get_total_size:
+            # return the total size of the file to download
+            total_size = filepath.stat().st_size
+            return self.response(total_size)
+
         # save the action in the log event
         self.log_event(self.events.access, dataset, {"downloaded_file": str(filepath)})
 
         # download the file as a response attachment
-        #return send_from_directory(resource_dir, filepath.name, as_attachment=True)
+        # return send_from_directory(resource_dir, filepath.name, as_attachment=True)
         return Downloader.send_file_streamed(filepath.name, subfolder=resource_dir)

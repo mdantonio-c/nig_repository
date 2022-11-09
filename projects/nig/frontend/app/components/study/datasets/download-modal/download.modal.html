@@ -7,9 +7,7 @@
     class="btn-close"
     aria-describedby="modal-title"
     (click)="modal.dismiss('Cross click')"
-  >
-    <span aria-hidden="true">&times;</span>
-  </button>
+  ></button>
 </div>
 <div class="modal-body text-center">
   <div class="btn-group me-3" style="width: 100%">
@@ -37,12 +35,34 @@
   </div>
 </div>
 <div class="modal-footer text-center">
-  <button
-    type="button"
-    ngbAutofocus
-    class="btn btn-primary"
-    (click)="downloadFile()"
+  <a>
+    <button
+      type="button"
+      ngbAutofocus
+      class="btn btn-primary"
+      (click)="downloadFile()"
+      *ngIf="!downloading"
+    >
+      Download
+    </button>
+  </a>
+  <ngx-spinner
+    name="downloader"
+    bdColor="rgba(51,51,51,0.8)"
+    size="medium"
+    color="#FFF;"
   >
-    Download
-  </button>
+    <p class="text-center download_spinner">Downloading...</p>
+    <div class="progress">
+      <div
+        class="progress-bar"
+        role="progressbar"
+        style="width: {{download_progress }}%"
+        aria-valuenow="0"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      ></div>
+    </div>
+    <span class="download_spinner"> {{download_progress }}%</span>
+  </ngx-spinner>
 </div>

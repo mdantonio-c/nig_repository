@@ -97,8 +97,8 @@ class TestApp(BaseTests):
 
         # create the file
         bam_content = "I am a .bam file"
-        filepath = Path(bam_output_path, faker.pystr()).with_suffix(".bam")
-        with open(filepath, "w") as f:
+        bam_filepath = Path(bam_output_path, faker.pystr()).with_suffix(".bam")
+        with open(bam_filepath, "w") as f:
             f.write(bam_content)
 
         # test a download for a file that not exists
@@ -125,7 +125,14 @@ class TestApp(BaseTests):
 
         # check the downloaded file is the correct one
         download_content = r.data
-        assert download_content.decode("utf-8") == bam_content
+        assert download_content.decode("utf-8") == bam_content  # test get size
+        r = client.get(
+            f"{API_URI}/dataset/{dataset1_uuid}/download?file=bam&get_total_size=true",
+            headers=user_B2_headers,
+        )
+        assert r.status_code == 200
+        total_file_size = self.get_content(r)
+        assert bam_filepath.stat().st_size == total_file_size
 
         # delete all the element used for the test
         delete_test_env(
