@@ -112,6 +112,7 @@
               }"
               *ngIf="value; else noStatus"
               placement="left"
+              [ngbTooltip]="value == 'ERROR' ? row.error_message : ''"
             >
               {{ value }}
             </span>

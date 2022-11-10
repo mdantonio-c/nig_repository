@@ -32,6 +32,8 @@ export interface Dataset extends ResourceIdentity {
   phenotype: ResourceIdentity;
   /** @nullable */
   status: string;
+  /** @nullable */
+  error_message: string;
 }
 
 export interface Datasets extends Array<Dataset> {}

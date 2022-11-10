@@ -34,6 +34,7 @@ class DatasetOutput(Schema):
     name = fields.Str(required=True)
     description = fields.Str(required=False)
     status = fields.Str(required=False)
+    error_message = fields.Str(required=False)
     technical = fields.Neo4jRelationshipToSingle(TechnicalMetadata)
     phenotype = fields.Neo4jRelationshipToSingle(Phenotype)
     files = fields.Neo4jRelationshipToCount()
@@ -149,6 +150,7 @@ class Datasets(NIGEndpoint):
             dataset_el["name"] = dataset.name
             dataset_el["description"] = dataset.description
             dataset_el["status"] = dataset.status
+            dataset_el["error_message"] = dataset.error_message
             dataset_el["technical"] = dataset.technical
             dataset_el["phenotype"] = dataset.phenotype
             dataset_el["files"] = dataset.files
