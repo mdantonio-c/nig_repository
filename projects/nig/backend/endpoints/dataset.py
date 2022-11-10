@@ -35,6 +35,7 @@ class DatasetOutput(Schema):
     description = fields.Str(required=False)
     status = fields.Str(required=False)
     error_message = fields.Str(required=False)
+    joint_analysis = fields.Bool(required=False)
     technical = fields.Neo4jRelationshipToSingle(TechnicalMetadata)
     phenotype = fields.Neo4jRelationshipToSingle(Phenotype)
     files = fields.Neo4jRelationshipToCount()
@@ -154,6 +155,7 @@ class Datasets(NIGEndpoint):
             dataset_el["technical"] = dataset.technical
             dataset_el["phenotype"] = dataset.phenotype
             dataset_el["files"] = dataset.files
+            dataset_el["joint_analysis"] = dataset.joint_analysis
 
             owner = dataset.ownership.single()
             if owner == user:

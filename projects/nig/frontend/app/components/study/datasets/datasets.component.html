@@ -89,13 +89,13 @@
           </ng-template>
         </ngx-datatable-column>
         <!-- Files -->
-        <ngx-datatable-column prop="files" [flexGrow]="0.5" [sortable]="false">
+        <ngx-datatable-column prop="files" [flexGrow]="0.3" [sortable]="false">
           <ng-template let-value="value" ngx-datatable-cell-template>
             {{ value }}
           </ng-template>
         </ngx-datatable-column>
         <!-- Status -->
-        <ngx-datatable-column prop="status" [flexGrow]="0.5" [sortable]="false">
+        <ngx-datatable-column prop="status" [flexGrow]="0.7" [sortable]="false">
           <ng-template
             let-value="value"
             let-row="row"
@@ -129,13 +129,13 @@
 
         <!-- Upload complete -->
         <ngx-datatable-column
-          [flexGrow]="0.5"
+          [flexGrow]="0.4"
           name=" Upload <br> Complete"
           headerClass="px-0"
           [resizeable]="false"
           [sortable]="false"
           [draggable]="false"
-          [canAutoResize]="false"
+          [canAutoResize]="true"
         >
           <ng-template
             let-value="value"
@@ -152,6 +152,25 @@
                 (change)="onUploadReadyChange(row, $event)"
               />
             </div>
+          </ng-template>
+        </ngx-datatable-column>
+
+        <!-- Joint analysis -->
+        <ngx-datatable-column
+          [flexGrow]="0.4"
+          name=" Joint <br> Analysis"
+          headerClass="px-0"
+          [resizeable]="false"
+          [sortable]="false"
+          [draggable]="false"
+          [canAutoResize]="true"
+        >
+          <ng-template
+            let-value="value"
+            let-row="row"
+            ngx-datatable-cell-template
+          >
+            <b><i *ngIf="row.joint_analysis" class="fa-solid fa-check"></i></b>
           </ng-template>
         </ngx-datatable-column>
 

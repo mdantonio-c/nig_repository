@@ -7,3 +7,8 @@
   filter: drop-shadow(0.05rem 0.05rem 0.05rem #848484);
   color: #202020de;
 }
+
+.fa-check {
+  color: green;
+  font-size: 20px;
+}
