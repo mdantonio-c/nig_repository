@@ -1,6 +1,8 @@
 import shutil
+from datetime import datetime
 from typing import Any, Dict, Optional, Type, Union
 
+import pytz
 from nig.endpoints import PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND, NIGEndpoint
 from nig.endpoints._injectors import (
     verify_dataset_access,
@@ -14,8 +16,7 @@ from restapi.exceptions import BadRequest, Conflict, NotFound
 from restapi.models import Schema, fields, validate
 from restapi.rest.definition import Response
 from restapi.services.authentication import User
-
-# from restapi.utilities.logs import log
+from restapi.utilities.logs import log
 
 
 class TechnicalMetadata(Schema):
@@ -34,6 +35,7 @@ class DatasetOutput(Schema):
     name = fields.Str(required=True)
     description = fields.Str(required=False)
     status = fields.Str(required=False)
+    status_update = fields.Str(required=False)
     error_message = fields.Str(required=False)
     joint_analysis = fields.Bool(required=False)
     technical = fields.Neo4jRelationshipToSingle(TechnicalMetadata)
@@ -156,6 +158,13 @@ class Datasets(NIGEndpoint):
             dataset_el["phenotype"] = dataset.phenotype
             dataset_el["files"] = dataset.files
             dataset_el["joint_analysis"] = dataset.joint_analysis
+
+            # check if the date of the status is available. If not get the dataset last modified date
+            if dataset.status_update:
+                status_update = dataset.status_update
+            else:
+                status_update = dataset.modified
+            dataset_el["status_update"] = status_update.strftime("%d-%m-%Y, %H:%M")
 
             owner = dataset.ownership.single()
             if owner == user:
@@ -360,6 +369,7 @@ class Dataset(NIGEndpoint):
         else:
             dataset.status = status
 
+        dataset.status_update = datetime.now(pytz.utc)
         dataset.save()
 
         self.log_event(self.events.modify, dataset, {"status": status})

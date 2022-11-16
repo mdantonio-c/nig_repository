@@ -1,9 +1,11 @@
 import os
 import re
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
+import pytz
 from juan.qc.applybqsr import ApplyBQSR  # type: ignore
 from juan.qc.baserecalibrator import BaseRecalibrator  # type: ignore
 from juan.qc.bwa import Bwa  # type: ignore
@@ -81,6 +83,7 @@ def launch_pipeline(
                 msg = "R1 file is missing"
                 dataset.status = "ERROR"
                 dataset.error_message = msg
+                dataset.status_update = datetime.now(pytz.utc)
                 # connect the dataset to the job node
                 dataset.job.connect(job, {"status": "ERROR", "error_message": msg})
                 dataset.save()
@@ -91,6 +94,7 @@ def launch_pipeline(
                 file_list.append(f)
         # mark the dataset as running
         dataset.status = "RUNNING"
+        dataset.status_update = datetime.now(pytz.utc)
         # connect the dataset to the job node
         dataset.job.connect(job, {"status": "RUNNING"})
         dataset.save()
@@ -233,6 +237,7 @@ def launch_pipeline(
 
         # update the dataset status in the db
         dataset.status = dataset_status
+        dataset.status_update = datetime.now(pytz.utc)
         if error_message:
             dataset.error_message = error_message
         dataset.save()

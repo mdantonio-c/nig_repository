@@ -2,6 +2,7 @@ from neomodel import BooleanProperty  # UniqueIdProperty
 from neomodel import (
     ArrayProperty,
     DateProperty,
+    DateTimeProperty,
     FloatProperty,
     IntegerProperty,
     JSONProperty,
@@ -53,6 +54,7 @@ class Dataset(TimestampedNode):
     description = StringProperty()
     is_proband = BooleanProperty()
     status = StringProperty()
+    status_update = DateTimeProperty()
     error_message = StringProperty()
     joint_analysis = BooleanProperty()
 

@@ -124,6 +124,12 @@
             >
               <i class="fa fa-sm fa-arrow-rotate-right"></i>
             </button>
+            <br />
+            <span *ngIf="row.status_update">
+              <i>last update:</i>
+              <br />
+              <i>{{ row.status_update }}</i>
+            </span>
           </ng-template>
         </ngx-datatable-column>
 

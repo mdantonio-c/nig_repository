@@ -36,6 +36,8 @@ export interface Dataset extends ResourceIdentity {
   error_message: string;
   /** @nullable */
   joint_analysis: boolean;
+  /** @nullable */
+  status_update: string;
 }
 
 export interface Datasets extends Array<Dataset> {}

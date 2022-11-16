@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+from datetime import datetime
+
+import pytz
 from restapi.connectors import celery, neo4j
 from restapi.env import Env
 from restapi.utilities.logs import log
@@ -32,6 +35,7 @@ for chunk in [
     for d in chunk:
         dataset = graph.Dataset.nodes.get_or_none(uuid=d)
         dataset.status = "QUEUED"
+        dataset.status_update = datetime.now(pytz.utc)
         dataset.save()
 
 log.info("Init pipeline cron completed\n")
