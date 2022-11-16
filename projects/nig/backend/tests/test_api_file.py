@@ -29,6 +29,9 @@ class TestApp(BaseTests):
             "lastModified": int(fastq.stat().st_mtime),
         }
 
+        if not stream:
+            data["testing"] = True
+
         r_post: Response = client.post(
             f"{API_URI}/dataset/{dataset_uuid}/files/upload", headers=headers, json=data
         )
@@ -71,9 +74,12 @@ class TestApp(BaseTests):
             return r
 
     @staticmethod
-    def create_fastq_gz(faker: Faker, content: str, mode: str = "w") -> Path:
+    def create_fastq_gz(
+        faker: Faker, content: str, mode: str = "w", filename: str = ""
+    ) -> Path:
 
-        filename = f"{faker.pystr()}_R1"
+        if not filename:
+            filename = f"{faker.pystr()}_R1"
         path = Path(tempfile.gettempdir(), filename).with_suffix(".fastq")
         with open(path, mode) as f:
             f.write(content)
@@ -184,7 +190,9 @@ class TestApp(BaseTests):
         invalid_header2 = f"@SEQ_ID\n{faker.pystr(max_chars=12)}\n+{faker.pystr()}\n{faker.pystr(max_chars=12)}\n{faker.pystr()}"
 
         # create a file to upload
-        fastq = self.create_fastq_gz(faker, valid_fcontent)
+        sample_name = faker.pystr()
+        sample_filename = f"{sample_name}_R1"
+        fastq = self.create_fastq_gz(faker, valid_fcontent, filename=sample_filename)
 
         # upload a file
         response = self.upload_file(
@@ -252,7 +260,8 @@ class TestApp(BaseTests):
 
         # check file validation
         # upload an empty file
-        empty_file = self.create_fastq_gz(faker, "")
+        R2_sample_filename = f"{sample_name}_R2"
+        empty_file = self.create_fastq_gz(faker, "", filename=R2_sample_filename)
         response = self.upload_file(
             client,
             user_B1_headers,
@@ -273,7 +282,7 @@ class TestApp(BaseTests):
 
         # upload a file with not valid content
         # CASE wrong gzip file
-        wrong_gzip = Path(tempfile.gettempdir(), f"{faker.pystr()}_R1.fastq.gz")
+        wrong_gzip = Path(tempfile.gettempdir(), f"{R2_sample_filename}.fastq.gz")
 
         # Directly write the gz => it is an ascii file and not a valid gz
         with open(wrong_gzip, "w") as f:
@@ -302,7 +311,9 @@ class TestApp(BaseTests):
         wrong_gzip.unlink()
 
         # CASE binary file instead of a text file
-        binary_file = self.create_fastq_gz(faker, faker.binary(), mode="wb")
+        binary_file = self.create_fastq_gz(
+            faker, faker.binary(), mode="wb", filename=R2_sample_filename
+        )
         response = self.upload_file(
             client,
             user_B1_headers,
@@ -325,7 +336,9 @@ class TestApp(BaseTests):
         binary_file.unlink()
 
         # CASE invalid header
-        invalid_fastq = self.create_fastq_gz(faker, invalid_header)
+        invalid_fastq = self.create_fastq_gz(
+            faker, invalid_header, filename=R2_sample_filename
+        )
         response = self.upload_file(
             client,
             user_B1_headers,
@@ -348,7 +361,9 @@ class TestApp(BaseTests):
         invalid_fastq.unlink()
 
         # CASE invalid separator
-        invalid_fastq = self.create_fastq_gz(faker, invalid_separator)
+        invalid_fastq = self.create_fastq_gz(
+            faker, invalid_separator, filename=R2_sample_filename
+        )
         response = self.upload_file(
             client,
             user_B1_headers,
@@ -371,7 +386,9 @@ class TestApp(BaseTests):
         invalid_fastq.unlink()
 
         # CASE invalid sequence line
-        invalid_fastq = self.create_fastq_gz(faker, invalid_sequence)
+        invalid_fastq = self.create_fastq_gz(
+            faker, invalid_sequence, filename=R2_sample_filename
+        )
         response = self.upload_file(
             client,
             user_B1_headers,
@@ -394,7 +411,9 @@ class TestApp(BaseTests):
         invalid_fastq.unlink()
 
         # CASE invalid header for the second read
-        invalid_fastq = self.create_fastq_gz(faker, invalid_header2)
+        invalid_fastq = self.create_fastq_gz(
+            faker, invalid_header2, filename=R2_sample_filename
+        )
         response = self.upload_file(
             client,
             user_B1_headers,
@@ -415,6 +434,30 @@ class TestApp(BaseTests):
         )
         assert not check_filepath.is_file()
         invalid_fastq.unlink()
+
+        # check upload a R2 file with a different sample name
+        sample_name = faker.pystr()
+        wrong_R2_sample_filename = f"{sample_name}_R2"
+        wrong_R2_fastq = self.create_fastq_gz(
+            faker, valid_fcontent, filename=wrong_R2_sample_filename
+        )
+
+        # upload
+        response = self.upload_file(
+            client, user_B1_headers, wrong_R2_fastq, dataset_B_uuid, stream=True
+        )
+        assert response.status_code == 400
+        wrong_R2_fastq.unlink
+
+        fastqR2 = self.create_fastq_gz(
+            faker, valid_fcontent, filename=R2_sample_filename
+        )
+        # upload an R2 file with a correct filename
+        # upload
+        response = self.upload_file(
+            client, user_B1_headers, fastqR2, dataset_B_uuid, stream=True
+        )
+        assert response.status_code == 200
 
         # check accesses on put endpoint
         # put on a file in a dataset of an other group
@@ -445,8 +488,12 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         file_list = self.get_content(r)
         assert isinstance(file_list, list)
-        assert len(file_list) == 1
-        file_uuid = file_list[0]["uuid"]
+        assert len(file_list) == 2
+        for f in file_list:
+            if "R1" in f["name"]:
+                file_uuid = f["uuid"]
+            else:
+                fileR2_uuid = f["uuid"]
 
         # test file list response for a dataset you don't have access
         r = client.get(
@@ -461,7 +508,21 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         file_list = self.get_content(r)
         assert isinstance(file_list, list)
-        assert len(file_list) == 1
+        assert len(file_list) == 2
+
+        # try to upload a third file
+        # delete the already uploaded file
+        r = client.delete(f"{API_URI}/file/{fileR2_uuid}", headers=user_B1_headers)
+        assert r.status_code == 204
+        # put a file in the dataset folder
+        fake_file = filepath.parent.joinpath(f"{faker.pystr()}_R2.fastq.gz")
+        fake_file.touch()
+        # try the upload
+        response = self.upload_file(
+            client, user_B1_headers, fastqR2, dataset_B_uuid, stream=True
+        )
+        assert response.status_code == 400
+        fake_file.unlink()
 
         # check use case of file not in the folder
         # rename the file in the folder as it will not be found
@@ -585,6 +646,9 @@ class TestApp(BaseTests):
 
         if fastq2.exists():
             fastq2.unlink()
+
+        if fastqR2.exists():
+            fastqR2.unlink()
 
         # delete all the elements used by the test
         delete_test_env(

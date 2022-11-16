@@ -6,6 +6,7 @@ from typing import Any, Tuple
 from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
+from restapi.decorators import ChunkUpload
 from restapi.exceptions import BadRequest, NotFound, ServerError
 from restapi.models import Schema, fields
 from restapi.rest.definition import Response
@@ -21,6 +22,10 @@ class FileOutput(Schema):
     size = fields.Integer(required=False)
     status = fields.Str(required=False)
     # metadata?
+
+
+class ChunkUploadExtended(ChunkUpload):
+    testing = fields.Bool(required=False)
 
 
 class Files(NIGEndpoint):
@@ -235,8 +240,10 @@ class FileUpload(Uploader, NIGEndpoint):
         },
     )
     @decorators.database_transaction
+    @decorators.use_kwargs(ChunkUploadExtended)
     def post(self, uuid: str, name: str, user: User, **kwargs: Any) -> Response:
 
+        testing = kwargs.get("testing", False)
         # check permissions
         graph = neo4j.get_instance()
         dataset = graph.Dataset.nodes.get_or_none(uuid=uuid)
@@ -257,6 +264,27 @@ class FileUpload(Uploader, NIGEndpoint):
 
         # set the allowed file format
         self.set_allowed_exts(["gz"])
+
+        # check if there are other files in the same dataset
+        files_already_uploaded = []
+        for f in path.iterdir():
+            # check if the pattern is respected
+            fname = f.name
+            if re.match(name_pattern, fname):
+                files_already_uploaded.append(fname)
+        # check if max allowed files for dataset is respected
+        if len(files_already_uploaded) == 2:
+            raise BadRequest(
+                f"Dataset {dataset.name} contains too many fastq files: max allowed files are 2 per dataset"
+            )
+        elif len(files_already_uploaded) == 1 and not testing:
+            uploaded_match = re.match(name_pattern, files_already_uploaded[0])
+            to_upload_match = re.match(name_pattern, name)
+            # check if the names of the two samples corresponds
+            if to_upload_match.group(1) != uploaded_match.group(1):
+                raise BadRequest(
+                    f"Different sample names in the same dataset: Sample name to upload has to correspond to '{uploaded_match.group(1)}'"
+                )
 
         properties = {
             "name": name,
