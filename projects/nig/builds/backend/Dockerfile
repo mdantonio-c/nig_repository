@@ -4,6 +4,12 @@ ENV PYTHONDONTWRITEBYTECODE "true"
 
 # RUN pip install --upgrade --no-cache-dir https://github.com/mdantonio/PyVCF/archive/master.zip
 
+# to fix GLIBCXX_3.4.29 issue
+RUN ln -sfn /usr/bin/python3.8 /usr/bin/python3
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:ubuntu-toolchain-r/test -y && apt-get update && apt-get upgrade -y libstdc++6
+#RUN strings /lib/x86_64-linux-gnu/libstdc++.so.6 | grep GLIBCXX_3.4.29
+RUN ln -sfn /usr/bin/python3.9 /usr/bin/python3
+
 # Miniconda installation
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
     && mkdir /root/.conda \
