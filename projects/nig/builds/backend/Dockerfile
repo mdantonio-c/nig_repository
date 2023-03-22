@@ -21,7 +21,9 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 ENV PATH=$PATH:/opt/miniconda3/bin
 ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.9/site-packages
 
+
 # Mamba was installed with conda and is needed for SNAKEMAKE installation
+# installing mamba via mambaforge creates issues in the environment
 # Installing snakemake directly with conda creates conflicts
 # Last packages are installed with mamba because conda installation creates conflics for them
 
@@ -33,18 +35,22 @@ ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.9/site-packages
 # => https://github.com/merenlab/anvio/issues/1479
 # imagemagick is installed explicitely because is needed for the snakemake installation and without an explicit installation mamba could't find it
 # Samtool is installed before snakemake otherwise it creates conflicts
+
+# install packages managed by conda
 RUN conda install --yes --freeze-installed python=3.9.0 && \
     conda update -n base -c defaults conda && \
-    conda install --yes --freeze-installed -c conda-forge mamba stopit && \
     conda install --yes -c bioconda samtools=1.11 --force-reinstall && \
-    mamba install -c conda-forge imagemagick=7.1 && \
-    mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake==6.4.0 && \
     conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk && \
     conda install --yes --freeze-installed -c daler sratoolkit && \
     conda install --yes --freeze-installed -c conda-forge yappi && \
     conda install --yes --freeze-installed pandas && \
-    mamba install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster && \
     conda clean -afy
+
+# install packages managed by mamba
+RUN conda install --yes --freeze-installed -c conda-forge mamba stopit &&  \
+    mamba install -c conda-forge imagemagick=7.1 &&  \
+    mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake==6.4.0 &&  \
+    mamba install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster
 
 # needed by quality checks
 RUN pip3 install --upgrade --no-cache-dir matplotlib
