@@ -52,6 +52,8 @@ input[type="file"]:focus {
 .footer {
   position: fixed !important;
   width: 100% !important;
+  bottom: 0 !important;
+  z-index: 1020 !important;
 }
 
 .datatable-footer {
