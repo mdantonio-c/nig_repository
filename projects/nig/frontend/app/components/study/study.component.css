@@ -42,6 +42,10 @@
   }
 }
 
+.sticky-top {
+  top: 20px;
+}
+
 .nav-icon-container {
   display: inline-flex;
   margin-right: 8px;

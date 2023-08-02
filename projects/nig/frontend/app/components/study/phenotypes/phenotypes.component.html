@@ -1,8 +1,8 @@
 <div class="card mt-2">
-  <div class="card-header">
+  <div class="card-header d-flex justify-content-between align-items-center">
     <h4 class="mb-0">
       <i class="fas fa-users"></i> Samples
-      <span class="float-end"
+      <span class="ms-1"
         ><i
           class="fas fa-rotate clickable fa-sm"
           ngbTooltip="Reload the list of samples"
@@ -10,8 +10,12 @@
         ></i
       ></span>
     </h4>
+    <button *ngIf="!readonly" class="btn btn-primary" (click)="create()">
+      <!-- <i class="fas fa-plus"></i> -->
+      Add {{ resource_name }}
+    </button>
   </div>
-  <div class="card-body px-2">
+  <div class="card-body px-0 pb-0">
     <div class="table-responsive" #tableWrapper>
       <ngx-spinner [fullScreen]="false"></ngx-spinner>
       <ngx-datatable
@@ -148,14 +152,6 @@
         </ngx-datatable-column>
       </ngx-datatable>
       <ng-template #noValue>-</ng-template>
-    </div>
-  </div>
-  <div class="card-footer text-muted">
-    <div class="col-12 text-end">
-      <button *ngIf="!readonly" class="btn btn-primary" (click)="create()">
-        <!-- <i class="fas fa-plus"></i> -->
-        Add {{ resource_name }}
-      </button>
     </div>
   </div>
 </div>

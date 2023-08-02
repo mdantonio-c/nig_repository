@@ -1,60 +1,65 @@
-<div class="d-flex" id="wrapper" *ngIf="study">
-  <!-- Sidebar -->
-  <div class="bg-light border-end" id="sidebar-wrapper">
-    <div class="px-3 mt-4 mb-2 border-bottom">
-      <h4 class="mb-0">Study: {{ study?.name }}</h4>
-      <p class="text-muted">{{ study?.description }}</p>
+<div class="container-fluid pt-0" id="wrapper" *ngIf="study">
+  <div class="row flex-nowrap">
+    <!-- Sidebar -->
+    <div
+      class="col-auto bg-light border-end position-relative"
+      id="sidebar-wrapper"
+    >
+      <div class="sticky-top d-flex flex-column min-vh-100 mt-2">
+        <div class="px-3 mb-2 border-bottom mt-2">
+          <h4 class="mb-0">Study: {{ study?.name }}</h4>
+          <p class="text-muted">{{ study?.description }}</p>
+        </div>
+        <div class="nav-sidebar">
+          <ul
+            ngbNav
+            #nav="ngbNav"
+            class="nav flex-column"
+            [(activeId)]="active"
+            (navChange)="onNavChange($event)"
+          >
+            <ng-container *ngFor="let link of links">
+              <li [ngbNavItem]="link.fragment">
+                <a ngbNavLink>
+                  <div class="nav-icon-container">
+                    <i class="fas" [ngClass]="link.icon"></i>
+                  </div>
+                  <span>{{ link.title }}</span>
+                  <span class="badge bg-secondary float-end">{{
+                    link?.count
+                  }}</span>
+                </a>
+                <ng-template ngbNavContent>
+                  <container-element [ngSwitch]="link.fragment">
+                    <nig-datasets
+                      *ngSwitchCase="'datasets'"
+                      [studyUUID]="study.uuid"
+                      [readonly]="study.readonly"
+                    ></nig-datasets>
+                    <nig-technicals
+                      *ngSwitchCase="'technicals'"
+                      [studyUUID]="study.uuid"
+                      [readonly]="study.readonly"
+                    ></nig-technicals>
+                    <nig-phenotypes
+                      *ngSwitchCase="'phenotypes'"
+                      [studyUUID]="study.uuid"
+                      [readonly]="study.readonly"
+                    ></nig-phenotypes>
+                  </container-element>
+                </ng-template>
+              </li>
+            </ng-container>
+          </ul>
+        </div>
+      </div>
     </div>
-    <div class="nav-sidebar">
-      <ul
-        ngbNav
-        #nav="ngbNav"
-        class="nav flex-column"
-        [(activeId)]="active"
-        (navChange)="onNavChange($event)"
-      >
-        <ng-container *ngFor="let link of links">
-          <li [ngbNavItem]="link.fragment">
-            <a ngbNavLink>
-              <div class="nav-icon-container">
-                <i class="fas" [ngClass]="link.icon"></i>
-              </div>
-              <span>{{ link.title }}</span>
-              <span class="badge bg-secondary float-end">{{
-                link?.count
-              }}</span>
-            </a>
-            <ng-template ngbNavContent>
-              <container-element [ngSwitch]="link.fragment">
-                <nig-datasets
-                  *ngSwitchCase="'datasets'"
-                  [studyUUID]="study.uuid"
-                  [readonly]="study.readonly"
-                ></nig-datasets>
-                <nig-technicals
-                  *ngSwitchCase="'technicals'"
-                  [studyUUID]="study.uuid"
-                  [readonly]="study.readonly"
-                ></nig-technicals>
-                <nig-phenotypes
-                  *ngSwitchCase="'phenotypes'"
-                  [studyUUID]="study.uuid"
-                  [readonly]="study.readonly"
-                ></nig-phenotypes>
-              </container-element>
-            </ng-template>
-          </li>
-        </ng-container>
-      </ul>
-    </div>
-  </div>
-  <!-- /#sidebar-wrapper -->
+    <!-- /#sidebar-wrapper -->
 
-  <!-- Page Content -->
-  <div id="page-content-wrapper">
-    <div class="container-fluid">
+    <!-- Page Content -->
+    <div class="col overflow-hidden pb-5" id="page-content-wrapper">
       <div [ngbNavOutlet]="nav"></div>
     </div>
+    <!-- /#page-content-wrapper -->
   </div>
-  <!-- /#page-content-wrapper -->
 </div>

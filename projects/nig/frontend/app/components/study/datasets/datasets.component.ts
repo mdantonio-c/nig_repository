@@ -26,7 +26,7 @@ export class DatasetsComponent extends BasePaginationComponent<Dataset> {
     this.user = this.auth.getUser();
     this.init("Dataset", `/api/study/${this.studyUUID}/datasets`, "Datasets");
     this.set_resource_endpoint("/api/dataset");
-    this.initPaging(20, false);
+    this.initPaging(10, false);
     this.list();
   }
 
@@ -45,7 +45,7 @@ export class DatasetsComponent extends BasePaginationComponent<Dataset> {
       },
       (error) => {
         this.notify.showError(error);
-      }
+      },
     );
   }
 
@@ -67,7 +67,7 @@ export class DatasetsComponent extends BasePaginationComponent<Dataset> {
       (error) => {
         this.notify.showError(error);
         event.target.checked = !event.target.checked;
-      }
+      },
     );
   }
 

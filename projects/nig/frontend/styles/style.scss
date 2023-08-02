@@ -48,3 +48,13 @@ input[type="file"]:focus {
 .ngx-datatable .datatable-body .datatable-scroll {
   width: 100% !important;
 }
+
+.footer {
+  position: fixed !important;
+  width: 100% !important;
+}
+
+.datatable-footer {
+  border-bottom-left-radius: 0.25rem;
+  border-bottom-right-radius: 0.25rem;
+}
