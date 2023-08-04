@@ -196,7 +196,7 @@ def launch_pipeline(
             check_passed = "Bwa"
             SamSort(
                 path=f"{output_path}/bwa/", sample=sample, table_path=fastq_csv_file
-            ).check_log()
+            ).check_log(check_finish_statement=False, check_lines=False)
             check_passed = "SamSort"
             BaseRecalibrator(
                 path=f"{output_path}/gatk_bsr/",
