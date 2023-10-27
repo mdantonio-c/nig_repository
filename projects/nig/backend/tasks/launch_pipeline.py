@@ -210,7 +210,7 @@ def launch_pipeline(
                 path=f"{output_path}/gatk_bsr/",
                 sample=sample,
                 input_parameter_path=input_parameter_path,
-            ).check_log(progressmeter_analysis=False, score=False)
+            ).check_log(progressmeter_analysis=False)
             # progressmeter_analysis and score are excluded for now because raise an index out of range exception
             check_passed = "ApplyBQSR"
             HaploType(
