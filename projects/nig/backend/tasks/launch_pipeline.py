@@ -216,7 +216,6 @@ def launch_pipeline(
             HaploType(
                 path=f"{output_path}/gatk_gvcf/",
                 sample=sample,
-                table_path=fastq_csv_file,
             ).check_log()
             check_passed = "HaploType"
 
