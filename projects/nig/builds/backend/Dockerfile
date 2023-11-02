@@ -36,21 +36,21 @@ ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.9/site-packages
 # imagemagick is installed explicitely because is needed for the snakemake installation and without an explicit installation mamba could't find it
 # Samtool is installed before snakemake otherwise it creates conflicts
 
-# install packages managed by conda
-RUN conda install --yes --freeze-installed python=3.9.0 && \
-    conda update -n base -c defaults conda && \
-    conda install --yes -c bioconda samtools=1.11 --force-reinstall && \
-    conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk && \
-    conda install --yes --freeze-installed -c daler sratoolkit && \
-    conda install --yes --freeze-installed -c conda-forge yappi && \
-    conda install --yes --freeze-installed pandas && \
-    conda clean -afy
+# configure libmamba solver
+RUN conda config --add channels bioconda && \
+    conda install -n base conda-libmamba-solver
 
-# install packages managed by mamba
-RUN conda install --yes --freeze-installed -c conda-forge mamba stopit &&  \
-    mamba install -c conda-forge imagemagick=7.1 &&  \
-    mamba install --yes --freeze-installed -c conda-forge -c bioconda snakemake==6.4.0 &&  \
-    mamba install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster
+# install packages with conda
+RUN conda install --yes --freeze-installed python=3.9.0 --solver=libmamba &&  \
+    conda install --yes -c bioconda samtools=1.11 --force-reinstall --solver=libmamba &&  \
+    conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk --solver=libmamba &&  \
+    conda install --yes --freeze-installed -c daler sratoolkit --solver=libmamba && \
+    conda install --yes --freeze-installed -c conda-forge yappi --solver=libmamba &&  \
+    conda install --yes --freeze-installed pandas --solver=libmamba &&  \
+    conda clean -afy &&  \
+    conda install --yes -c conda-forge imagemagick=7.1 --solver=libmamba &&  \
+    conda install --yes --freeze-installed -c conda-forge -c bioconda snakemake==6.4.0 --solver=libmamba &&  \
+    conda install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster --solver=libmamba
 
 # needed by quality checks
 RUN pip3 install --upgrade --no-cache-dir matplotlib
