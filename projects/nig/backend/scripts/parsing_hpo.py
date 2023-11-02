@@ -21,7 +21,7 @@ for hpo in cl:
         )
         # to prevent errors when tries to access relationships instead of terms
         if not isinstance(cl[hpo], pronto.relationship.Relationship):
-            nodes.dump(cl[hpo].id, cl[hpo].name, cl[hpo].definition or "N/A")
+            nodes.dump(cl[hpo].id, cl[hpo].name or "N/A", cl[hpo].definition or "N/A")
             # print(f"{cl[hpo].id} , {type(cl[hpo])}")
 
             for s in list(cl[hpo].subclasses(distance=1)):  # type: ignore
