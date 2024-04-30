@@ -1,6 +1,10 @@
 version: "3.9"
 
 services:
+  proxy:
+    build: ${PROJECT_DIR}/builds/proxy
+    image: nig/proxy:${RAPYDO_VERSION}
+
   backend:
     deploy:
       placement:
