@@ -58,10 +58,10 @@ jobs:
 
       - name: Production Mode
         run: |
-          rapydo build proxy
           rapydo --testing --prod init --force
           rapydo password registry --random
           rapydo pull --quiet frontend proxy
+          rapydo build proxy
 
           rapydo start frontend proxy
           # In swarm mode --follow no longer stop when the container exits
