@@ -58,6 +58,7 @@ jobs:
 
       - name: Production Mode
         run: |
+          rapydo build proxy
           rapydo --testing --prod init --force
           rapydo password registry --random
           rapydo pull --quiet frontend proxy

@@ -7,12 +7,17 @@ RUN wget http://alpine.adiscon.com/rsyslog@lists.adiscon.com-5a55e598.rsa.pub &&
     apk update && apk add rsyslog
 
 RUN mkdir -p /etc/rsyslog.d
-# download the custom configurations for rsyslog
-RUN curl -o /etc/rsyslog.d/01_cineca-nginx.conf https://gitlab.cineca.it/aneri/qradar-tool/-/raw/master/rsyslog-base-conf/rsyslog8.24/01_cineca-nginx.conf && \
-    curl -o /etc/rsyslog.d/00_moduleload.conf https://gitlab.cineca.it/aneri/qradar-tool/-/raw/master/rsyslog-base-conf/rsyslog8.24/00_moduleload.conf
 
-# change the hostname
-RUN sed -i 's/%HOSTNAME%/'"nig_proxy"'/g' /etc/rsyslog.d/01_cineca-nginx.conf
+## download the custom configurations for rsyslog
+#RUN curl -o /etc/rsyslog.d/01_cineca-nginx.conf https://gitlab.cineca.it/aneri/qradar-tool/-/raw/master/rsyslog-base-conf/rsyslog8.24/01_cineca-nginx.conf && \
+#    curl -o /etc/rsyslog.d/00_moduleload.conf https://gitlab.cineca.it/aneri/qradar-tool/-/raw/master/rsyslog-base-conf/rsyslog8.24/00_moduleload.conf
+#
+## change the hostname
+#RUN sed -i 's/%HOSTNAME%/'"nig_proxy"'/g' /etc/rsyslog.d/01_cineca-nginx.conf
+# gitlab download doesn't work on all networks. Subsituted by local files copies
+COPY rsyslog_config/00_moduleload.conf /etc/rsyslog.d/00_moduleload.conf
+COPY rsyslog_config/01_cineca-nginx.conf /etc/rsyslog.d/01_cineca-nginx.conf
+
 
 #for debug change the qradar address
 #RUN sed -i 's#qradar-collector.private.cineca.it#qradar-collector.test.it#g' /etc/rsyslog.d/01_cineca-nginx.conf
