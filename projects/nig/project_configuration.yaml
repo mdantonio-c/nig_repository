@@ -44,7 +44,7 @@ variables:
     AUTH_SECOND_FACTOR_AUTHENTICATION: 1
     AUTH_TOKEN_IP_GRACE_PERIOD: 60
     ALLOW_PASSWORD_RESET: 1
-    SSL_VERIFY_CLIENT: 1
+    #SSL_VERIFY_CLIENT: 1
 
 tags:
   study: Manage information at study level
