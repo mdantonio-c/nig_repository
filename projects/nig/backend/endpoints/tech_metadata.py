@@ -16,7 +16,6 @@ PLATFORMS = [
     "Illumina",
     "Ion",
     "Pacific Biosciences",
-    "Other",
 ]
 
 ENRICHMENT_KITS = [
