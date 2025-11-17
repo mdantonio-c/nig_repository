@@ -32,8 +32,8 @@ ENRICHMENT_KITS = [
 class TechmetaInputSchema(Schema):
     name = fields.Str(required=True)
     sequencing_date = fields.Date(format=DATE_FORMAT)
-    platform = fields.Str(validate=validate.OneOf(PLATFORMS))
-    enrichment_kit = fields.Str(validate=validate.OneOf(ENRICHMENT_KITS))
+    platform = fields.Str(required=True, validate=validate.OneOf(PLATFORMS))
+    enrichment_kit = fields.Str(required=True, validate=validate.OneOf(ENRICHMENT_KITS))
 
 
 class TechmetaPutSchema(Schema):
