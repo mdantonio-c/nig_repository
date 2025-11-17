@@ -16,9 +16,6 @@ PLATFORMS = [
     "Illumina",
     "Ion",
     "Pacific Biosciences",
-    "Roche 454",
-    "SOLiD",
-    "SNP-array",
     "Other",
 ]
 
