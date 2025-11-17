@@ -19,19 +19,30 @@ PLATFORMS = [
     "Other",
 ]
 
+ENRICHMENT_KITS = [
+    "Illumina Nextera Rapid Capture V.1.2",
+    "Agilent SureSelectXT AllExon V.5",
+    "Agilent SureSelect Clinical Research Exome v2",
+    "Agilent SureSelect AllExon_v7",
+    "Twist Human Core Exome",
+    "KAPA HyperExome hg38 primary targets v2 slop50",
+]
+
 
 class TechmetaInputSchema(Schema):
     name = fields.Str(required=True)
     sequencing_date = fields.Date(format=DATE_FORMAT)
     platform = fields.Str(validate=validate.OneOf(PLATFORMS))
-    enrichment_kit = fields.Str()
+    enrichment_kit = fields.Str(validate=validate.OneOf(ENRICHMENT_KITS))
 
 
 class TechmetaPutSchema(Schema):
     name = fields.Str(required=False)
     sequencing_date = fields.Date(format=DATE_FORMAT)
     platform = fields.Str(allow_none=True, validate=validate.OneOf(PLATFORMS))
-    enrichment_kit = fields.Str()
+    enrichment_kit = fields.Str(
+        allow_none=True, validate=validate.OneOf(ENRICHMENT_KITS)
+    )
 
     @pre_load
     def null_platform(self, data: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
