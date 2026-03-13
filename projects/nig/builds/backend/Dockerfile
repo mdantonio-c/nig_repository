@@ -11,14 +11,14 @@ RUN apt-get update && apt-get install -y software-properties-common && add-apt-r
 RUN ln -sfn /usr/bin/python3.9 /usr/bin/python3
 
 # Miniconda installation
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py39_24.5.0-0-Linux-x86_64.sh \
     && mkdir /root/.conda \
-    && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
-    && rm -f Miniconda3-latest-Linux-x86_64.sh \
+    && bash Miniconda3-py39_24.5.0-0-Linux-x86_64.sh -b -p /opt/miniconda3 \
+    && rm -f Miniconda3-py39_24.5.0-0-Linux-x86_64.sh \
     && chgrp -R developer /opt/miniconda3 \
     && chmod g+rx /opt/miniconda3/bin/*
 
-ENV PATH=$PATH:/opt/miniconda3/bin
+ENV PATH=/opt/miniconda3/bin:$PATH
 ENV PYTHONPATH=$PYTHONPATH:/opt/miniconda3/lib/python3.9/site-packages
 
 
@@ -46,11 +46,11 @@ RUN conda install --yes --freeze-installed python=3.9.0 --solver=libmamba &&  \
     conda install --yes --freeze-installed -c bioconda gatk4==4.2.0 picard fastqc vcftools seqtk --solver=libmamba &&  \
     conda install --yes --freeze-installed -c daler sratoolkit --solver=libmamba && \
     conda install --yes --freeze-installed -c conda-forge yappi --solver=libmamba &&  \
-    conda install --yes --freeze-installed pandas --solver=libmamba &&  \
+    conda install --yes --freeze-installed numpy=1.26.4 pandas=2.2.2 --solver=libmamba &&  \
     conda clean -afy &&  \
     conda install --yes -c conda-forge imagemagick=7.1 --solver=libmamba &&  \
     conda install --yes --freeze-installed -c conda-forge -c bioconda snakemake==6.4.0 --solver=libmamba &&  \
     conda install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster --solver=libmamba
 
-# needed by quality checks
-RUN pip3 install --upgrade --no-cache-dir matplotlib
+    # needed by quality checks
+RUN pip install --upgrade --no-cache-dir matplotlib
