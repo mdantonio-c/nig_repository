@@ -50,7 +50,8 @@ RUN conda install --yes --freeze-installed python=3.9.0 --solver=libmamba &&  \
     conda clean -afy &&  \
     conda install --yes -c conda-forge imagemagick=7.1 --solver=libmamba &&  \
     conda install --yes --freeze-installed -c conda-forge -c bioconda snakemake==6.4.0 --solver=libmamba &&  \
-    conda install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster --solver=libmamba
+    conda install --yes --freeze-installed -c conda-forge -c bioconda bwa samblaster --solver=libmamba && \
+    conda install --yes --freeze-installed -c conda-forge openjdk=8 --solver=libmamba
 
     # needed by quality checks
 RUN pip install --upgrade --no-cache-dir matplotlib
