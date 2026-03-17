@@ -11,7 +11,7 @@ variables:
 
   submodules:
     quality-checks:
-      online_url: https://github.com/JuanMataNaranjo/CINECA_repo
+      online_url: https://github.com/mdantonio-c/JuanQC
       branch: main
 
   env:
