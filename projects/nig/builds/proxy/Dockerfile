@@ -1,4 +1,4 @@
-FROM rapydo/proxy:2.4
+FROM harbor-ada.hpc.cineca.it/rapydo/proxy:4.0
 
 WORKDIR /etc/apk/keys/
 # install rsyslog
