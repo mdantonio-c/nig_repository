@@ -1,0 +1,20 @@
+from snakemake.utils import validate
+
+configfile: "config/config.yaml"
+
+validate(config, schema="workflow/schemas/config.schema.yaml")
+
+include: "workflow/rules/common.smk"
+include: "workflow/rules/normalize.smk"
+include: "workflow/rules/relatedness.smk"
+include: "workflow/rules/split_trio.smk"
+include: "workflow/rules/merge.smk"
+include: "workflow/rules/pca.smk"
+include: "workflow/rules/outliers.smk"
+include: "workflow/rules/annotate.smk"
+
+
+rule all:
+    input:
+        get_final_targets(config),
+    default_target: True

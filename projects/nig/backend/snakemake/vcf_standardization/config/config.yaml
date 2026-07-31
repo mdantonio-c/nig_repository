@@ -1,0 +1,45 @@
+cohort_name: your_cohort
+
+input:
+  vcf: data/your_cohort.vcf.gz
+  has_chr_prefix: true   # true -> skip the no_chr_convention rename step
+
+reference:
+  cohort_name: ITvarGM
+  cohort_vcf: data/ITvarGM.vcf.gz
+  fasta: resources/hg38.fa   # REQUIRED: place hg38.fa + hg38.fa.fai here before running
+
+conventions:
+  chr_rename: data/chr_name_convention.txt
+  no_chr_rename: data/no_chr_convention.txt
+
+relatedness:
+  enabled: false
+  king_cutoff: 0.088
+  king_table_filter: 0.088
+  sex_metadata_csv: ""   # optional; empty means --autosome
+
+trio:
+  enabled: false
+  parents_file: ""
+  probands_file: ""
+
+merge:
+  tool: bcftools   # "bcftools" (§5.1) or "plink" (§5.2)
+
+pca:
+  n_components: 10
+  mahalanobis_quantile: 0.999
+
+annotation:
+  fill_tags: "AN,AC,AC_Hemi,AC_Hom,AC_Het,AF,MAF,NS"
+  outliers_groups_file: ""   # optional (§8.3). If "", falls back to §8.2 (pca_ita/outliers only)
+  remove_outliers_from_merge: true   # §8.4 produce no_out_commonVar_*.vcf.gz
+  outlier_removal_scope: all   # all, cohort_only, or reference_only for no_out_commonVar_*.vcf.gz
+
+covariates:
+  macroarea_xlsx: ""   # optional; empty skips the coloured PCA plot
+
+threads:
+  bcftools: 4
+  plink: 4

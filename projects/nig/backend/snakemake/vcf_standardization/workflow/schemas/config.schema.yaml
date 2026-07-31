@@ -1,0 +1,123 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+description: NIG VCF standardization pipeline configuration
+type: object
+required:
+  - cohort_name
+  - input
+  - reference
+  - conventions
+  - relatedness
+  - trio
+  - merge
+  - pca
+  - annotation
+  - covariates
+  - threads
+properties:
+  cohort_name:
+    type: string
+    description: Short name for the cohort being processed (used in output filenames)
+  input:
+    type: object
+    required: [vcf, has_chr_prefix]
+    properties:
+      vcf:
+        type: string
+        description: Path to the input cohort VCF.gz (must have .tbi index alongside)
+      has_chr_prefix:
+        type: boolean
+        description: Whether CHROM column already uses chr1/chrX style
+  reference:
+    type: object
+    required: [cohort_name, cohort_vcf, fasta]
+    properties:
+      cohort_name:
+        type: string
+      cohort_vcf:
+        type: string
+        description: Path to the ITvarGM reference cohort VCF.gz
+      fasta:
+        type: string
+        description: Path to hg38.fa reference genome (must have .fai alongside)
+  conventions:
+    type: object
+    required: [chr_rename, no_chr_rename]
+    properties:
+      chr_rename:
+        type: string
+        description: Two-column file mapping 1->chr1 etc. (for inputs without chr prefix)
+      no_chr_rename:
+        type: string
+        description: Two-column file mapping chr1->1 etc.
+  relatedness:
+    type: object
+    required: [enabled, king_cutoff, king_table_filter]
+    properties:
+      enabled:
+        type: boolean
+      king_cutoff:
+        type: number
+      king_table_filter:
+        type: number
+      sex_metadata_csv:
+        type: string
+        description: Optional CSV with 'sample' and 'sex' columns; enables --update-sex instead of --autosome
+  trio:
+    type: object
+    required: [enabled, parents_file, probands_file]
+    properties:
+      enabled:
+        type: boolean
+      parents_file:
+        type: string
+      probands_file:
+        type: string
+  merge:
+    type: object
+    required: [tool]
+    properties:
+      tool:
+        type: string
+        enum: [bcftools, plink]
+  pca:
+    type: object
+    required: [n_components, mahalanobis_quantile]
+    properties:
+      n_components:
+        type: integer
+        minimum: 2
+        maximum: 20
+      mahalanobis_quantile:
+        type: number
+        exclusiveMinimum: 0
+        exclusiveMaximum: 1
+  annotation:
+    type: object
+    required: [fill_tags, outliers_groups_file, remove_outliers_from_merge]
+    properties:
+      fill_tags:
+        type: string
+      outliers_groups_file:
+        type: string
+      remove_outliers_from_merge:
+        type: boolean
+      outlier_removal_scope:
+        type: string
+        enum: [all, cohort_only, reference_only]
+        default: all
+  covariates:
+    type: object
+    required: [macroarea_xlsx]
+    properties:
+      macroarea_xlsx:
+        type: string
+  threads:
+    type: object
+    required: [bcftools, plink]
+    properties:
+      bcftools:
+        type: integer
+        minimum: 1
+      plink:
+        type: integer
+        minimum: 1

@@ -1,0 +1,22 @@
+# VM-local reference and cohort data
+data/ITvarGM.vcf.gz
+data/ITvarGM.vcf.gz.tbi
+data/*.vcf
+data/*.vcf.gz
+data/*.vcf.gz.tbi
+data/*.bcf
+data/*.bcf.csi
+data/*.csv
+data/*.xlsx
+
+# User-provided reference genome
+resources/*.fa
+resources/*.fa.fai
+resources/*.fasta
+resources/*.fasta.fai
+
+# Workflow runtime artifacts
+results/
+logs/
+benchmarks/
+.snakemake/
