@@ -1,4 +1,5 @@
 # Import pymodules
+import sys
 import glob
 import pandas as pd
 import json
@@ -29,12 +30,17 @@ def call_json(update=update):
             # json_normalize is used to create a stacked dataframe from json `data`
             # sold is set of samples already processed
             sold = set( pd.json_normalize(data,record_path=['callsets']).sample_name.values )
-            samples_to_joint = [ name for name in sall^sold ]
+            samples_to_joint = [ name for name in sall - sold ]
+            print('****Samples to be processed in this run*****')
+            print(samples_to_joint)
         else:
             #first run
             samples_to_joint = [ name for name in sall]
     gvcf = []
     for s in samples_to_joint:
-        output_path = df[df['Sample'].str.contains(s)]['OutputPath'].values[0]
+        valid_rows = df[(df['Sample'] == s) & (df['OutputPath'].notna())]
+        if valid_rows.empty:
+            continue
+        output_path = valid_rows['OutputPath'].values[0]
         gvcf.append(f"{output_path}/gatk_gvcf/{s}_sort_nodup.g.vcf.gz")
     return gvcf
