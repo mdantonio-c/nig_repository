@@ -1,12 +1,14 @@
 from faker import Faker
 from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
-from nig.tests import create_test_env, delete_test_env
+from nig.tests import TestEnv, test_env  # noqa: F401
 from restapi.connectors import neo4j
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
 class TestApp(BaseTests):
-    def test_api_dataset(self, client: FlaskClient, faker: Faker) -> None:
+    def test_api_dataset(
+        self, client: FlaskClient, faker: Faker, test_env: TestEnv  # noqa: F811
+    ) -> None:
         # setup the test env
         (
             admin_headers,
@@ -20,7 +22,7 @@ class TestApp(BaseTests):
             user_B2_headers,
             study1_uuid,
             study2_uuid,
-        ) = create_test_env(client, faker, study=True)
+        ) = test_env.setup(study=True)
 
         # create a new dataset
         dataset1 = {"name": faker.pystr(), "description": faker.pystr()}
@@ -45,10 +47,15 @@ class TestApp(BaseTests):
         assert r.status_code == 404
 
         # create a technical
+        technical = {
+            "name": faker.pystr(),
+            "platform": "Illumina",
+            "enrichment_kit": "Twist Human Core Exome",
+        }
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
             headers=user_B1_headers,
-            json={"name": faker.pystr()},
+            json=technical,
         )
         assert r.status_code == 200
         technical_uuid = self.get_content(r)
@@ -284,16 +291,4 @@ class TestApp(BaseTests):
         assert not dir_path.is_dir()
         assert not output_path.is_dir()
 
-        # delete all the elements used by the test
-        delete_test_env(
-            client,
-            user_A1_headers,
-            user_B1_headers,
-            user_B1_uuid,
-            user_B2_uuid,
-            user_A1_uuid,
-            uuid_group_A,
-            uuid_group_B,
-            study1_uuid=study1_uuid,
-            study2_uuid=study2_uuid,
-        )
+        # teardown is handled by the test_env fixture (exception-safe)

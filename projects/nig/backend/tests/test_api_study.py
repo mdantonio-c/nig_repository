@@ -1,11 +1,13 @@
 from faker import Faker
 from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
-from nig.tests import create_test_env, delete_test_env
+from nig.tests import TestEnv, test_env  # noqa: F401
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
 class TestApp(BaseTests):
-    def test_api_study(self, client: FlaskClient, faker: Faker) -> None:
+    def test_api_study(
+        self, client: FlaskClient, faker: Faker, test_env: TestEnv  # noqa: F811
+    ) -> None:
         # setup the test env
         (
             admin_headers,
@@ -19,7 +21,7 @@ class TestApp(BaseTests):
             user_B2_headers,
             study1_uuid,
             study2_uuid,
-        ) = create_test_env(client, faker, study=False)
+        ) = test_env.setup(study=False)
 
         # create a new study for the group B
         random_name = faker.pystr()
@@ -28,6 +30,8 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         study1_uuid = self.get_content(r)
         assert isinstance(study1_uuid, str)
+        # track for exception-safe teardown
+        test_env.track_study(study1_uuid, user_B1_headers)
 
         # create a new study for the group A
         random_name2 = faker.pystr()
@@ -36,6 +40,7 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         study2_uuid = self.get_content(r)
         assert isinstance(study2_uuid, str)
+        test_env.track_study(study2_uuid, user_A1_headers)
 
         # check the directory was created
         dir_path = INPUT_ROOT.joinpath(uuid_group_A, study2_uuid)
@@ -123,7 +128,11 @@ class TestApp(BaseTests):
         file_uuid = file_list[0]["uuid"]
 
         # create a new technical to test if it's deleted with the study
-        techmeta = {"name": faker.pystr()}
+        techmeta = {
+            "name": faker.pystr(),
+            "platform": "Illumina",
+            "enrichment_kit": "Twist Human Core Exome",
+            }
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/technicals",
             headers=user_A1_headers,
@@ -178,14 +187,4 @@ class TestApp(BaseTests):
         assert isinstance(not_existent_message, str)
         assert not_existent_message == not_authorized_message
 
-        # delete all the elements used by the test
-        delete_test_env(
-            client,
-            user_A1_headers,
-            user_B1_headers,
-            user_B1_uuid,
-            user_B2_uuid,
-            user_A1_uuid,
-            uuid_group_A,
-            uuid_group_B,
-        )
+        # teardown is handled by the test_env fixture (exception-safe)
