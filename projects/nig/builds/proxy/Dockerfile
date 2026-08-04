@@ -28,6 +28,11 @@ RUN sed -i '/^module(load="imklog")/ s/^/#/' /etc/rsyslog.conf
 # copy the nginx configuration for qradar
 COPY nginx_qradar.conf /etc/nginx/nginx.conf
 
+# Dedicated password-reset rate limiting. The exact-match location overrides the
+# shared /auth location while preserving its proxy and security-header behavior.
+COPY password_reset_limit.preconf /etc/nginx/sites-enabled/password_reset_limit.preconf
+COPY password_reset.service /etc/nginx/sites-enabled/password_reset.service
+
 # add the rsyslog starting to the docker entrypoint
 RUN sed -i "$(($(wc -l < /usr/local/bin/docker-entrypoint) - 4))i rsyslogd"  /usr/local/bin/docker-entrypoint
 RUN sed -i "$(($(wc -l < /usr/local/bin/docker-entrypoint) - 4))i echo 'rsyslog started'" /usr/local/bin/docker-entrypoint

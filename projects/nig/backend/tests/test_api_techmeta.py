@@ -1,10 +1,10 @@
 from faker import Faker
-from nig.tests import create_test_env, delete_test_env
+from nig.tests import test_env
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
 class TestApp(BaseTests):
-    def test_api_techmeta(self, client: FlaskClient, faker: Faker) -> None:
+    def test_api_techmeta(self, client: FlaskClient, faker: Faker, test_env) -> None:
         # setup the test env
         (
             admin_headers,
@@ -18,13 +18,14 @@ class TestApp(BaseTests):
             user_B2_headers,
             study1_uuid,
             study2_uuid,
-        ) = create_test_env(client, faker, study=True)
+        ) = test_env.setup(study=True)
 
         # create a new techmeta
         techmeta1 = {
             "name": faker.pystr(),
             "sequencing_date": faker.date(),
-            "platform": "Other",
+            "platform": "Illumina",
+            "enrichment_kit": "Twist Human Core Exome",
         }
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
@@ -47,7 +48,8 @@ class TestApp(BaseTests):
         techmeta2 = {
             "name": faker.pystr(),
             "sequencing_date": faker.date(),
-            "platform": "Other",
+            "platform": "Illumina",
+            "enrichment_kit": "Twist Human Core Exome",
         }
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
@@ -180,17 +182,3 @@ class TestApp(BaseTests):
         not_existent_message = self.get_content(r)
         assert isinstance(not_existent_message, str)
         assert not_existent_message == not_authorized_message
-
-        # delete all the elements used by the test
-        delete_test_env(
-            client,
-            user_A1_headers,
-            user_B1_headers,
-            user_B1_uuid,
-            user_B2_uuid,
-            user_A1_uuid,
-            uuid_group_A,
-            uuid_group_B,
-            study1_uuid=study1_uuid,
-            study2_uuid=study2_uuid,
-        )
