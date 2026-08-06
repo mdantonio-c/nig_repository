@@ -7,7 +7,10 @@ project:
 
 variables:
   roles:
-    staff_user: disabled
+    staff_user: Admin
+
+  roles_descriptions:
+    staff_user: Operational Administrator
 
   submodules:
     quality-checks:
@@ -42,6 +45,9 @@ variables:
     AUTH_DISABLE_UNUSED_CREDENTIALS_AFTER: 180
     AUTH_MAX_LOGIN_ATTEMPTS: 3
     AUTH_SECOND_FACTOR_AUTHENTICATION: 1
+    # Production always enforces Root integrity. Set this to 1 in development
+    # or staging after running the admin hierarchy migration.
+    AUTH_ADMIN_HIERARCHY_ENFORCE: 0
     AUTH_TOKEN_IP_GRACE_PERIOD: 60
     ALLOW_PASSWORD_RESET: 1
     #SSL_VERIFY_CLIENT: 1
