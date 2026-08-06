@@ -16,7 +16,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from neo4j import GraphDatabase, READ_ACCESS
+# The runtime image keeps Conda first in PATH for the genomics pipeline, while
+# RAPyDo and its Neo4j driver are installed in the system Python site-packages.
+# Make the read-only operational script work with either interpreter without
+# installing an additional, potentially incompatible driver in Conda.
+try:
+    from neo4j import GraphDatabase, READ_ACCESS
+except ModuleNotFoundError:
+    system_site_packages = (
+        f"/usr/local/lib/python{sys.version_info.major}."
+        f"{sys.version_info.minor}/dist-packages"
+    )
+    if system_site_packages not in sys.path:
+        sys.path.append(system_site_packages)
+    from neo4j import GraphDatabase, READ_ACCESS
 
 EXPECTED_ROLES = {
     "admin_root",

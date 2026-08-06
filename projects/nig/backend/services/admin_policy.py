@@ -11,6 +11,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
 
+from restapi.env import Env
 from restapi.exceptions import Forbidden
 from restapi.services.authentication import BaseAuthentication, Role
 
@@ -104,7 +105,11 @@ def roles_for_user(user: Any, auth: Optional[Any] = None) -> Set[str]:
 
 
 def configured_root_username() -> str:
-    return (BaseAuthentication.default_user or "").lower()
+    return (
+        BaseAuthentication.default_user
+        or Env.get("AUTH_DEFAULT_USERNAME", "")
+        or ""
+    ).lower()
 
 
 def is_root_identity(

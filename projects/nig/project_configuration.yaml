@@ -7,7 +7,7 @@ project:
 
 variables:
   roles:
-    staff_user: Admin
+    staff_user: Staff
 
   roles_descriptions:
     staff_user: Operational Administrator

@@ -67,7 +67,12 @@ def audit_admin_action(
     }
     save_event_log(
         event=Events.modify,
-        target=target,
+        # Keep hierarchy audit records separate from RAPyDo's resource event
+        # stream.  The inherited endpoint already writes the canonical User
+        # create/read/update/delete event; making this supplemental record a
+        # User event would change consumers' ``last User event`` semantics.
+        # The redacted target identity remains in ``payload.target_email``.
+        target=None,
         payload=payload,
         user=actor,
         ip=ip,
@@ -113,8 +118,12 @@ def notify_admin_action(
     """Notify affected users without including credentials or tokens."""
 
     fields = sorted(set(changed_fields))
-    before = before or {}
-    after = after or (snapshot_user(target, auth) if target is not None else {})
+    before = before if before is not None else {}
+    after = (
+        after
+        if after is not None
+        else (snapshot_user(target, auth) if target is not None else {})
+    )
     data = {
         "action": action,
         "actor": str(getattr(actor, "email", "")),

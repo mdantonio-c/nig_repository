@@ -15,7 +15,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from neomodel import db as neo4j_db
+# The runtime image keeps Conda first in PATH for the genomics pipeline, while
+# RAPyDo and Neomodel are installed in the system Python site-packages.  This
+# operational script must work with either interpreter.
+try:
+    from neomodel import db as neo4j_db
+except ModuleNotFoundError:
+    system_site_packages = (
+        f"/usr/local/lib/python{sys.version_info.major}."
+        f"{sys.version_info.minor}/dist-packages"
+    )
+    if system_site_packages not in sys.path:
+        sys.path.append(system_site_packages)
+    from neomodel import db as neo4j_db
+
 from restapi.connectors import Connector
 from restapi.env import Env
 from restapi.utilities.logs import log

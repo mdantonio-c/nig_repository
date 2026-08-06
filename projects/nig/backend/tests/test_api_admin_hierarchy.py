@@ -3,10 +3,11 @@ from typing import Any, Dict
 import orjson
 from faker import Faker
 from nig.tests import TestEnv, test_env  # noqa: F401
+from restapi.config import API_URL
 from restapi.connectors import Connector
-from restapi.endpoints.admin_users import AdminUsers
 from restapi.services.authentication import BaseAuthentication, Role
 from restapi.tests import API_URI, AUTH_URI, BaseTests, FlaskClient
+from restapi.utilities.logs import Events
 
 
 class TestApp(BaseTests):
@@ -67,6 +68,12 @@ class TestApp(BaseTests):
         peer = self._create_staff_as_staff(client, faker, staff_headers, group_a)
         peer_uuid = str(peer["uuid"])
         test_env.user_uuids.append(peer_uuid)
+
+        # The supplemental hierarchy audit entry must not hide the canonical
+        # framework User creation event from existing audit consumers.
+        events = self.get_last_events(1, filters={"target_type": "User"})
+        assert events[0].event == Events.create.value
+        assert events[0].target_id == peer_uuid
 
         response = client.get(f"{API_URI}/admin/users", headers=staff_headers)
         assert response.status_code == 200
@@ -155,6 +162,8 @@ class TestApp(BaseTests):
         assert auth.get_tokens(user=staff_user) == []
 
     def test_admin_hierarchy_routes_and_openapi(self, client: FlaskClient) -> None:
+        from restapi.endpoints.admin_users import AdminUsers
+
         assert AdminUsers.post.__module__ == "nig.endpoints.admin_users"
         assert AdminUsers.put.__module__ == "nig.endpoints.admin_users"
         assert AdminUsers.delete.__module__ == "nig.endpoints.admin_users"
@@ -162,12 +171,12 @@ class TestApp(BaseTests):
         collection_rules = [
             rule
             for rule in client.application.url_map.iter_rules()
-            if rule.rule == f"{API_URI}/admin/users"
+            if rule.rule.rstrip("/") == f"{API_URL}/admin/users"
         ]
         item_rules = [
             rule
             for rule in client.application.url_map.iter_rules()
-            if rule.rule == f"{API_URI}/admin/users/<user_id>"
+            if rule.rule.rstrip("/") == f"{API_URL}/admin/users/<user_id>"
         ]
         assert len([rule for rule in collection_rules if "POST" in rule.methods]) == 1
         assert len([rule for rule in item_rules if "PUT" in rule.methods]) == 1
@@ -177,8 +186,9 @@ class TestApp(BaseTests):
         response = client.get(f"{API_URI}/specs", headers=headers)
         assert response.status_code == 200
         specs = self.get_content(response)
-        collection = specs["paths"]["/admin/users"]
-        item = specs["paths"]["/admin/users/{user_id}"]
+        collection = specs["paths"][AdminUsers.post.uri]
+        item_path = AdminUsers.put.uri.replace("<user_id>", "{user_id}")
+        item = specs["paths"][item_path]
         assert "post" in collection
         assert "put" in item
         assert "delete" in item
@@ -186,8 +196,11 @@ class TestApp(BaseTests):
         assert "403" in item["put"]["responses"]
         assert "403" in item["delete"]["responses"]
 
+        profile = client.get(f"{AUTH_URI}/profile", headers=headers)
+        assert profile.status_code == 200
+        root_uuid = str(self.get_content(profile)["uuid"])
         put_schema = self.get_dynamic_input_schema(
-            client, "admin/users/unused", headers, method="put"
+            client, f"admin/users/{root_uuid}", headers, method="put"
         )
         fields = {field["key"]: field for field in put_schema}
         assert "email" in fields
