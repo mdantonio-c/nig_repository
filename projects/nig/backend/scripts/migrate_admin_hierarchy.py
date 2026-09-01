@@ -222,17 +222,19 @@ def apply_migration(
         if plan["errors"]:
             raise RuntimeError("; ".join(plan["errors"]))
 
+        role_names = {str(role.name) for role in auth.get_roles()}
+        staff_role_created = STAFF_ROLE not in role_names
         rollback_report = {
             "report_type": "nig_admin_hierarchy_rollback",
             "schema_version": 1,
             "generated_at": datetime.utcnow().isoformat() + "Z",
             "default_username": _default_username(),
+            "staff_role_created": staff_role_created,
             "users": [change["before"] for change in plan["changes"]],
         }
         _write_private(rollback_output, rollback_report)
 
-        role_names = {str(role.name) for role in auth.get_roles()}
-        if STAFF_ROLE not in role_names:
+        if staff_role_created:
             auth.create_role(name=STAFF_ROLE, description="Operational Administrator")
 
         for change in plan["changes"]:
@@ -311,6 +313,28 @@ def rollback_migration(auth: Any, report: Dict[str, Any]) -> Dict[str, Any]:
             auth.save_user(user)
             revoked += _revoke_tokens(auth, user)
             changed += 1
+
+        if report.get("staff_role_created"):
+            staff_users = [
+                user
+                for user in auth.get_users()
+                if STAFF_ROLE in roles_for_user(user, auth)
+            ]
+            if staff_users:
+                raise RuntimeError(
+                    "Rollback cannot remove staff_user because it is assigned to "
+                    "users outside the migration snapshot"
+                )
+            staff_role = next(
+                (
+                    role
+                    for role in auth.get_roles()
+                    if str(getattr(role, "name", "")) == STAFF_ROLE
+                ),
+                None,
+            )
+            if staff_role is not None:
+                staff_role.delete()
         neo4j_db.commit()
     except Exception:
         neo4j_db.rollback()

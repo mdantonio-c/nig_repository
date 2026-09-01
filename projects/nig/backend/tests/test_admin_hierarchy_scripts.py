@@ -7,8 +7,10 @@ from nig.scripts import migrate_admin_hierarchy
 from nig.scripts.migrate_admin_hierarchy import (
     APPLY_CONFIRMATION,
     ROLLBACK_CONFIRMATION,
+    apply_migration,
     build_plan,
     parse_args as parse_migration_args,
+    rollback_migration,
 )
 from nig.scripts.precheck_admin_hierarchy import (
     FORBIDDEN_CYPHER,
@@ -128,3 +130,125 @@ def test_migration_plan_preserves_non_root_expiration(monkeypatch) -> None:
 
     assert plan["changes"][0]["after"]["roles"] == ["staff_user"]
     assert plan["changes"][0]["after"]["expiration"] == expiration.isoformat()
+
+
+def test_rollback_removes_staff_role_created_by_migration(monkeypatch) -> None:
+    class User:
+        uuid = "legacy-admin"
+        email = "legacy@example.org"
+        is_active = True
+        expiration = None
+
+    class Role:
+        name = "staff_user"
+        deleted = False
+
+        def delete(self) -> None:
+            self.deleted = True
+
+    class Auth:
+        user = User()
+        role = Role()
+
+        def get_user(self, *, user_id=None, username=None):
+            return self.user if user_id == self.user.uuid else None
+
+        def get_users(self):
+            return [self.user]
+
+        def get_roles_from_user(self, user):
+            return ["admin_root"]
+
+        def get_roles(self):
+            return [self.role]
+
+        def link_roles(self, user, roles):
+            assert roles == ["admin_root"]
+
+        def save_user(self, user):
+            return True
+
+        def get_tokens(self, user):
+            return []
+
+    class Transaction:
+        def begin(self):
+            pass
+
+        def commit(self):
+            pass
+
+        def rollback(self):
+            pass
+
+    monkeypatch.setattr(migrate_admin_hierarchy, "neo4j_db", Transaction())
+    monkeypatch.setattr(
+        migrate_admin_hierarchy, "_default_username", lambda: "root@example.org"
+    )
+
+    result = rollback_migration(
+        Auth(),
+        {
+            "report_type": "nig_admin_hierarchy_rollback",
+            "default_username": "root@example.org",
+            "staff_role_created": True,
+            "users": [
+                {
+                    "uuid": "legacy-admin",
+                    "roles": ["admin_root"],
+                    "is_active": True,
+                    "expiration": None,
+                }
+            ],
+        },
+    )
+
+    assert result["restored_users"] == 1
+    assert Auth.role.deleted is True
+
+
+def test_apply_records_when_it_creates_staff_role(monkeypatch, tmp_path) -> None:
+    class Role:
+        name = "admin_root"
+
+    class Auth:
+        created_role = None
+
+        def get_roles(self):
+            return [Role()]
+
+        def create_role(self, name, description):
+            self.created_role = (name, description)
+
+    class Transaction:
+        def begin(self):
+            pass
+
+        def commit(self):
+            pass
+
+        def rollback(self):
+            pass
+
+    class Integrity:
+        def as_dict(self):
+            return {"valid": True}
+
+    monkeypatch.setattr(migrate_admin_hierarchy, "neo4j_db", Transaction())
+    monkeypatch.setattr(migrate_admin_hierarchy, "validate_precheck", lambda *args: None)
+    monkeypatch.setattr(
+        migrate_admin_hierarchy,
+        "build_plan",
+        lambda auth: {"errors": [], "changes": []},
+    )
+    monkeypatch.setattr(
+        migrate_admin_hierarchy, "assert_root_integrity", lambda auth: Integrity()
+    )
+
+    auth = Auth()
+    rollback = tmp_path / "rollback.json"
+    result = apply_migration(auth, {}, rollback, acknowledge_errors=False)
+
+    assert auth.created_role == ("staff_user", "Operational Administrator")
+    assert result["changed_users"] == 0
+    assert migrate_admin_hierarchy._load_json(rollback)["staff_role_created"] is True
