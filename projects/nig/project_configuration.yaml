@@ -45,6 +45,10 @@ variables:
     AUTH_DISABLE_UNUSED_CREDENTIALS_AFTER: 180
     AUTH_MAX_LOGIN_ATTEMPTS: 3
     AUTH_SECOND_FACTOR_AUTHENTICATION: 1
+    # Root TOTP is required by default. Development/test deployments may set this
+    # to 0 together with AUTH_SECOND_FACTOR_AUTHENTICATION without invalidating
+    # the Root/Staff graph hierarchy.
+    AUTH_ROOT_TOTP_REQUIRED: 1
     # Production always enforces Root integrity. Set this to 1 in development
     # or staging after running the admin hierarchy migration.
     AUTH_ADMIN_HIERARCHY_ENFORCE: 0

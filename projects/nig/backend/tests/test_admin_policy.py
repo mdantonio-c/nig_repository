@@ -177,3 +177,35 @@ def test_root_integrity_detects_second_admin_and_invalid_root(
     root.expiration = datetime.now(pytz.utc)
     with pytest.raises(RootIntegrityError):
         assert_root_integrity(auth)
+
+
+def test_root_integrity_allows_dev_totp_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(BaseAuthentication, "default_user", "root@example.org")
+    monkeypatch.setattr(BaseAuthentication, "SECOND_FACTOR_AUTHENTICATION", False)
+    monkeypatch.setattr(
+        "nig.services.admin_policy.Env.get_bool",
+        lambda name, default=False: False
+        if name == "AUTH_ROOT_TOTP_REQUIRED"
+        else default,
+    )
+    root = FakeUser("root", "root@example.org", ["admin_root"])
+
+    auth = FakeAuth([root])
+    assert assert_root_integrity(auth).valid
+    assert validate_create(root, ["staff_user", "normal_user"], {}, auth) == {
+        "staff_user",
+        "normal_user",
+    }
+
+
+def test_root_integrity_requires_totp_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(BaseAuthentication, "default_user", "root@example.org")
+    monkeypatch.setattr(BaseAuthentication, "SECOND_FACTOR_AUTHENTICATION", False)
+    root = FakeUser("root", "root@example.org", ["admin_root"])
+
+    with pytest.raises(RootIntegrityError, match="Global TOTP authentication"):
+        assert_root_integrity(FakeAuth([root]))

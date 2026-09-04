@@ -15,7 +15,7 @@ from restapi.customizer import FlaskRequest
 from restapi.endpoints.admin_users import AdminUsers
 from restapi.endpoints.admin_users import inject_user as core_inject_user
 from restapi.endpoints.schemas import (
-    admin_user_post_input,
+    admin_user_post_input as core_admin_user_post_input,
     admin_user_put_input as core_admin_user_put_input,
 )
 from restapi.env import Env
@@ -46,13 +46,47 @@ _CORE_DELETE = inspect.unwrap(AdminUsers.delete)
 NOT_FOUND_MESSAGE = "This user cannot be found or you are not authorized"
 
 
+def _assignable_roles_field() -> Any:
+    """Return a roles field that never exposes the immutable Root role."""
+
+    roles = [
+        (Role.STAFF.value, "Operational Administrator"),
+        (Role.COORDINATOR.value, "Group Coordinator"),
+        (Role.USER.value, "Normal User"),
+    ]
+    return fields.List(
+        fields.Str(
+            validate=validate.OneOf(
+                choices=[role for role, _ in roles],
+                labels=[label for _, label in roles],
+            )
+        ),
+        dump_default=[Role.USER.value],
+        required=False,
+        unique=True,
+        metadata={"label": "Roles", "description": ""},
+    )
+
+
+def admin_user_post_input(request: FlaskRequest) -> Type[Schema]:
+    """Hide ``admin_root`` from every administrative creation form."""
+
+    base_schema = core_admin_user_post_input(request)
+
+    class NIGAdminUserCreate(base_schema):  # type: ignore
+        roles = _assignable_roles_field()
+
+    return NIGAdminUserCreate
+
+
 def admin_user_put_input(request: FlaskRequest) -> Type[Schema]:
-    """Extend the dynamic framework PUT schema with the approved email field."""
+    """Extend the PUT schema while hiding the immutable Root role."""
 
     base_schema = core_admin_user_put_input(request)
 
     class NIGAdminUserUpdate(base_schema):  # type: ignore
         email = fields.Email(required=False, validate=validate.Length(max=100))
+        roles = _assignable_roles_field()
 
     return NIGAdminUserUpdate
 

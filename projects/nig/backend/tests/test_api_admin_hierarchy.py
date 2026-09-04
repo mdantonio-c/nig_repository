@@ -56,6 +56,20 @@ class TestApp(BaseTests):
             _,
             _,
         ) = test_env.setup(study=False)
+        root_headers, _ = self.do_login(client, None, None)
+        assert root_headers is not None
+
+        create_schema = self.get_dynamic_input_schema(
+            client, "admin/users", root_headers
+        )
+        roles_field = next(field for field in create_schema if field["key"] == "roles")
+        role_options = set(roles_field["options"])
+        assert Role.ADMIN.value not in role_options
+        assert role_options == {
+            Role.STAFF.value,
+            Role.COORDINATOR.value,
+            Role.USER.value,
+        }
 
         staff_uuid, staff_data = self.create_user(
             client, data={"group": group_a}, roles=[Role.STAFF]
@@ -205,3 +219,5 @@ class TestApp(BaseTests):
         fields = {field["key"]: field for field in put_schema}
         assert "email" in fields
         assert not fields["email"]["required"]
+        role_options = set(fields["roles"]["options"])
+        assert Role.ADMIN.value not in role_options

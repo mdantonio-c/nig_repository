@@ -329,7 +329,10 @@ def inspect_root_integrity(auth: Any) -> RootIntegrityReport:
     missing_roles = sorted(EXPECTED_ROLE_NODES - role_nodes)
     if missing_roles:
         errors.append("One or more required role nodes are missing")
-    if not BaseAuthentication.SECOND_FACTOR_AUTHENTICATION:
+    if (
+        Env.get_bool("AUTH_ROOT_TOTP_REQUIRED", True)
+        and not BaseAuthentication.SECOND_FACTOR_AUTHENTICATION
+    ):
         errors.append("Global TOTP authentication is disabled")
 
     return RootIntegrityReport(
