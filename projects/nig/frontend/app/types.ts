@@ -96,6 +96,11 @@ export interface TechnicalMetadata extends ResourceIdentity {
 
 export interface Technicals extends Array<TechnicalMetadata> {}
 
+export interface TechnicalOptions {
+  platforms: string[];
+  platform_kits: { [platform: string]: string[] };
+}
+
 export interface Stats {
   num_datasets: number;
   num_datasets_with_vcf: number;

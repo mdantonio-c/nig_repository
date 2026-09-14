@@ -1,10 +1,17 @@
 from faker import Faker
+from nig.endpoints import tech_metadata
 from nig.tests import test_env
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
 class TestApp(BaseTests):
-    def test_api_techmeta(self, client: FlaskClient, faker: Faker, test_env) -> None:
+    def test_api_techmeta(
+        self,
+        client: FlaskClient,
+        faker: Faker,
+        test_env,
+        monkeypatch,
+    ) -> None:
         # setup the test env
         (
             admin_headers,
@@ -265,5 +272,77 @@ class TestApp(BaseTests):
         # cleanup: deleting the genome study also cascades its technical
         r = client.delete(
             f"{API_URI}/study/{genome_study_uuid}", headers=user_B1_headers
+        )
+        assert r.status_code == 204
+
+        # --- issue #62: enrichment_kit filtered by platform ---
+        r = client.get(f"{API_URI}/technicals/options", headers=user_B1_headers)
+        assert r.status_code == 200
+        options = self.get_content(r)
+        assert isinstance(options, dict)
+        assert set(options["platforms"]) == {
+            "Illumina",
+            "Ion",
+            "Pacific Biosciences",
+        }
+        assert set(options["platform_kits"].keys()) == set(options["platforms"])
+
+        # temporarily narrow one platform's compatible kits to obtain a
+        # combination that is globally valid (both platform and kit are still
+        # accepted by the plain OneOf validators) but incompatible with each
+        # other, to exercise the cross-field validation
+        monkeypatch.setitem(
+            tech_metadata.PLATFORM_KITS, "Ion", ["Agilent SureSelectXT AllExon V.5"]
+        )
+
+        # POST with an incompatible platform/kit combination is rejected
+        r = client.post(
+            f"{API_URI}/study/{study1_uuid}/technicals",
+            headers=user_B1_headers,
+            json={
+                "name": faker.pystr(),
+                "platform": "Ion",
+                "enrichment_kit": "Twist Human Core Exome",
+            },
+        )
+        assert r.status_code == 400
+
+        # POST with a compatible combination succeeds
+        r = client.post(
+            f"{API_URI}/study/{study1_uuid}/technicals",
+            headers=user_B1_headers,
+            json={
+                "name": faker.pystr(),
+                "platform": "Ion",
+                "enrichment_kit": "Agilent SureSelectXT AllExon V.5",
+            },
+        )
+        assert r.status_code == 200
+        ion_techmeta_uuid = self.get_content(r)
+        assert isinstance(ion_techmeta_uuid, str)
+
+        # PUT that changes only the kit, making it incompatible with the
+        # persisted platform, is rejected
+        r = client.put(
+            f"{API_URI}/technical/{ion_techmeta_uuid}",
+            headers=user_B1_headers,
+            json={"enrichment_kit": "Twist Human Core Exome"},
+        )
+        assert r.status_code == 400
+
+        # PUT that changes platform and kit together, consistently, succeeds
+        monkeypatch.setitem(
+            tech_metadata.PLATFORM_KITS, "Illumina", ["Twist Human Core Exome"]
+        )
+        r = client.put(
+            f"{API_URI}/technical/{ion_techmeta_uuid}",
+            headers=user_B1_headers,
+            json={"platform": "Illumina", "enrichment_kit": "Twist Human Core Exome"},
+        )
+        assert r.status_code == 204
+
+        # cleanup
+        r = client.delete(
+            f"{API_URI}/technical/{ion_techmeta_uuid}", headers=user_B1_headers
         )
         assert r.status_code == 204
