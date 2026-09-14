@@ -58,8 +58,14 @@ class TestEnv:
         )
         return uuid, headers
 
-    def create_study(self, headers: Optional[Dict[str, str]]) -> str:
-        study = {"name": self.faker.pystr(), "description": self.faker.pystr()}
+    def create_study(
+        self, headers: Optional[Dict[str, str]], study_type: str = "exome"
+    ) -> str:
+        study = {
+            "name": self.faker.pystr(),
+            "description": self.faker.pystr(),
+            "study_type": study_type,
+        }
         r = self.client.post(f"{API_URI}/study", headers=headers, json=study)
         assert r.status_code == 200
         uuid = BaseTests.get_content(r)
@@ -237,13 +243,21 @@ def create_test_env(client: FlaskClient, faker: Faker, study: bool = False) -> A
     study2_uuid = None
     if study:
         # create a study in group B
-        study1 = {"name": faker.pystr(), "description": faker.pystr()}
+        study1 = {
+            "name": faker.pystr(),
+            "description": faker.pystr(),
+            "study_type": "exome",
+        }
         r = client.post(f"{API_URI}/study", headers=user_B1_headers, json=study1)
         assert r.status_code == 200
         study1_uuid = BaseTests.get_content(r)
 
         # create a study in group A
-        study2 = {"name": faker.pystr(), "description": faker.pystr()}
+        study2 = {
+            "name": faker.pystr(),
+            "description": faker.pystr(),
+            "study_type": "exome",
+        }
         r = client.post(f"{API_URI}/study", headers=user_A1_headers, json=study2)
         assert r.status_code == 200
         study2_uuid = BaseTests.get_content(r)

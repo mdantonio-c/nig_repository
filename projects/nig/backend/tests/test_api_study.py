@@ -25,7 +25,11 @@ class TestApp(BaseTests):
 
         # create a new study for the group B
         random_name = faker.pystr()
-        study1 = {"name": random_name, "description": faker.pystr()}
+        study1 = {
+            "name": random_name,
+            "description": faker.pystr(),
+            "study_type": "exome",
+        }
         r = client.post(f"{API_URI}/study", headers=user_B1_headers, json=study1)
         assert r.status_code == 200
         study1_uuid = self.get_content(r)
@@ -35,12 +39,96 @@ class TestApp(BaseTests):
 
         # create a new study for the group A
         random_name2 = faker.pystr()
-        study2 = {"name": random_name2, "description": faker.pystr()}
+        study2 = {
+            "name": random_name2,
+            "description": faker.pystr(),
+            "study_type": "exome",
+        }
         r = client.post(f"{API_URI}/study", headers=user_A1_headers, json=study2)
         assert r.status_code == 200
         study2_uuid = self.get_content(r)
         assert isinstance(study2_uuid, str)
         test_env.track_study(study2_uuid, user_A1_headers)
+
+        # --- study_type (issue #60) ---
+        # POST without study_type is rejected
+        r = client.post(
+            f"{API_URI}/study",
+            headers=user_B1_headers,
+            json={"name": faker.pystr(), "description": faker.pystr()},
+        )
+        assert r.status_code == 400
+
+        # POST with an invalid study_type is rejected
+        r = client.post(
+            f"{API_URI}/study",
+            headers=user_B1_headers,
+            json={
+                "name": faker.pystr(),
+                "description": faker.pystr(),
+                "study_type": faker.pystr(),
+            },
+        )
+        assert r.status_code == 400
+
+        # POST with study_type=genome succeeds and is round-tripped correctly
+        genome_study = {
+            "name": faker.pystr(),
+            "description": faker.pystr(),
+            "study_type": "genome",
+        }
+        r = client.post(
+            f"{API_URI}/study", headers=user_B1_headers, json=genome_study
+        )
+        assert r.status_code == 200
+        genome_study_uuid = self.get_content(r)
+        assert isinstance(genome_study_uuid, str)
+        test_env.track_study(genome_study_uuid, user_B1_headers)
+
+        r = client.get(f"{API_URI}/study/{genome_study_uuid}", headers=user_B1_headers)
+        assert r.status_code == 200
+        genome_study_response = self.get_content(r)
+        assert isinstance(genome_study_response, dict)
+        assert genome_study_response["study_type"] == "genome"
+
+        r = client.get(f"{API_URI}/study", headers=user_B1_headers)
+        assert r.status_code == 200
+        study_list = self.get_content(r)
+        assert isinstance(study_list, list)
+        by_uuid = {s["uuid"]: s for s in study_list}
+        assert by_uuid[study1_uuid]["study_type"] == "exome"
+        assert by_uuid[genome_study_uuid]["study_type"] == "genome"
+
+        # study_type is immutable: PUT does not accept it
+        r = client.put(
+            f"{API_URI}/study/{study1_uuid}",
+            headers=user_B1_headers,
+            json={"study_type": "genome"},
+        )
+        assert r.status_code == 400
+
+        # POST get_schema exposes study_type with human readable labels
+        r = client.post(
+            f"{API_URI}/study",
+            headers=user_B1_headers,
+            json={"get_schema": True},
+        )
+        assert r.status_code == 200
+        schema = self.get_content(r)
+        assert isinstance(schema, list)
+        study_type_field = next(f for f in schema if f["key"] == "study_type")
+        assert study_type_field["options"] == {
+            "exome": "Exome (WES)",
+            "genome": "Genome (WGS)",
+        }
+
+        # done verifying the genome study: remove it now so it does not affect
+        # the study-count assertions below (it is tracked for teardown too, and
+        # a repeated delete during teardown is tolerated as a 404)
+        r = client.delete(
+            f"{API_URI}/study/{genome_study_uuid}", headers=user_B1_headers
+        )
+        assert r.status_code == 204
 
         # check the directory was created
         dir_path = INPUT_ROOT.joinpath(uuid_group_A, study2_uuid)
