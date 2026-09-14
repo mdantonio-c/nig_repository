@@ -57,6 +57,7 @@
         </ngx-datatable-column>
         <!-- Platform -->
         <ngx-datatable-column
+          *ngIf="!isGenome"
           prop="enrichment_kit"
           name="Enrichment Kit"
           [flexGrow]="1"

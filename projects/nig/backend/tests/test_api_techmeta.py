@@ -182,3 +182,88 @@ class TestApp(BaseTests):
         not_existent_message = self.get_content(r)
         assert isinstance(not_existent_message, str)
         assert not_existent_message == not_authorized_message
+
+        # --- issue #61: enrichment_kit is optional/absent for genome studies ---
+        genome_study_uuid = test_env.create_study(user_B1_headers, study_type="genome")
+
+        # POST without enrichment_kit succeeds for a genome study
+        genome_techmeta = {"name": faker.pystr(), "platform": "Illumina"}
+        r = client.post(
+            f"{API_URI}/study/{genome_study_uuid}/technicals",
+            headers=user_B1_headers,
+            json=genome_techmeta,
+        )
+        assert r.status_code == 200
+        genome_techmeta_uuid = self.get_content(r)
+        assert isinstance(genome_techmeta_uuid, str)
+
+        # POST with enrichment_kit is rejected for a genome study (unknown field)
+        r = client.post(
+            f"{API_URI}/study/{genome_study_uuid}/technicals",
+            headers=user_B1_headers,
+            json={**genome_techmeta, "enrichment_kit": "Twist Human Core Exome"},
+        )
+        assert r.status_code == 400
+
+        # POST without enrichment_kit is rejected for an exome study
+        r = client.post(
+            f"{API_URI}/study/{study1_uuid}/technicals",
+            headers=user_B1_headers,
+            json={"name": faker.pystr(), "platform": "Illumina"},
+        )
+        assert r.status_code == 400
+
+        # get_schema reflects the parent study type: no enrichment_kit for genome
+        r = client.post(
+            f"{API_URI}/study/{genome_study_uuid}/technicals",
+            headers=user_B1_headers,
+            json={"get_schema": True},
+        )
+        assert r.status_code == 200
+        genome_schema = self.get_content(r)
+        assert isinstance(genome_schema, list)
+        assert not any(f["key"] == "enrichment_kit" for f in genome_schema)
+
+        # ... and present, required, with options for an exome study
+        r = client.post(
+            f"{API_URI}/study/{study1_uuid}/technicals",
+            headers=user_B1_headers,
+            json={"get_schema": True},
+        )
+        assert r.status_code == 200
+        exome_schema = self.get_content(r)
+        assert isinstance(exome_schema, list)
+        kit_field = next(f for f in exome_schema if f["key"] == "enrichment_kit")
+        assert kit_field["required"] is True
+        assert "options" in kit_field
+
+        # PUT get_schema on a genome technical also omits enrichment_kit
+        r = client.put(
+            f"{API_URI}/technical/{genome_techmeta_uuid}",
+            headers=user_B1_headers,
+            json={"get_schema": True},
+        )
+        assert r.status_code == 200
+        genome_put_schema = self.get_content(r)
+        assert isinstance(genome_put_schema, list)
+        assert not any(f["key"] == "enrichment_kit" for f in genome_put_schema)
+
+        # the empty-string -> None platform normalization still works on the
+        # dynamically generated schema
+        r = client.put(
+            f"{API_URI}/technical/{genome_techmeta_uuid}",
+            headers=user_B1_headers,
+            json={"platform": ""},
+        )
+        assert r.status_code == 204
+        r = client.get(
+            f"{API_URI}/technical/{genome_techmeta_uuid}", headers=user_B1_headers
+        )
+        assert r.status_code == 200
+        assert self.get_content(r)["platform"] is None
+
+        # cleanup: deleting the genome study also cascades its technical
+        r = client.delete(
+            f"{API_URI}/study/{genome_study_uuid}", headers=user_B1_headers
+        )
+        assert r.status_code == 204
