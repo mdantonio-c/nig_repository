@@ -1,9 +1,9 @@
 import { Injectable } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { Observable, of, BehaviorSubject } from "rxjs";
-import { map, share, shareReplay } from "rxjs/operators";
+import { map, share } from "rxjs/operators";
 import { ApiService } from "@rapydo/services/api";
-import { Study, Stats, TechnicalOptions } from "@app/types";
+import { Study, Stats } from "@app/types";
 import { ExtendedStats } from "../types";
 
 @Injectable({
@@ -12,7 +12,6 @@ import { ExtendedStats } from "../types";
 export class DataService {
   private counterMapSource = new BehaviorSubject(new Map());
   currentCounterMap$ = this.counterMapSource.asObservable();
-  private technicalOptions$: Observable<TechnicalOptions>;
 
   constructor(private api: ApiService, private http: HttpClient) {}
 
@@ -28,16 +27,6 @@ export class DataService {
   getStats(extended?: boolean): Observable<Stats | ExtendedStats> {
     const accessor = extended ? "private" : "public";
     return this.api.get<Stats>(`/api/stats/${accessor}`);
-  }
-
-  // TECHNICAL METADATA
-  getTechnicalOptions(): Observable<TechnicalOptions> {
-    if (!this.technicalOptions$) {
-      this.technicalOptions$ = this.api
-        .get<TechnicalOptions>("/api/technicals/options")
-        .pipe(shareReplay(1));
-    }
-    return this.technicalOptions$;
   }
 
   saveRelationship(uuid: string, parent: string): Observable<any> {

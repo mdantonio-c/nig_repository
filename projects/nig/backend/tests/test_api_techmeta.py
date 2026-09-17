@@ -1,5 +1,4 @@
 from faker import Faker
-from nig.endpoints import tech_metadata
 from nig.tests import test_env
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
@@ -10,7 +9,6 @@ class TestApp(BaseTests):
         client: FlaskClient,
         faker: Faker,
         test_env,
-        monkeypatch,
     ) -> None:
         # setup the test env
         (
@@ -32,7 +30,7 @@ class TestApp(BaseTests):
             "name": faker.pystr(),
             "sequencing_date": faker.date(),
             "platform": "Illumina",
-            "enrichment_kit": "Twist Human Core Exome",
+            "enrichment_kit": "Twist_Human_Comprehensive_Exome",
         }
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
@@ -56,7 +54,7 @@ class TestApp(BaseTests):
             "name": faker.pystr(),
             "sequencing_date": faker.date(),
             "platform": "Illumina",
-            "enrichment_kit": "Twist Human Core Exome",
+            "enrichment_kit": "Twist_Human_Comprehensive_Exome",
         }
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
@@ -208,7 +206,10 @@ class TestApp(BaseTests):
         r = client.post(
             f"{API_URI}/study/{genome_study_uuid}/technicals",
             headers=user_B1_headers,
-            json={**genome_techmeta, "enrichment_kit": "Twist Human Core Exome"},
+            json={
+                **genome_techmeta,
+                "enrichment_kit": "Twist_Human_Comprehensive_Exome",
+            },
         )
         assert r.status_code == 400
 
@@ -242,7 +243,22 @@ class TestApp(BaseTests):
         assert isinstance(exome_schema, list)
         kit_field = next(f for f in exome_schema if f["key"] == "enrichment_kit")
         assert kit_field["required"] is True
-        assert "options" in kit_field
+        assert kit_field["options"] == {
+            "Agilent_SureSelect_Clinical_Research_Exome_v1": "Agilent_SureSelect_Clinical_Research_Exome_v1",
+            "Agilent_SureSelect_AllExon_V8": "Agilent_SureSelect_AllExon_V8",
+            "Agilent_SureSelectXT_AllExon_V6": "Agilent_SureSelectXT_AllExon_V6",
+            "Illumina_Prep_Exome_V2.0_Plus": "Illumina_Prep_Exome_V2.0_Plus",
+            "Illumina_Twist_Bioscience_V2.0": "Illumina_Twist_Bioscience_V2.0",
+            "Illumina_TruSeq_Exome_V1.2": "Illumina_TruSeq_Exome_V1.2",
+            "Illumina_TruSeq_Rapid_Exome": "Illumina_TruSeq_Rapid_Exome",
+            "Twist_Human_Comprehensive_Exome": "Twist_Human_Comprehensive_Exome",
+            "Roche_SeqCap_EZ_Exome_V3": "Roche_SeqCap_EZ_Exome_V3",
+            "KAPA_HyperExome_hg38_primary_targets_v2_slop50": "KAPA_HyperExome_hg38_primary_targets_v2_slop50",
+        }
+        platform_field = next(f for f in exome_schema if f["key"] == "platform")
+        assert platform_field["options"] == {
+            "Illumina": "Illumina (NovaSeq, NextSeq, HiSeq, MiSeq)"
+        }
 
         # PUT get_schema on a genome technical also omits enrichment_kit
         r = client.put(
@@ -275,74 +291,53 @@ class TestApp(BaseTests):
         )
         assert r.status_code == 204
 
-        # --- issue #62: enrichment_kit filtered by platform ---
-        r = client.get(f"{API_URI}/technicals/options", headers=user_B1_headers)
-        assert r.status_code == 200
-        options = self.get_content(r)
-        assert isinstance(options, dict)
-        assert set(options["platforms"]) == {
-            "Illumina",
-            "Ion",
-            "Pacific Biosciences",
-        }
-        assert set(options["platform_kits"].keys()) == set(options["platforms"])
-
-        # temporarily narrow one platform's compatible kits to obtain a
-        # combination that is globally valid (both platform and kit are still
-        # accepted by the plain OneOf validators) but incompatible with each
-        # other, to exercise the cross-field validation
-        monkeypatch.setitem(
-            tech_metadata.PLATFORM_KITS, "Ion", ["Agilent SureSelectXT AllExon V.5"]
-        )
-
-        # POST with an incompatible platform/kit combination is rejected
+        # --- issue #49: platform and enrichment kit are independent choices ---
+        # Platforms currently expose only Illumina; an unsupported platform is
+        # rejected without introducing a platform-to-kit compatibility mapping.
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
             headers=user_B1_headers,
             json={
                 "name": faker.pystr(),
                 "platform": "Ion",
-                "enrichment_kit": "Twist Human Core Exome",
+                "enrichment_kit": "Twist_Human_Comprehensive_Exome",
             },
         )
         assert r.status_code == 400
 
-        # POST with a compatible combination succeeds
+        # The agreed enrichment kits are accepted independently of further
+        # platform/kit association rules.
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",
             headers=user_B1_headers,
             json={
                 "name": faker.pystr(),
-                "platform": "Ion",
-                "enrichment_kit": "Agilent SureSelectXT AllExon V.5",
+                "platform": "Illumina",
+                "enrichment_kit": "KAPA_HyperExome_hg38_primary_targets_v2_slop50",
             },
         )
         assert r.status_code == 200
-        ion_techmeta_uuid = self.get_content(r)
-        assert isinstance(ion_techmeta_uuid, str)
+        techmeta49_uuid = self.get_content(r)
+        assert isinstance(techmeta49_uuid, str)
 
-        # PUT that changes only the kit, making it incompatible with the
-        # persisted platform, is rejected
+        # A legacy kit value is no longer accepted.
         r = client.put(
-            f"{API_URI}/technical/{ion_techmeta_uuid}",
+            f"{API_URI}/technical/{techmeta49_uuid}",
             headers=user_B1_headers,
             json={"enrichment_kit": "Twist Human Core Exome"},
         )
         assert r.status_code == 400
 
-        # PUT that changes platform and kit together, consistently, succeeds
-        monkeypatch.setitem(
-            tech_metadata.PLATFORM_KITS, "Illumina", ["Twist Human Core Exome"]
-        )
+        # Updating only the kit remains valid for a listed choice.
         r = client.put(
-            f"{API_URI}/technical/{ion_techmeta_uuid}",
+            f"{API_URI}/technical/{techmeta49_uuid}",
             headers=user_B1_headers,
-            json={"platform": "Illumina", "enrichment_kit": "Twist Human Core Exome"},
+            json={"enrichment_kit": "Illumina_TruSeq_Exome_V1.2"},
         )
         assert r.status_code == 204
 
         # cleanup
         r = client.delete(
-            f"{API_URI}/technical/{ion_techmeta_uuid}", headers=user_B1_headers
+            f"{API_URI}/technical/{techmeta49_uuid}", headers=user_B1_headers
         )
         assert r.status_code == 204

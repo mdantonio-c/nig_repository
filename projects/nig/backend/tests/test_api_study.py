@@ -219,8 +219,8 @@ class TestApp(BaseTests):
         techmeta = {
             "name": faker.pystr(),
             "platform": "Illumina",
-            "enrichment_kit": "Twist Human Core Exome",
-            }
+            "enrichment_kit": "Twist_Human_Comprehensive_Exome",
+        }
         r = client.post(
             f"{API_URI}/study/{study2_uuid}/technicals",
             headers=user_A1_headers,

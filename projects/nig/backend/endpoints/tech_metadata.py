@@ -1,11 +1,11 @@
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, Type, Union
 
-from marshmallow import ValidationError, pre_load, validates_schema
+from marshmallow import pre_load
 from nig.endpoints import TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.customizer import FlaskRequest
-from restapi.exceptions import BadRequest, NotFound
+from restapi.exceptions import NotFound
 from restapi.models import Schema, fields, validate
 from restapi.rest.definition import Response
 from restapi.services.authentication import User
@@ -13,38 +13,20 @@ from restapi.services.authentication import User
 # from restapi.utilities.logs import log
 DATE_FORMAT = "%Y-%m-%d"
 
-# NOTE: the platform -> compatible kits association below is permissive (every
-# kit is currently allowed on every platform) pending confirmation from the lab
-# domain referent (see issues #49/#52). The data structure and validation are
-# final; only the association itself may be narrowed later.
-PLATFORM_KITS: Dict[str, List[str]] = {
-    "Illumina": [
-        "Illumina Nextera Rapid Capture V.1.2",
-        "Agilent SureSelectXT AllExon V.5",
-        "Agilent SureSelect Clinical Research Exome v2",
-        "Agilent SureSelect AllExon_v7",
-        "Twist Human Core Exome",
-        "KAPA HyperExome hg38 primary targets v2 slop50",
-    ],
-    "Ion": [
-        "Illumina Nextera Rapid Capture V.1.2",
-        "Agilent SureSelectXT AllExon V.5",
-        "Agilent SureSelect Clinical Research Exome v2",
-        "Agilent SureSelect AllExon_v7",
-        "Twist Human Core Exome",
-        "KAPA HyperExome hg38 primary targets v2 slop50",
-    ],
-    "Pacific Biosciences": [
-        "Illumina Nextera Rapid Capture V.1.2",
-        "Agilent SureSelectXT AllExon V.5",
-        "Agilent SureSelect Clinical Research Exome v2",
-        "Agilent SureSelect AllExon_v7",
-        "Twist Human Core Exome",
-        "KAPA HyperExome hg38 primary targets v2 slop50",
-    ],
-}
-PLATFORMS = list(PLATFORM_KITS.keys())
-ENRICHMENT_KITS = sorted({kit for kits in PLATFORM_KITS.values() for kit in kits})
+PLATFORMS = ["Illumina"]
+PLATFORM_LABELS = ["Illumina (NovaSeq, NextSeq, HiSeq, MiSeq)"]
+ENRICHMENT_KITS = [
+    "Agilent_SureSelect_Clinical_Research_Exome_v1",
+    "Agilent_SureSelect_AllExon_V8",
+    "Agilent_SureSelectXT_AllExon_V6",
+    "Illumina_Prep_Exome_V2.0_Plus",
+    "Illumina_Twist_Bioscience_V2.0",
+    "Illumina_TruSeq_Exome_V1.2",
+    "Illumina_TruSeq_Rapid_Exome",
+    "Twist_Human_Comprehensive_Exome",
+    "Roche_SeqCap_EZ_Exome_V3",
+    "KAPA_HyperExome_hg38_primary_targets_v2_slop50",
+]
 
 
 class _TechmetaBaseSchema(Schema):
@@ -53,16 +35,6 @@ class _TechmetaBaseSchema(Schema):
         if "platform" in data and data["platform"] == "":
             data["platform"] = None
         return data
-
-    @validates_schema
-    def validate_platform_kit(self, data: Dict[str, Any], **kwargs: Any) -> None:
-        platform = data.get("platform")
-        kit = data.get("enrichment_kit")
-        if platform and kit and kit not in PLATFORM_KITS.get(platform, []):
-            raise ValidationError(
-                f"Enrichment kit '{kit}' is not compatible with platform '{platform}'",
-                field_name="enrichment_kit",
-            )
 
 
 def _resolve_study_for_techmeta(request: FlaskRequest, is_post: bool) -> Any:
@@ -84,7 +56,9 @@ def getTechmetaInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]
     attributes["name"] = fields.Str(required=is_post)
     attributes["sequencing_date"] = fields.Date(format=DATE_FORMAT)
     attributes["platform"] = fields.Str(
-        required=is_post, allow_none=not is_post, validate=validate.OneOf(PLATFORMS)
+        required=is_post,
+        allow_none=not is_post,
+        validate=validate.OneOf(PLATFORMS, labels=PLATFORM_LABELS),
     )
 
     study = _resolve_study_for_techmeta(request, is_post)
@@ -118,30 +92,6 @@ class TechmetaOutputSchema(Schema):
     sequencing_date = fields.Date(format=DATE_FORMAT)
     platform = fields.Str()
     enrichment_kit = fields.Str()
-
-
-class TechnicalOptionsOutput(Schema):
-    platforms = fields.List(fields.Str())
-    platform_kits = fields.Dict(keys=fields.Str(), values=fields.List(fields.Str()))
-
-
-class TechnicalOptions(NIGEndpoint):
-
-    labels = ["technicals"]
-
-    @decorators.auth.require()
-    @decorators.endpoint(
-        path="/technicals/options",
-        summary="Get the allowed platform/enrichment kit combinations",
-        responses={
-            200: "Options successfully retrieved",
-        },
-    )
-    @decorators.marshal_with(TechnicalOptionsOutput, code=200)
-    def get(self, user: User) -> Response:
-        return self.response(
-            {"platforms": PLATFORMS, "platform_kits": PLATFORM_KITS}
-        )
 
 
 class TechnicalMetadatas(NIGEndpoint):
@@ -263,22 +213,6 @@ class TechnicalMetadata(NIGEndpoint):
         # generation (e.g. a stale client-side form)
         if study.study_type == "genome":
             kwargs.pop("enrichment_kit", None)
-
-        # a partial update (only platform or only enrichment_kit) cannot be
-        # validated by the schema alone, which only sees the submitted fields:
-        # fall back to the persisted value for whichever field is not being
-        # changed in this request
-        effective_platform = kwargs.get("platform", techmeta.platform)
-        effective_kit = kwargs.get("enrichment_kit", techmeta.enrichment_kit)
-        if (
-            effective_platform
-            and effective_kit
-            and effective_kit not in PLATFORM_KITS.get(effective_platform, [])
-        ):
-            raise BadRequest(
-                f"Enrichment kit '{effective_kit}' is not compatible with "
-                f"platform '{effective_platform}'"
-            )
 
         graph.update_properties(techmeta, kwargs)
         techmeta.save()
