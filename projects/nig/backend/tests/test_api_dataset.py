@@ -50,7 +50,7 @@ class TestApp(BaseTests):
         technical = {
             "name": faker.pystr(),
             "platform": "Illumina",
-            "enrichment_kit": "Twist Human Core Exome",
+            "enrichment_kit": "Twist_Human_Comprehensive_Exome",
         }
         r = client.post(
             f"{API_URI}/study/{study1_uuid}/technicals",

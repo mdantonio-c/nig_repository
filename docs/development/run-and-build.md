@@ -64,6 +64,24 @@ rapydo shell backend "sh -c 'PATH=$SYS_PATH bash nig/scripts/init_hpo.sh'"
 rapydo shell backend "sh -c 'PATH=$SYS_PATH restapi tests --wait --destroy'"
 ```
 
+### NIG custom test suite
+
+To execute only the NIG-owned tests, use `--folder custom`:
+
+```bash
+rapydo shell backend "sh -c 'PATH=$SYS_PATH \
+SMTP_HOST=mock.mail.service SMTP_PORT=0 \
+SMTP_ADMIN=mock@nomail.org SMTP_NOREPLY=mock@nomail.org \
+AUTH_LOGIN_BAN_TIME=10 \
+restapi tests --wait --destroy --folder custom'"
+```
+
+`--folder custom` selects only `tests/custom`, which is populated from
+`projects/nig/backend/tests/`; it does not execute the RAPyDo framework test
+suite in `tests/base`. The RAPyDo runtime and its dependencies are still loaded
+to build the application and provide the test harness. Without `--folder`, the
+runner executes both `tests/custom` and `tests/base`.
+
 The test environment also requires `AUTH_LOGIN_BAN_TIME=10`; otherwise deliberate
 failed-login tests can block the default administrator for the normal 12-hour
 period and cause cascading failures. For an interrupted test run, recover with

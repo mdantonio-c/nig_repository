@@ -29,6 +29,7 @@ class UserCustom(IdentifiedNode):
 class Study(TimestampedNode):
     name = StringProperty(required=True)
     description = StringProperty(required=True)
+    study_type = StringProperty(required=True)
 
     ownership = RelationshipTo(
         "restapi.connectors.neo4j.models.User", "IS_OWNED_BY", cardinality=ZeroOrMore
