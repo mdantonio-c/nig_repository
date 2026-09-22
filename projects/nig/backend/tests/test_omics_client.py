@@ -30,6 +30,9 @@ class FakeResponse:
         self.ok = 200 <= status_code < 300
         self._payload = payload or {}
         self._content_chunks = content_chunks or []
+        # Mimics requests.Response.content: empty for a 204/no-body response,
+        # non-empty whenever a JSON payload was provided.
+        self.content = b"{}" if payload else b""
 
     def json(self) -> Dict[str, Any]:
         return self._payload
@@ -103,13 +106,23 @@ def test_request_refreshes_token_on_401_and_retries_successfully() -> None:
     assert request_calls[1][2]["Authorization"] == "Bearer AT2"
 
 
-@pytest.mark.parametrize("status_code", [402, 409, 413, 507])
-def test_quota_status_codes_raise_omics_quota_exceeded(status_code: int) -> None:
+def test_quota_exceeded_403_with_matching_detail_raises_omics_quota_exceeded() -> None:
     session = _logged_in_session()
-    session.request_queue.append(FakeResponse(status_code))
+    session.request_queue.append(
+        FakeResponse(403, {"detail": "Storage limit reached"})
+    )
     client = _client(session)
 
     with pytest.raises(OmicsQuotaExceeded):
+        client.get_storage_usage()
+
+
+def test_403_without_quota_detail_raises_omics_request_error() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(403, {"detail": "Forbidden"}))
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError):
         client.get_storage_usage()
 
 
@@ -156,12 +169,25 @@ def test_list_uploaded_files_returns_json_list() -> None:
     session = _logged_in_session()
     response = FakeResponse(200)
     response._payload = [{"file_id": "f1"}]
+    response.content = b'[{"file_id": "f1"}]'
     session.request_queue.append(response)
     client = _client(session)
 
     files = client.list_uploaded_files()
 
     assert files == [{"file_id": "f1"}]
+
+
+def test_list_uploaded_files_returns_empty_list_on_204_no_content() -> None:
+    # Confirmed against the real Omics dev2 environment: an account with no
+    # uploaded files gets a 204 with an empty body, not 200 + [].
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(204))
+    client = _client(session)
+
+    files = client.list_uploaded_files()
+
+    assert files == []
 
 
 @pytest.mark.parametrize("input_files", [[], ["a", "b", "c"]])

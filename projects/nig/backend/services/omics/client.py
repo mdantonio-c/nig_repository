@@ -33,10 +33,10 @@ from nig.services.omics.models import StorageUsage, TaskInfo
 from nig.services.omics.uploader import OmicsUploader
 
 DEFAULT_TIMEOUT = 60
-# Status codes tentatively treated as a quota condition. The exact code/payload
-# used by Omics is still to be frozen against the real contract (open point T1
-# in the integration plan); update this set once confirmed.
-QUOTA_STATUS_CODES = {402, 409, 413, 507}
+# Confirmed against the real Omics contract: a quota-exceeded condition is
+# reported as HTTP 403 with body {"detail": "Storage limit reached"}.
+QUOTA_STATUS_CODE = 403
+QUOTA_DETAIL_MARKER = "storage limit reached"
 
 
 def _obscure(identifier: str) -> str:
@@ -109,10 +109,17 @@ class OmicsClient:
             return
         if response.status_code == 401:
             raise OmicsAuthError("Omics authentication failed (401 after refresh)")
-        if response.status_code in QUOTA_STATUS_CODES:
-            raise OmicsQuotaExceeded(
-                f"Omics storage quota exceeded (status {response.status_code})"
-            )
+        if response.status_code == QUOTA_STATUS_CODE:
+            detail = ""
+            try:
+                detail = str(response.json().get("detail", ""))
+            except (ValueError, AttributeError):
+                pass
+            if QUOTA_DETAIL_MARKER in detail.lower():
+                raise OmicsQuotaExceeded(
+                    f"Omics storage quota exceeded (status {response.status_code}: "
+                    f"{detail})"
+                )
         raise OmicsRequestError(
             f"Omics request failed with status {response.status_code}",
             status_code=response.status_code,
@@ -131,6 +138,10 @@ class OmicsClient:
 
     def list_uploaded_files(self) -> List[Dict[str, Any]]:
         response = self._request("GET", "/files/uploaded")
+        # Omics returns 204 No Content (empty body) when the account has no
+        # uploaded files, instead of 200 with an empty JSON list.
+        if response.status_code == 204 or not response.content:
+            return []
         return response.json()
 
     def delete_file(self, file_id: str) -> bool:

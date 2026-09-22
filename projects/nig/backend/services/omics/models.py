@@ -1,7 +1,6 @@
-"""Typed responses from the Omics REST API (issue #76).
+"""Typed responses from the Omics REST API.
 
-Plain dataclasses, no I/O: they only shape the JSON payloads documented in
-the integration plan (section 2) so the rest of the client/tasks code does
+Plain dataclasses, no I/O: they only shape JSON payloads so the rest of the client/tasks code does
 not manipulate raw dicts.
 """
 

@@ -39,9 +39,15 @@ class OmicsAuth:
             timeout=self._timeout,
         )
         if response.status_code != 200:
-            raise OmicsAuthError(
-                f"Omics login failed with status {response.status_code}"
-            )
+            detail = ""
+            try:
+                detail = str(response.json().get("detail", ""))
+            except (ValueError, AttributeError):
+                pass
+            message = f"Omics login failed with status {response.status_code}"
+            if detail:
+                message = f"{message}: {detail}"
+            raise OmicsAuthError(message)
         payload = response.json()
         self._tokens = TokenPair(
             access_token=payload["access_token"],
