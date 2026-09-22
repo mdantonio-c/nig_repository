@@ -6,6 +6,7 @@ from neomodel import (
     FloatProperty,
     IntegerProperty,
     JSONProperty,
+    One,
     RelationshipFrom,
     RelationshipTo,
     StringProperty,
@@ -59,6 +60,16 @@ class Dataset(TimestampedNode):
     error_message = StringProperty()
     joint_analysis = BooleanProperty()
 
+    # Omics/Parabricks tracking. these are plain properties on the existing Dataset node, not
+    # a parallel store. Never exposed directly to end users (see endpoints).
+    omics_task_id = StringProperty(index=True)
+    omics_pipeline = StringProperty()
+    omics_status = StringProperty()
+    omics_submitted_at = DateTimeProperty()
+    omics_status_update = DateTimeProperty()
+    omics_error_message = StringProperty()
+    omics_output_prefix = StringProperty()
+
     ownership = RelationshipTo(
         "restapi.connectors.neo4j.models.User", "IS_OWNED_BY", cardinality=ZeroOrMore
     )
@@ -73,6 +84,12 @@ class Dataset(TimestampedNode):
         "Job", "ANALYZED_BY", cardinality=ZeroOrMore, model=JobRelation
     )
     joint_analysis_job = RelationshipTo("Job", "ANALYZED_BY", cardinality=ZeroOrMore)
+    omics_batch = RelationshipTo(
+        "OmicsBatch", "SENT_TO_OMICS", cardinality=ZeroOrMore, model=JobRelation
+    )
+    omics_artifacts = RelationshipFrom(
+        "OmicsArtifact", "OUTPUT_OF", cardinality=ZeroOrMore
+    )
 
 
 class Job(TimestampedNode):
@@ -84,6 +101,38 @@ class Job(TimestampedNode):
 
 class JointAnalysisJob(Job):
     datasets = RelationshipFrom("Dataset", "ANALYZED_BY", cardinality=ZeroOrMore)
+
+
+class OmicsArtifact(TimestampedNode):
+    """An Omics/Parabricks output file (gVCF, TBI or BAM) for a Dataset.
+
+    Tracked separately from ``File`` because these ids come from Omics'
+    ``/files/proc/{task_id}`` response, not from a NIG-owned upload.
+    """
+
+    remote_file_id = StringProperty(required=True, unique_index=True)
+    name = StringProperty(required=True)
+    extension = StringProperty()
+    size = IntegerProperty()
+    kind = StringProperty()  # GVCF | TBI | BAM
+    status = StringProperty()  # DISCOVERED | DOWNLOADING | DOWNLOADED | DELETED | ERROR
+    local_path = StringProperty()
+    downloaded_at = DateTimeProperty()
+
+    dataset = RelationshipTo("Dataset", "OUTPUT_OF", cardinality=One)
+
+
+class OmicsBatch(TimestampedNode):
+    """A batch of datasets submitted together to Omics, governed by quota."""
+
+    uuid = StringProperty(required=True, unique_index=True)
+    status = StringProperty()  # PLANNED | RUNNING | COMPLETED | ERROR
+    planned_bytes = IntegerProperty()
+    uploaded_bytes = IntegerProperty()
+
+    datasets = RelationshipFrom(
+        "Dataset", "SENT_TO_OMICS", cardinality=ZeroOrMore, model=JobRelation
+    )
 
 
 class VariantRelation(StructuredRel):  # type: ignore
@@ -134,6 +183,15 @@ class File(IdentifiedNode):
     status = StringProperty()
     task_id = StringProperty()
     metadata = JSONProperty()
+
+    # Omics tracking: identifies the remote upload of this exact
+    # file, so a resumed/aborted upload session can be reconciled. Do not
+    # reuse the legacy `task_id` property above, which has an unrelated,
+    # never-populated meaning in the existing NIG codebase.
+    omics_file_id = StringProperty(index=True)
+    omics_upload_id = StringProperty()
+    omics_uploaded_at = DateTimeProperty()
+    omics_status = StringProperty()  # PENDING | UPLOADING | UPLOADED | DELETED | ERROR
 
     dataset = RelationshipFrom("Dataset", "CONTAINS", cardinality=ZeroOrMore)
 
