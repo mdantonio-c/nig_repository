@@ -28,17 +28,28 @@ jobs:
 
           rapydo pull --quiet
           rapydo build
-          rapydo add task test_task
 
-          rapydo -e AUTH_LOGIN_BAN_TIME=10 start
+          # SMTP mock values keep the suite offline: mail is written to the
+          # mock artifacts instead of contacting a real server. Also required
+          # by RAPyDo's own test_connector_celery.py::test_celery, which reads
+          # back the mock email written after a Celery task failure.
+          rapydo -e AUTH_LOGIN_BAN_TIME=10 \
+            -e SMTP_HOST=mock.mail.service -e SMTP_PORT=0 \
+            -e SMTP_ADMIN=mock@nomail.org -e SMTP_NOREPLY=mock@nomail.org \
+            start
           # rabbit and neo4j are both very slow at startup...
-          # sleep 60
           sleep 90
           rapydo shell backend 'restapi wait'
 
-          rapydo shell backend "bash nig/scripts/init_hpo.sh"
-
-          rapydo shell backend 'restapi tests --wait --destroy'
+          # The application default PATH puts Conda first: it is the runtime
+          # environment for the genomics pipeline (Snakemake, GATK, BWA,
+          # samtools). Conda's Python, however, lacks the RAPyDo dev
+          # dependencies (Flask, Faker, pytest plugins). HPO loading and the
+          # test suite must therefore run with a system-first PATH (Conda kept
+          # last), without altering the global/runtime PATH.
+          SYS_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/miniconda3/bin
+          rapydo shell backend "sh -c 'PATH=$SYS_PATH bash nig/scripts/init_hpo.sh'"
+          rapydo shell backend "sh -c 'PATH=$SYS_PATH restapi tests --wait --destroy'"
 
           LOGURU_LEVEL=WARNING rapydo list services
           # This should fail if at least one container is in Exit status

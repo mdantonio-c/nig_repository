@@ -2,13 +2,13 @@ from pathlib import Path
 
 from faker import Faker
 from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
-from nig.tests import create_test_env, delete_test_env
+from nig.tests import test_env
 from restapi.connectors import neo4j
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
 class TestApp(BaseTests):
-    def test_api_download(self, client: FlaskClient, faker: Faker) -> None:
+    def test_api_download(self, client: FlaskClient, faker: Faker, test_env) -> None:
         # setup the test env
         (
             admin_headers,
@@ -22,7 +22,7 @@ class TestApp(BaseTests):
             user_B2_headers,
             study1_uuid,
             study2_uuid,
-        ) = create_test_env(client, faker, study=True)
+        ) = test_env.setup(study=True)
 
         # create a new dataset
         dataset1 = {"name": faker.pystr(), "description": faker.pystr()}
@@ -133,17 +133,3 @@ class TestApp(BaseTests):
         assert r.status_code == 200
         total_file_size = self.get_content(r)
         assert bam_filepath.stat().st_size == total_file_size
-
-        # delete all the element used for the test
-        delete_test_env(
-            client,
-            user_A1_headers,
-            user_B1_headers,
-            user_B1_uuid,
-            user_B2_uuid,
-            user_A1_uuid,
-            uuid_group_A,
-            uuid_group_B,
-            study1_uuid=study1_uuid,
-            study2_uuid=study2_uuid,
-        )

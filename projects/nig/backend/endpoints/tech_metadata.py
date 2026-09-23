@@ -1,9 +1,10 @@
-from typing import Any, Dict
+from typing import Any, Dict, Type, Union
 
 from marshmallow import pre_load
 from nig.endpoints import TECHMETA_NOT_FOUND, NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
+from restapi.customizer import FlaskRequest
 from restapi.exceptions import NotFound
 from restapi.models import Schema, fields, validate
 from restapi.rest.definition import Response
@@ -12,42 +13,77 @@ from restapi.services.authentication import User
 # from restapi.utilities.logs import log
 DATE_FORMAT = "%Y-%m-%d"
 
-PLATFORMS = [
-    "Illumina",
-    "Ion",
-    "Pacific Biosciences",
-]
-
+PLATFORMS = ["Illumina"]
+PLATFORM_LABELS = ["Illumina (NovaSeq, NextSeq, HiSeq, MiSeq)"]
 ENRICHMENT_KITS = [
-    "Illumina Nextera Rapid Capture V.1.2",
-    "Agilent SureSelectXT AllExon V.5",
-    "Agilent SureSelect Clinical Research Exome v2",
-    "Agilent SureSelect AllExon_v7",
-    "Twist Human Core Exome",
-    "KAPA HyperExome hg38 primary targets v2 slop50",
+    "Agilent_SureSelect_Clinical_Research_Exome_v1",
+    "Agilent_SureSelect_AllExon_V8",
+    "Agilent_SureSelectXT_AllExon_V6",
+    "Illumina_Prep_Exome_V2.0_Plus",
+    "Illumina_Twist_Bioscience_V2.0",
+    "Illumina_TruSeq_Exome_V1.2",
+    "Illumina_TruSeq_Rapid_Exome",
+    "Twist_Human_Comprehensive_Exome",
+    "Roche_SeqCap_EZ_Exome_V3",
+    "KAPA_HyperExome_hg38_primary_targets_v2_slop50",
 ]
 
 
-class TechmetaInputSchema(Schema):
-    name = fields.Str(required=True)
-    sequencing_date = fields.Date(format=DATE_FORMAT)
-    platform = fields.Str(required=True, validate=validate.OneOf(PLATFORMS))
-    enrichment_kit = fields.Str(required=True, validate=validate.OneOf(ENRICHMENT_KITS))
-
-
-class TechmetaPutSchema(Schema):
-    name = fields.Str(required=False)
-    sequencing_date = fields.Date(format=DATE_FORMAT)
-    platform = fields.Str(allow_none=True, validate=validate.OneOf(PLATFORMS))
-    enrichment_kit = fields.Str(
-        allow_none=True, validate=validate.OneOf(ENRICHMENT_KITS)
-    )
-
+class _TechmetaBaseSchema(Schema):
     @pre_load
     def null_platform(self, data: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
         if "platform" in data and data["platform"] == "":
             data["platform"] = None
         return data
+
+
+def _resolve_study_for_techmeta(request: FlaskRequest, is_post: bool) -> Any:
+    # Only used to decide whether enrichment_kit applies (genome studies do not
+    # require it, issue #61); actual access control still happens in the view.
+    if not request:
+        return None
+    graph = neo4j.get_instance()
+    if is_post:
+        study_uuid = request.view_args["uuid"]
+        return graph.Study.nodes.get_or_none(uuid=study_uuid)
+    techmeta_uuid = request.view_args["uuid"]
+    techmeta = graph.TechnicalMetadata.nodes.get_or_none(uuid=techmeta_uuid)
+    return techmeta.defined_in.single() if techmeta else None
+
+
+def getTechmetaInputSchema(request: FlaskRequest, is_post: bool) -> Type[Schema]:
+    attributes: Dict[str, Union[fields.Field, type]] = {}
+    attributes["name"] = fields.Str(required=is_post)
+    attributes["sequencing_date"] = fields.Date(format=DATE_FORMAT)
+    attributes["platform"] = fields.Str(
+        required=is_post,
+        allow_none=not is_post,
+        validate=validate.OneOf(PLATFORMS, labels=PLATFORM_LABELS),
+    )
+
+    study = _resolve_study_for_techmeta(request, is_post)
+    # enrichment_kit is required for exome studies (default when the parent study
+    # is not resolvable yet, e.g. during OpenAPI spec generation) and omitted
+    # entirely for genome studies, so it neither renders in the form nor is
+    # accepted as input for them.
+    if study is None or study.study_type != "genome":
+        attributes["enrichment_kit"] = fields.Str(
+            required=is_post,
+            allow_none=not is_post,
+            validate=validate.OneOf(ENRICHMENT_KITS),
+        )
+
+    return _TechmetaBaseSchema.from_dict(
+        attributes, name="TechnicalMetadataDefinition"
+    )
+
+
+def getTechmetaPOSTInputSchema(request: FlaskRequest) -> Type[Schema]:
+    return getTechmetaInputSchema(request, True)
+
+
+def getTechmetaPUTInputSchema(request: FlaskRequest) -> Type[Schema]:
+    return getTechmetaInputSchema(request, False)
 
 
 class TechmetaOutputSchema(Schema):
@@ -129,7 +165,7 @@ class TechnicalMetadata(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    @decorators.use_kwargs(TechmetaInputSchema)
+    @decorators.use_kwargs(getTechmetaPOSTInputSchema)
     def post(self, uuid: str, user: User, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
@@ -137,9 +173,11 @@ class TechnicalMetadata(NIGEndpoint):
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study, user=user)
 
-        # kit = properties.get("enrichment_kit", None)
-        # if kit is not None and "value" in kit:
-        #     properties["enrichment_kit"] = kit["value"]
+        # defensive: the dynamic schema already omits enrichment_kit for genome
+        # studies, this only guards against a caller that bypassed schema
+        # generation (e.g. a stale client-side form)
+        if study.study_type == "genome":
+            kwargs.pop("enrichment_kit", None)
 
         techmeta = graph.TechnicalMetadata(**kwargs).save()
 
@@ -159,7 +197,7 @@ class TechnicalMetadata(NIGEndpoint):
         },
     )
     @decorators.database_transaction
-    @decorators.use_kwargs(TechmetaPutSchema)
+    @decorators.use_kwargs(getTechmetaPUTInputSchema)
     def put(self, uuid: str, user: User, **kwargs: Any) -> Response:
 
         graph = neo4j.get_instance()
@@ -170,9 +208,11 @@ class TechnicalMetadata(NIGEndpoint):
         study = techmeta.defined_in.single()
         self.verifyStudyAccess(study, user=user, error_type="Technical Metadata")
 
-        # kit = v.get("enrichment_kit", None)
-        # if kit is not None and "value" in kit:
-        #     v["enrichment_kit"] = kit["value"]
+        # defensive: the dynamic schema already omits enrichment_kit for genome
+        # studies, this only guards against a caller that bypassed schema
+        # generation (e.g. a stale client-side form)
+        if study.study_type == "genome":
+            kwargs.pop("enrichment_kit", None)
 
         graph.update_properties(techmeta, kwargs)
         techmeta.save()

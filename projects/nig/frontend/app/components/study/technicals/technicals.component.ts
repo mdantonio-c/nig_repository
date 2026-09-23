@@ -10,10 +10,15 @@ import { Subject } from "rxjs";
 })
 export class TechnicalsComponent extends BasePaginationComponent<TechnicalMetadata> {
   @Input() studyUUID;
+  @Input() studyType;
   @Input() readonly;
 
   constructor(protected injector: Injector, private dataService: DataService) {
     super(injector);
+  }
+
+  get isGenome(): boolean {
+    return this.studyType === "genome";
   }
 
   ngOnInit() {

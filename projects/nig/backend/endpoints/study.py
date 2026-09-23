@@ -5,11 +5,14 @@ from nig.endpoints import NIGEndpoint
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import Conflict
-from restapi.models import Schema, fields
+from restapi.models import Schema, fields, validate
 from restapi.rest.definition import Response
 from restapi.services.authentication import User
 
 # from restapi.utilities.logs import log
+
+STUDY_TYPES = ["exome", "genome"]
+STUDY_TYPE_LABELS = ["Exome (WES)", "Genome (WGS)"]
 
 
 # Output schema
@@ -17,6 +20,7 @@ class StudyOutput(Schema):
     uuid = fields.Str(required=True)
     name = fields.Str(required=True)
     description = fields.Str(required=True)
+    study_type = fields.Str(required=True)
     # Number of related datasets
     datasets = fields.Neo4jRelationshipToCount()
     phenotypes = fields.Neo4jRelationshipToCount()
@@ -28,6 +32,10 @@ class StudyOutput(Schema):
 class StudyInputSchema(Schema):
     name = fields.Str(required=True)
     description = fields.Str(required=True)
+    study_type = fields.Str(
+        required=True,
+        validate=validate.OneOf(choices=STUDY_TYPES, labels=STUDY_TYPE_LABELS),
+    )
 
 
 class StudyPutSchema(Schema):
@@ -61,6 +69,7 @@ class Studies(NIGEndpoint):
             study_el["uuid"] = t.uuid
             study_el["name"] = t.name
             study_el["description"] = t.description
+            study_el["study_type"] = t.study_type
             study_el["datasets"] = t.datasets
             study_el["phenotypes"] = t.phenotypes
             study_el["technicals"] = t.technicals

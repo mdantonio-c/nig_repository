@@ -39,6 +39,7 @@
                     <nig-technicals
                       *ngSwitchCase="'technicals'"
                       [studyUUID]="study.uuid"
+                      [studyType]="study.study_type"
                       [readonly]="study.readonly"
                     ></nig-technicals>
                     <nig-phenotypes

@@ -1,0 +1,15 @@
+Dear administrator or account holder,<br />
+<br />
+an administrative account event was recorded on {{project}}:<br />
+<br />
+<i>Action: {{action}}</i><br />
+<i>Outcome: {{outcome}}</i><br />
+<i>Actor: {{actor}}</i><br />
+<i>Target: {{target}}</i><br />
+<i>Changed fields: {{changed_fields}}</i><br />
+{% if reason %}<i>Reason: {{reason}}</i><br />{% endif %}
+<i>Timestamp: {{timestamp}}</i><br />
+<br />
+No password, token, TOTP code, or other authentication secret is included in this message.<br />
+<br />
+This is an automated security notification. Please do not reply.

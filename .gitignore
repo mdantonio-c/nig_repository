@@ -9,6 +9,9 @@
 ##  Host configuration  ##
 ########################
 .projectrc*
+.github/copilot-instructions.md
+.github/agents/*
+.agent/*
 
 #################
 ##  Submodules ##
@@ -23,6 +26,7 @@
 .env
 .rapydo
 docker-compose.yml
+.venv
 
 ###################################
 ##  Temporary and miscellaneous  ##
@@ -101,3 +105,6 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *.cover
+
+# IDE
+.vscode/

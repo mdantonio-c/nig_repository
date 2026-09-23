@@ -12,6 +12,9 @@ services:
     environment:
       # celery configuration for samples analysis
       CHUNKS_LIMIT: ${CHUNKS_LIMIT}
+      # Project policy setting; RAPyDo's inherited backend template only
+      # forwards its predefined authentication environment variables.
+      AUTH_ROOT_TOTP_REQUIRED: ${AUTH_ROOT_TOTP_REQUIRED}
 
   neo4j:
     volumes:

@@ -1,9 +1,12 @@
 import csv
 from typing import List, Optional
 
-from restapi.config import DATA_PATH
-from restapi.connectors import neo4j
+from restapi.config import DATA_PATH, PRODUCTION
+from restapi.connectors import Connector, neo4j
+from restapi.env import Env
 from restapi.utilities.logs import log
+
+from nig.services.admin_policy import RootIntegrityError, assert_root_integrity
 
 
 class Initializer:
@@ -31,6 +34,20 @@ class Initializer:
                                 geodata.save()
 
         log.info("GeoData nodes succesfully created")
+
+        auth = Connector.get_authentication_instance()
+        try:
+            report = assert_root_integrity(auth)
+            log.info("Root integrity verified for user {}", report.root_uuid)
+        except RootIntegrityError as exc:
+            if PRODUCTION or Env.get_bool("AUTH_ADMIN_HIERARCHY_ENFORCE"):
+                log.critical("Root integrity check failed: {}", exc)
+                raise
+            log.warning(
+                "Root integrity check failed in non-enforcing mode: {}. "
+                "Run the admin hierarchy migration before enabling enforcement.",
+                exc,
+            )
 
     # This method is called after normal initialization if TESTING mode is enabled
     def initialize_testing_environment(self) -> None:

@@ -1,12 +1,12 @@
 from faker import Faker
 from nig.endpoints import NIGEndpoint
-from nig.tests import create_test_env, delete_test_env
+from nig.tests import test_env
 from restapi.connectors import neo4j
 from restapi.tests import API_URI, BaseTests, FlaskClient
 
 
 class TestApp(BaseTests):
-    def test_api_stats(self, client: FlaskClient, faker: Faker) -> None:
+    def test_api_stats(self, client: FlaskClient, faker: Faker, test_env) -> None:
         # setup the test env
         (
             admin_headers,
@@ -20,7 +20,7 @@ class TestApp(BaseTests):
             user_B2_headers,
             study1_uuid,
             study2_uuid,
-        ) = create_test_env(client, faker, study=True)
+        ) = test_env.setup(study=True)
         # create a dataset for group A
         dataset_A = {"name": faker.pystr(), "description": faker.pystr()}
         r = client.post(
@@ -160,17 +160,3 @@ class TestApp(BaseTests):
         assert private_stats["num_files"] == 0
         assert group_A_fullname not in private_stats["num_datasets_per_group"]
         assert group_B_fullname not in private_stats["num_datasets_per_group"]
-
-        # delete all the elements used by the test
-        delete_test_env(
-            client,
-            user_A1_headers,
-            user_B1_headers,
-            user_B1_uuid,
-            user_B2_uuid,
-            user_A1_uuid,
-            uuid_group_A,
-            uuid_group_B,
-            study1_uuid=study1_uuid,
-            study2_uuid=study2_uuid,
-        )
