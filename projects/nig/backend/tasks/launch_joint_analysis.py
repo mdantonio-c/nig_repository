@@ -1,9 +1,11 @@
+import csv
 import os
 import re
 import shutil
 from pathlib import Path
 from typing import List
 
+import yaml
 from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
 from pandas import DataFrame
 from restapi.config import DATA_PATH
@@ -36,6 +38,10 @@ def launch_joint_analysis(
         if snk_file.is_file():
             shutil.copy(snk_file, wrkdir)
 
+    config_file = wrkdir.joinpath("config.yaml")
+    with open(config_file) as stream:
+        job_config = yaml.safe_load(stream)
+
     # create the tmp dir used by gatk
     tmp_dir = wrkdir.joinpath("tmp")
     if not tmp_dir.exists():
@@ -44,6 +50,8 @@ def launch_joint_analysis(
     # get the file list from the dataset list
     pattern = r"([a-zA-Z0-9_-]+)_(R[12]).fastq.gz"
     fastq = []
+    sample_datasets = {}
+    duplicate_samples = {}
     for d in dataset_list:
         # get the path of the dataset directory
         dataset = graph.Dataset.nodes.get_or_none(uuid=d)
@@ -60,9 +68,14 @@ def launch_joint_analysis(
         for f in datasetDirectory.iterdir():
             fname = f.name
             match = re.match(pattern, fname)
-            file_label = None
-            if match:
-                file_label = match.group(1)
+            if not match:
+                continue
+            file_label = match.group(1)
+            selected_dataset = sample_datasets.setdefault(file_label, dataset)
+            if selected_dataset.uuid != dataset.uuid:
+                duplicate_samples.setdefault(file_label, set()).update(
+                    (selected_dataset.uuid, dataset.uuid)
+                )
             output_path = OUTPUT_ROOT.joinpath(datasetDirectory.relative_to(INPUT_ROOT))
             fastq_row = [file_label, output_path]
             fastq.append(fastq_row)
@@ -70,7 +83,7 @@ def launch_joint_analysis(
         # mark that a joint analysis has been launched on this dataset
         dataset.joint_analysis = True
         # connect the dataset to the job node
-        dataset.job.connect(job)
+        dataset.joint_analysis_job.connect(job)
         dataset.save()
 
     # A dataframe is created
@@ -82,20 +95,138 @@ def launch_joint_analysis(
     log.info("New file {} is now created", fastq_csv_file)
     log.info("Total Number Of Fastq identified:{}\n", df.shape[0])
 
+    # Materialize platform metadata in the formats consumed by the reusable
+    # standardization workflow. Sample IDs come from the FASTQ basename, which
+    # is also the sample name written into the joint VCF by HaplotypeCaller.
+    phenotype_groups = {
+        str(name).strip().lower(): group
+        for name, group in job_config.get("STANDARDIZATION", {})
+        .get("phenotype_groups", {})
+        .items()
+    }
+    sex_rows = {}
+    group_rows = {}
+    macroarea_rows = {}
+    phenotype_samples = {}
+    unmapped_phenotypes = set()
+
+    def get_phenotype_groups(phenotype):
+        keys = [phenotype.name.strip().lower()]
+        for hpo in phenotype.hpo.all():
+            keys.extend((hpo.hpo_id.strip().lower(), hpo.label.strip().lower()))
+
+        groups = []
+        for key in keys:
+            configured = phenotype_groups.get(key, [])
+            if isinstance(configured, str):
+                configured = [configured]
+            for group in configured:
+                group = str(group).strip().lower()
+                if group and group not in groups:
+                    groups.append(group)
+        return groups
+
+    for sample, dataset in sample_datasets.items():
+        phenotype = dataset.phenotype.single()
+        if phenotype:
+            phenotype_samples.setdefault(phenotype.uuid, set()).add(sample)
+        tags = []
+        if phenotype:
+            sex_rows[sample] = phenotype.sex
+            tags.append(phenotype.sex)
+            groups = get_phenotype_groups(phenotype)
+            tags.extend(groups)
+            if not groups:
+                unmapped_phenotypes.add(phenotype.name)
+            birthplace = phenotype.birth_place.single()
+            if birthplace and birthplace.macroarea:
+                macroarea_rows[sample] = birthplace.macroarea
+        group_rows[sample] = tags or ["unknown"]
+
+    sex_file = wrkdir.joinpath("standardization_sex.csv")
+    with open(sex_file, "w", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["sample", "sex"])
+        writer.writerows(sorted(sex_rows.items()))
+
+    groups_file = wrkdir.joinpath("standardization_groups.tsv")
+    with open(groups_file, "w") as stream:
+        for sample, tags in sorted(group_rows.items()):
+            stream.write(f"{sample}\t{','.join(tags)}\n")
+
+    macroarea_file = wrkdir.joinpath("standardization_macroarea.tsv")
+    if macroarea_rows:
+        with open(macroarea_file, "w") as stream:
+            stream.write("ID\tMACROAREA\n")
+            for sample, macroarea in sorted(macroarea_rows.items()):
+                stream.write(f"{sample}\t{macroarea}\n")
+
+    parents = set()
+    probands = set()
+    for sample, dataset in sample_datasets.items():
+        phenotype = dataset.phenotype.single()
+        if not phenotype:
+            continue
+        father = phenotype.father.single()
+        mother = phenotype.mother.single()
+        if father and mother:
+            father_samples = phenotype_samples.get(father.uuid, set())
+            mother_samples = phenotype_samples.get(mother.uuid, set())
+            if father_samples and mother_samples:
+                probands.add(sample)
+                parents.update(father_samples)
+                parents.update(mother_samples)
+
+    parents_file = wrkdir.joinpath("standardization_parents.txt")
+    probands_file = wrkdir.joinpath("standardization_probands.txt")
+    if parents and probands:
+        parents_file.write_text("\n".join(sorted(parents)) + "\n")
+        probands_file.write_text("\n".join(sorted(probands)) + "\n")
+
+    job_config["relatedness"]["sex_metadata_csv"] = (
+        str(sex_file) if sex_rows else ""
+    )
+    job_config["annotation"]["outliers_groups_file"] = str(groups_file)
+    job_config["covariates"]["macroarea_file"] = (
+        str(macroarea_file) if macroarea_rows else ""
+    )
+    job_config["trio"].update(
+        {
+            "enabled": bool(parents and probands),
+            "parents_file": str(parents_file) if parents else "",
+            "probands_file": str(probands_file) if probands else "",
+        }
+    )
+    with open(config_file, "w") as stream:
+        yaml.safe_dump(job_config, stream, sort_keys=False)
+
+    if unmapped_phenotypes:
+        log.warning(
+            "No standardization group mapping matched phenotype name or HPO: {}",
+            sorted(unmapped_phenotypes),
+        )
+    if duplicate_samples:
+        log.warning(
+            "Duplicate joint sample IDs found; metadata follows the first dataset, "
+            "matching Basic.smk: {}",
+            {sample: sorted(uuids) for sample, uuids in duplicate_samples.items()},
+        )
+
     # Launch snakemake
-    config = [wrkdir.joinpath("config.yaml")]
+    config = [config_file]
 
     cores = os.cpu_count()
     log.info("Calling Snakemake with {} cores and forceall {}", cores, force)
     snakefile_path = wrkdir.joinpath(snakefile)
 
     # https://snakemake.readthedocs.io/en/stable/api_reference/snakemake.html
-    snakemake(
+    successful = snakemake(
         snakefile_path,
         cores=cores,
         workdir=wrkdir,
         configfiles=config,
         forceall=force,
+        use_conda=True,
         # Go on with independent jobs if a job fails. (default: False)
         keepgoing=True,
         # force the re-creation of incomplete files (default False)
@@ -103,6 +234,9 @@ def launch_joint_analysis(
         # lock the working directory when executing the workflow (default True)
         lock=False,
     )
+
+    if not successful:
+        raise RuntimeError("Joint analysis or VCF standardization failed")
 
     log.info(f"job {task_id} completed")
 
