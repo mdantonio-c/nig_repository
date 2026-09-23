@@ -150,15 +150,28 @@ class OmicsClient:
         response = self._request("DELETE", f"/storage/objects/{file_id}")
         return response.ok
 
-    def download_file(self, file_id: str, destination: Path) -> Path:
+    def download_file(
+        self,
+        file_id: str,
+        destination: Path,
+        expected_size: Optional[int] = None,
+    ) -> Path:
         response = self._request(
             "GET", f"/storage/objects/download/{file_id}", stream=True
         )
         tmp_path = destination.with_name(destination.name + ".part")
+        downloaded = 0
         with tmp_path.open("wb") as stream:
             for block in response.iter_content(chunk_size=1024 * 1024):
                 if block:
                     stream.write(block)
+                    downloaded += len(block)
+        if expected_size is not None and downloaded != expected_size:
+            tmp_path.unlink(missing_ok=True)
+            raise OmicsRequestError(
+                "Omics download has an unexpected size: "
+                f"expected {expected_size}, received {downloaded}"
+            )
         tmp_path.rename(destination)
         return destination
 

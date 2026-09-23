@@ -295,3 +295,16 @@ def test_download_file_streams_to_part_then_renames(tmp_path: Path) -> None:
     assert result == destination
     assert destination.read_bytes() == b"abcdef"
     assert not destination.with_name(destination.name + ".part").exists()
+
+
+def test_download_file_rejects_wrong_size_and_removes_partial_file(tmp_path: Path) -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(200, content_chunks=[b"abc"]))
+    client = _client(session)
+    destination = tmp_path.joinpath("sample.g.vcf.gz")
+
+    with pytest.raises(OmicsRequestError):
+        client.download_file("f1", destination, expected_size=4)
+
+    assert not destination.exists()
+    assert not destination.with_name(destination.name + ".part").exists()
