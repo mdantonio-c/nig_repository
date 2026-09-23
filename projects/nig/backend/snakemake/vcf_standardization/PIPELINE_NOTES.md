@@ -36,7 +36,7 @@ required by the NIG/Cineca/UniTo project:
    - If `annotation.outliers_groups_file` is empty → §8.2 path: simple `pca_ita`/`outliers` groups only.
    - If provided → §8.3 path: R script expands composite groups (`ita_cardio`, `ita_neuro_male`, etc.).
    - Missing optional inputs → steps that need them are silently skipped.
-6. **Macroarea plot**: produced only when `covariates.macroarea_xlsx` is set. For this run: `data/ID_MACROAREA.xlsx`.
+6. **Macroarea plot**: produced only when `covariates.macroarea_file` is set. For this run: `data/ID_MACROAREA.xlsx`.
 7. **Snakemake best practices**: community workflow-template layout, per-rule conda envs, `log:` + `benchmark:` on all rules, config validated against JSON Schema on startup.
 8. **Docker**: deferred to next iteration. Conda envs prepared but not created — user does that.
 
@@ -121,7 +121,7 @@ The R script:
 4. Writes `outliers_to_remove_{cohort}.samples.txt` (outlier IDs, single column) — `bcftools -S` compatible
 5. Writes `pca_ita_{cohort}.txt` (non-outlier IDs, single column)
 6. Saves `pca_plot_{cohort}.png` (PC1 vs PC2, outliers in red)
-7. If `macroarea_xlsx` is set: reads Excel, merges on ID, saves `macroarea_plot_{cohort}.png`
+7. If `macroarea_file` is set: reads Excel, merges on ID, saves `macroarea_plot_{cohort}.png`
 
 #### `annotate.smk` — Section 8
 **Path A** (`outliers_groups_file: ""`):
@@ -224,7 +224,7 @@ All behaviour is driven by `config/config.yaml`. Key options:
 | `annotation.outliers_groups_file` | `""` | If set, run §8.3 composite-group expansion |
 | `annotation.remove_outliers_from_merge` | `true` | Produce outlier-free merged VCF (§8.4) |
 | `annotation.outlier_removal_scope` | `all` | Which PCA outliers to remove from merged VCF: `all`, `cohort_only`, or `reference_only` |
-| `covariates.macroarea_xlsx` | `data/ID_MACROAREA.xlsx` | For macroarea-coloured PCA plot |
+| `covariates.macroarea_file` | `data/ID_MACROAREA.xlsx` | For macroarea-coloured PCA plot |
 | `threads.bcftools` | `4` | Threads for bcftools rules |
 | `threads.plink` | `4` | Threads for PLINK rules |
 

@@ -12,14 +12,19 @@ sink(log_con, type = "output")
 sink(log_con, type = "message")
 
 # ── 1. Read pipeline-derived classification ───────────────────────────────────
-outliers <- read.table(snakemake@input[["outliers_to_remove"]],
-                       sep = "\t", header = FALSE, stringsAsFactors = FALSE)
-colnames(outliers)[1] <- "ID"
+read_ids <- function(path) {
+  if (!file.exists(path) || file.info(path)$size == 0) {
+    return(data.frame(ID = character(0), stringsAsFactors = FALSE))
+  }
+  result <- read.table(path, sep = "\t", header = FALSE,
+                       stringsAsFactors = FALSE)
+  data.frame(ID = result[[1]], stringsAsFactors = FALSE)
+}
+
+outliers <- read_ids(snakemake@input[["outliers_to_remove"]])
 outliers$pca_class <- "outliers"
 
-pca_ita <- read.table(snakemake@input[["pca_ita"]],
-                      sep = "\t", header = FALSE, stringsAsFactors = FALSE)
-colnames(pca_ita)[1] <- "ID"
+pca_ita <- read_ids(snakemake@input[["pca_ita"]])
 pca_ita$pca_class <- "pca_ita"
 
 pca_df <- rbind(outliers[, c("ID", "pca_class")],

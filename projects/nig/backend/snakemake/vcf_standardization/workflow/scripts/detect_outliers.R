@@ -6,7 +6,7 @@ library(dplyr)
 eigenvec_path  <- snakemake@input[["eigenvec"]]
 n_pcs          <- as.integer(snakemake@params[["n_components"]])
 mahal_quantile <- as.numeric(snakemake@params[["mahal_quantile"]])
-macroarea_xlsx <- snakemake@params[["macroarea_xlsx"]]
+macroarea_file <- snakemake@params[["macroarea_file"]]
 
 out_outliers   <- snakemake@output[["outliers"]]
 out_outlier_samples <- snakemake@output[["outlier_samples"]]
@@ -76,23 +76,24 @@ p_outlier <- ggplot(ev, aes(x = PC1, y = PC2, color = is_outlier)) +
 ggsave(out_pca_plot, p_outlier, width = 7, height = 6, dpi = 150)
 
 # ── 6. Macroarea plot (optional) ──────────────────────────────────────────────
-if (nchar(macroarea_xlsx) > 0 && length(snakemake@output[["macroarea_plot"]]) > 0) {
-  library(readxl)
-  labels <- read_excel(macroarea_xlsx)
+if (nchar(macroarea_file) > 0 && length(snakemake@output[["macroarea_plot"]]) > 0) {
+  extension <- tolower(tools::file_ext(macroarea_file))
+  if (extension %in% c("xlsx", "xls")) {
+    library(readxl)
+    labels <- read_excel(macroarea_file)
+  } else {
+    labels <- read.table(macroarea_file, header = TRUE, sep = "\t",
+                         stringsAsFactors = FALSE, check.names = FALSE)
+  }
 
   # Accept any column named ID (case-insensitive) and MACROAREA
   colnames(labels) <- toupper(colnames(labels))
   if (!"ID" %in% colnames(labels) || !"MACROAREA" %in% colnames(labels)) {
-    warning("macroarea_xlsx must have columns 'ID' and 'MACROAREA'. Skipping macroarea plot.")
+    warning("macroarea_file must have columns 'ID' and 'MACROAREA'. Skipping macroarea plot.")
   } else {
     ev_merged <- merge(ev, labels[, c("ID", "MACROAREA")], by = "ID", all.x = TRUE)
-    custom_colors <- c(
-      NORD = "#1f78b4", CENTRO = "#ff7f00",
-      SUD  = "#d16ba5", SARDEGNA = "purple4"
-    )
     p_macro <- ggplot(ev_merged, aes(PC1, PC2, color = MACROAREA)) +
       geom_point(size = 1, alpha = 0.7) +
-      scale_colour_manual(values = custom_colors, na.value = "grey70") +
       coord_equal() +
       theme_light() +
       labs(

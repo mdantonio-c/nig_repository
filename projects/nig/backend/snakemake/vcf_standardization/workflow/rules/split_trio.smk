@@ -14,12 +14,12 @@ if config["trio"]["enabled"]:
                 tbi=config["input"]["vcf"] + ".tbi",
                 samples=config["trio"][_samples_key],
             output:
-                vcf=f"results/trio/{{cohort}}_{_subset}.vcf.gz",
-                tbi=f"results/trio/{{cohort}}_{_subset}.vcf.gz.tbi",
+                vcf=f"{RESULT_ROOT}/trio/{{cohort}}_{_subset}.vcf.gz",
+                tbi=f"{RESULT_ROOT}/trio/{{cohort}}_{_subset}.vcf.gz.tbi",
             log:
-                f"logs/trio/split_trio_{_subset}_{{cohort}}.log",
+                f"{LOG_ROOT}/trio/split_trio_{_subset}_{{cohort}}.log",
             benchmark:
-                f"benchmarks/trio/split_trio_{_subset}_{{cohort}}.tsv"
+                f"{BENCHMARK_ROOT}/trio/split_trio_{_subset}_{{cohort}}.tsv"
             threads: config["threads"]["bcftools"]
             conda:
                 "../envs/bcftools.yaml"

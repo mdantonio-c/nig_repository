@@ -1,4 +1,7 @@
 cohort_name: your_cohort
+output_dir: results
+log_dir: logs
+benchmark_dir: benchmarks
 
 input:
   vcf: data/your_cohort.vcf.gz
@@ -38,7 +41,7 @@ annotation:
   outlier_removal_scope: all   # all, cohort_only, or reference_only for no_out_commonVar_*.vcf.gz
 
 covariates:
-  macroarea_xlsx: ""   # optional; empty skips the coloured PCA plot
+  macroarea_file: ""   # optional CSV/TSV/XLSX with ID and MACROAREA columns
 
 threads:
   bcftools: 4

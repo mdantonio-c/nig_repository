@@ -1,8 +1,14 @@
 # NIG VCF Standardization Pipeline
 
-This is a standalone workflow bundled with NIG. It is not invoked by the
-existing platform job launcher, which uses Snakemake 6.4; run it with the
-dedicated environment supplied in this directory (Snakemake 9.19.0).
+This workflow is both reusable on its own and included by the platform's
+`Joint_samples.smk`. A joint analysis now continues automatically from the
+filtered multisample VCF through standardization on Snakemake 6.4.
+
+For platform runs, sample IDs come from the validated FASTQ basename and match
+the `SM` read-group value used by the single-sample workflow. Sex, birth-place
+macroarea, HPO terms, phenotype name, and complete parent relationships are
+read directly from the dataset's linked Neo4j phenotype. Disease groups are
+assigned through `STANDARDIZATION.phenotype_groups` in the platform config.
 
 `data/ITvarGM.vcf.gz` and its index are deployed only on the NIG VM and are
 intentionally ignored by Git. Do not stage, commit, or distribute them. Before
@@ -26,7 +32,7 @@ Snakemake pipeline implementing the VCF standardization protocol described in
 ## Requirements
 
 - [Conda / Mamba](https://docs.conda.io/)
-- Snakemake ≥ 8
+- Snakemake 6.4 or newer
 
 ## Setup
 
@@ -72,7 +78,7 @@ Optional features (all off by default):
 - `merge.tool: plink` — use PLINK 1.9 binary merge instead of bcftools (faster for WGS-scale)
 - `annotation.outliers_groups_file` — path to your sample→phenotype TSV for composite-group AFs (§8.3)
 - `annotation.outlier_removal_scope` — choose which PCA outliers to remove from the merged VCF: `all`, `cohort_only`, or `reference_only`
-- `covariates.macroarea_xlsx` — path to Excel file with `ID` + `MACROAREA` columns for a coloured PCA plot
+- `covariates.macroarea_file` — path to a TSV or Excel file with `ID` + `MACROAREA` columns for a coloured PCA plot
 
 ## Running
 
@@ -90,6 +96,10 @@ snakemake --use-conda --cores 4
 To run on a cluster, add a [Snakemake profile](https://snakemake.readthedocs.io/en/stable/executing/cluster.html) appropriate for your scheduler.
 
 ## Outputs
+
+The standalone defaults write under `results/`. The platform integration sets
+`output_dir: /data/output/vcf_standardization`, with logs and benchmarks kept
+under that directory.
 
 | File | Description |
 |---|---|

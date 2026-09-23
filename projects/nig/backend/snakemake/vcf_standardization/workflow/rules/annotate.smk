@@ -24,13 +24,13 @@ rule filter_pca_groups_to_cohort:
     input:
         vcf=config["input"]["vcf"],
         tbi=config["input"]["vcf"] + ".tbi",
-        outliers="results/outliers/outliers_to_remove_{cohort}.samples.txt",
-        pca_ita="results/outliers/pca_ita_{cohort}.txt",
+        outliers=f"{RESULT_ROOT}/outliers/outliers_to_remove_{{cohort}}.samples.txt",
+        pca_ita=f"{RESULT_ROOT}/outliers/pca_ita_{{cohort}}.txt",
     output:
-        outliers="results/annotate/outliers_to_remove_{cohort}.cohort_samples.txt",
-        pca_ita="results/annotate/pca_ita_{cohort}.cohort_samples.txt",
+        outliers=f"{RESULT_ROOT}/annotate/outliers_to_remove_{{cohort}}.cohort_samples.txt",
+        pca_ita=f"{RESULT_ROOT}/annotate/pca_ita_{{cohort}}.cohort_samples.txt",
     log:
-        "logs/annotate/filter_pca_groups_{cohort}.log",
+        f"{LOG_ROOT}/annotate/filter_pca_groups_{{cohort}}.log",
     conda:
         "../envs/bcftools.yaml"
     shell:
@@ -55,12 +55,12 @@ if _OGF:
     rule build_mixed_groups:
         input:
             outliers_groups=_OGF,
-            outliers_to_remove="results/annotate/outliers_to_remove_{cohort}.cohort_samples.txt",
-            pca_ita="results/annotate/pca_ita_{cohort}.cohort_samples.txt",
+            outliers_to_remove=f"{RESULT_ROOT}/annotate/outliers_to_remove_{{cohort}}.cohort_samples.txt",
+            pca_ita=f"{RESULT_ROOT}/annotate/pca_ita_{{cohort}}.cohort_samples.txt",
         output:
-            mixed="results/annotate/outliers_mixedgroups_{cohort}.txt",
+            mixed=f"{RESULT_ROOT}/annotate/outliers_mixedgroups_{{cohort}}.txt",
         log:
-            "logs/annotate/build_mixed_groups_{cohort}.log",
+            f"{LOG_ROOT}/annotate/build_mixed_groups_{{cohort}}.log",
         conda:
             "../envs/r.yaml"
         script:
@@ -73,12 +73,12 @@ rule build_groups:
     input:
         vcf=config["input"]["vcf"],
         tbi=config["input"]["vcf"] + ".tbi",
-        outliers="results/annotate/outliers_to_remove_{cohort}.cohort_samples.txt",
-        pca_ita="results/annotate/pca_ita_{cohort}.cohort_samples.txt",
+        outliers=f"{RESULT_ROOT}/annotate/outliers_to_remove_{{cohort}}.cohort_samples.txt",
+        pca_ita=f"{RESULT_ROOT}/annotate/pca_ita_{{cohort}}.cohort_samples.txt",
     output:
-        groups="results/annotate/groups_{cohort}.txt",
+        groups=f"{RESULT_ROOT}/annotate/groups_{{cohort}}.txt",
     log:
-        "logs/annotate/build_groups_{cohort}.log",
+        f"{LOG_ROOT}/annotate/build_groups_{{cohort}}.log",
     conda:
         "../envs/bcftools.yaml"
     shell:
@@ -96,14 +96,14 @@ rule annotate_vcf:
         tbi=config["input"]["vcf"] + ".tbi",
         groups=get_groups_file,
     output:
-        vcf="results/annotated/groups_INFOtags_{cohort}.vcf.gz",
-        tbi="results/annotated/groups_INFOtags_{cohort}.vcf.gz.tbi",
+        vcf=f"{RESULT_ROOT}/annotated/groups_INFOtags_{{cohort}}.vcf.gz",
+        tbi=f"{RESULT_ROOT}/annotated/groups_INFOtags_{{cohort}}.vcf.gz.tbi",
     params:
         fill_tags=config["annotation"]["fill_tags"],
     log:
-        "logs/annotate/annotate_vcf_{cohort}.log",
+        f"{LOG_ROOT}/annotate/annotate_vcf_{{cohort}}.log",
     benchmark:
-        "benchmarks/annotate/annotate_vcf_{cohort}.tsv"
+        f"{BENCHMARK_ROOT}/annotate/annotate_vcf_{{cohort}}.tsv"
     threads: config["threads"]["bcftools"]
     conda:
         "../envs/bcftools.yaml"
@@ -125,18 +125,18 @@ if config["annotation"]["remove_outliers_from_merge"]:
 
     rule drop_outliers_from_merge:
         input:
-            vcf=f"results/merge/{_STEM}.vcf.gz",
-            tbi=f"results/merge/{_STEM}.vcf.gz.tbi",
-            outliers=f"results/outliers/outliers_to_remove_{_COHORT}.samples.txt",
+            vcf=f"{RESULT_ROOT}/merge/{_STEM}.vcf.gz",
+            tbi=f"{RESULT_ROOT}/merge/{_STEM}.vcf.gz.tbi",
+            outliers=f"{RESULT_ROOT}/outliers/outliers_to_remove_{_COHORT}.samples.txt",
             cohort_vcf=config["input"]["vcf"],
             ref_vcf=config["reference"]["cohort_vcf"],
         output:
-            vcf=f"results/merge/no_out_{_STEM}.vcf.gz",
-            tbi=f"results/merge/no_out_{_STEM}.vcf.gz.tbi",
+            vcf=f"{RESULT_ROOT}/merge/no_out_{_STEM}.vcf.gz",
+            tbi=f"{RESULT_ROOT}/merge/no_out_{_STEM}.vcf.gz.tbi",
         log:
-            f"logs/annotate/drop_outliers_merge_{_COHORT}.log",
+            f"{LOG_ROOT}/annotate/drop_outliers_merge_{_COHORT}.log",
         benchmark:
-            f"benchmarks/annotate/drop_outliers_merge_{_COHORT}.tsv"
+            f"{BENCHMARK_ROOT}/annotate/drop_outliers_merge_{_COHORT}.tsv"
         params:
             sample_scope=config["annotation"].get("outlier_removal_scope", "all"),
         threads: config["threads"]["bcftools"]

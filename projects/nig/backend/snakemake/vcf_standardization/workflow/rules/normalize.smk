@@ -19,12 +19,12 @@ if not config["input"]["has_chr_prefix"]:
             tbi=config["input"]["vcf"] + ".tbi",
             rename=config["conventions"]["no_chr_rename"],
         output:
-            vcf=temp("results/normalized/chrpfx_{cohort}.vcf.gz"),
-            tbi=temp("results/normalized/chrpfx_{cohort}.vcf.gz.tbi"),
+            vcf=temp(f"{RESULT_ROOT}/normalized/chrpfx_{{cohort}}.vcf.gz"),
+            tbi=temp(f"{RESULT_ROOT}/normalized/chrpfx_{{cohort}}.vcf.gz.tbi"),
         log:
-            "logs/normalize/add_chr_prefix_{cohort}.log",
+            f"{LOG_ROOT}/normalize/add_chr_prefix_{{cohort}}.log",
         benchmark:
-            "benchmarks/normalize/add_chr_prefix_{cohort}.tsv"
+            f"{BENCHMARK_ROOT}/normalize/add_chr_prefix_{{cohort}}.tsv"
         threads: config["threads"]["bcftools"]
         conda:
             "../envs/bcftools.yaml"
@@ -53,12 +53,12 @@ rule normalize_and_reid:
         fai=config["reference"]["fasta"] + ".fai",
         chr_rename=config["conventions"]["chr_rename"],
     output:
-        vcf="results/normalized/newID_{cohort}.vcf.gz",
-        tbi="results/normalized/newID_{cohort}.vcf.gz.tbi",
+        vcf=f"{RESULT_ROOT}/normalized/newID_{{cohort}}.vcf.gz",
+        tbi=f"{RESULT_ROOT}/normalized/newID_{{cohort}}.vcf.gz.tbi",
     log:
-        "logs/normalize/normalize_and_reid_{cohort}.log",
+        f"{LOG_ROOT}/normalize/normalize_and_reid_{{cohort}}.log",
     benchmark:
-        "benchmarks/normalize/normalize_and_reid_{cohort}.tsv"
+        f"{BENCHMARK_ROOT}/normalize/normalize_and_reid_{{cohort}}.tsv"
     threads: config["threads"]["bcftools"]
     conda:
         "../envs/bcftools.yaml"

@@ -15,23 +15,26 @@ if config["relatedness"].get("sex_metadata_csv", ""):
         Output columns: #FID  IID  SEX. Unknown/reference samples are SEX=0.
         """
         input:
-            vcf=f"results/merge/{_STEM}.vcf.gz",
-            tbi=f"results/merge/{_STEM}.vcf.gz.tbi",
+            vcf=f"{RESULT_ROOT}/merge/{_STEM}.vcf.gz",
+            tbi=f"{RESULT_ROOT}/merge/{_STEM}.vcf.gz.tbi",
             csv=config["relatedness"]["sex_metadata_csv"],
         output:
-            sex_file=f"results/pca/{_STEM}.sex.txt",
+            sex_file=f"{RESULT_ROOT}/pca/{_STEM}.sex.txt",
         log:
-            f"logs/pca/prepare_sex_file_{_STEM}.log",
-        conda:
-            "../envs/bcftools.yaml"
+            f"{LOG_ROOT}/pca/prepare_sex_file_{_STEM}.log",
         run:
             import csv
-            import subprocess
+            import gzip
 
-            sample_ids = subprocess.check_output(
-                ["bcftools", "query", "-l", input.vcf],
-                text=True,
-            ).splitlines()
+            opener = gzip.open if str(input.vcf).endswith(".gz") else open
+            sample_ids = []
+            with opener(input.vcf, "rt") as vcf:
+                for line in vcf:
+                    if line.startswith("#CHROM"):
+                        sample_ids = line.rstrip("\n").split("\t")[9:]
+                        break
+            if not sample_ids:
+                raise ValueError(f"No #CHROM sample header found in {input.vcf}")
 
             sex_map = {"male": 1, "female": 2}
             sex_by_sample = {}
@@ -62,20 +65,20 @@ if config["relatedness"].get("sex_metadata_csv", ""):
 
 rule make_pgen:
     input:
-        vcf=f"results/merge/{_STEM}.vcf.gz",
-        tbi=f"results/merge/{_STEM}.vcf.gz.tbi",
+        vcf=f"{RESULT_ROOT}/merge/{_STEM}.vcf.gz",
+        tbi=f"{RESULT_ROOT}/merge/{_STEM}.vcf.gz.tbi",
         sex_file=get_pca_sex_file,
     output:
-        pgen=temp(f"results/pca/{_STEM}.pgen"),
-        pvar=temp(f"results/pca/{_STEM}.pvar"),
-        psam=temp(f"results/pca/{_STEM}.psam"),
+        pgen=temp(f"{RESULT_ROOT}/pca/{_STEM}.pgen"),
+        pvar=temp(f"{RESULT_ROOT}/pca/{_STEM}.pvar"),
+        psam=temp(f"{RESULT_ROOT}/pca/{_STEM}.psam"),
     params:
-        prefix=f"results/pca/{_STEM}",
+        prefix=f"{RESULT_ROOT}/pca/{_STEM}",
         sex_flag=get_pca_sex_flag,
     log:
-        f"logs/pca/make_pgen_{_STEM}.log",
+        f"{LOG_ROOT}/pca/make_pgen_{_STEM}.log",
     benchmark:
-        f"benchmarks/pca/make_pgen_{_STEM}.tsv"
+        f"{BENCHMARK_ROOT}/pca/make_pgen_{_STEM}.tsv"
     threads: config["threads"]["plink"]
     conda:
         "../envs/plink.yaml"
@@ -93,21 +96,21 @@ rule make_pgen:
 
 rule plink_pca:
     input:
-        pgen=f"results/pca/{_STEM}.pgen",
-        pvar=f"results/pca/{_STEM}.pvar",
-        psam=f"results/pca/{_STEM}.psam",
+        pgen=f"{RESULT_ROOT}/pca/{_STEM}.pgen",
+        pvar=f"{RESULT_ROOT}/pca/{_STEM}.pvar",
+        psam=f"{RESULT_ROOT}/pca/{_STEM}.psam",
     output:
-        eigenvec=f"results/pca/pca_{_STEM}.eigenvec",
-        eigenval=f"results/pca/pca_{_STEM}.eigenval",
-        acount=f"results/pca/pca_{_STEM}.acount",
+        eigenvec=f"{RESULT_ROOT}/pca/pca_{_STEM}.eigenvec",
+        eigenval=f"{RESULT_ROOT}/pca/pca_{_STEM}.eigenval",
+        acount=f"{RESULT_ROOT}/pca/pca_{_STEM}.acount",
     params:
-        in_prefix=f"results/pca/{_STEM}",
-        out_prefix=f"results/pca/pca_{_STEM}",
+        in_prefix=f"{RESULT_ROOT}/pca/{_STEM}",
+        out_prefix=f"{RESULT_ROOT}/pca/pca_{_STEM}",
         n_components=config["pca"]["n_components"],
     log:
-        f"logs/pca/plink_pca_{_STEM}.log",
+        f"{LOG_ROOT}/pca/plink_pca_{_STEM}.log",
     benchmark:
-        f"benchmarks/pca/plink_pca_{_STEM}.tsv"
+        f"{BENCHMARK_ROOT}/pca/plink_pca_{_STEM}.tsv"
     threads: config["threads"]["plink"]
     conda:
         "../envs/plink.yaml"

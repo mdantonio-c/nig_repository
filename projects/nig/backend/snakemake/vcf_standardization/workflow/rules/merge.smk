@@ -24,7 +24,7 @@ if config["merge"]["tool"] == "bcftools":
         output:
             tbi=config["reference"]["cohort_vcf"] + ".tbi",
         log:
-            "logs/merge/index_reference.log",
+            f"{LOG_ROOT}/merge/index_reference.log",
         conda:
             "../envs/bcftools.yaml"
         shell:
@@ -37,11 +37,11 @@ if config["merge"]["tool"] == "bcftools":
             cohort_vcf=get_cohort_vcf_for_merge(),
             cohort_tbi=get_cohort_vcf_for_merge() + ".tbi",
         output:
-            ids=f"results/merge/common_ids_{_COHORT}.txt",
+            ids=f"{RESULT_ROOT}/merge/common_ids_{_COHORT}.txt",
         log:
-            f"logs/merge/common_ids_{_COHORT}.log",
+            f"{LOG_ROOT}/merge/common_ids_{_COHORT}.log",
         benchmark:
-            f"benchmarks/merge/common_ids_{_COHORT}.tsv"
+            f"{BENCHMARK_ROOT}/merge/common_ids_{_COHORT}.tsv"
         threads: config["threads"]["bcftools"]
         conda:
             "../envs/bcftools.yaml"
@@ -59,14 +59,14 @@ if config["merge"]["tool"] == "bcftools":
         input:
             vcf=config["reference"]["cohort_vcf"],
             tbi=config["reference"]["cohort_vcf"] + ".tbi",
-            ids=f"results/merge/common_ids_{_COHORT}.txt",
+            ids=f"{RESULT_ROOT}/merge/common_ids_{_COHORT}.txt",
         output:
-            vcf=temp(f"results/merge/common_var_{_REF}_for_{_COHORT}.vcf.gz"),
-            tbi=temp(f"results/merge/common_var_{_REF}_for_{_COHORT}.vcf.gz.tbi"),
+            vcf=temp(f"{RESULT_ROOT}/merge/common_var_{_REF}_for_{_COHORT}.vcf.gz"),
+            tbi=temp(f"{RESULT_ROOT}/merge/common_var_{_REF}_for_{_COHORT}.vcf.gz.tbi"),
         log:
-            f"logs/merge/extract_common_ref_{_REF}_{_COHORT}.log",
+            f"{LOG_ROOT}/merge/extract_common_ref_{_REF}_{_COHORT}.log",
         benchmark:
-            f"benchmarks/merge/extract_common_ref_{_REF}_{_COHORT}.tsv"
+            f"{BENCHMARK_ROOT}/merge/extract_common_ref_{_REF}_{_COHORT}.tsv"
         threads: config["threads"]["bcftools"]
         conda:
             "../envs/bcftools.yaml"
@@ -84,14 +84,14 @@ if config["merge"]["tool"] == "bcftools":
         input:
             vcf=get_cohort_vcf_for_merge(),
             tbi=get_cohort_vcf_for_merge() + ".tbi",
-            ids=f"results/merge/common_ids_{_COHORT}.txt",
+            ids=f"{RESULT_ROOT}/merge/common_ids_{_COHORT}.txt",
         output:
-            vcf=temp(f"results/merge/common_var_{_COHORT}.vcf.gz"),
-            tbi=temp(f"results/merge/common_var_{_COHORT}.vcf.gz.tbi"),
+            vcf=temp(f"{RESULT_ROOT}/merge/common_var_{_COHORT}.vcf.gz"),
+            tbi=temp(f"{RESULT_ROOT}/merge/common_var_{_COHORT}.vcf.gz.tbi"),
         log:
-            f"logs/merge/extract_common_cohort_{_COHORT}.log",
+            f"{LOG_ROOT}/merge/extract_common_cohort_{_COHORT}.log",
         benchmark:
-            f"benchmarks/merge/extract_common_cohort_{_COHORT}.tsv"
+            f"{BENCHMARK_ROOT}/merge/extract_common_cohort_{_COHORT}.tsv"
         threads: config["threads"]["bcftools"]
         conda:
             "../envs/bcftools.yaml"
@@ -107,17 +107,17 @@ if config["merge"]["tool"] == "bcftools":
 
     rule merge_cohorts:
         input:
-            ref_vcf=f"results/merge/common_var_{_REF}_for_{_COHORT}.vcf.gz",
-            ref_tbi=f"results/merge/common_var_{_REF}_for_{_COHORT}.vcf.gz.tbi",
-            cohort_vcf=f"results/merge/common_var_{_COHORT}.vcf.gz",
-            cohort_tbi=f"results/merge/common_var_{_COHORT}.vcf.gz.tbi",
+            ref_vcf=f"{RESULT_ROOT}/merge/common_var_{_REF}_for_{_COHORT}.vcf.gz",
+            ref_tbi=f"{RESULT_ROOT}/merge/common_var_{_REF}_for_{_COHORT}.vcf.gz.tbi",
+            cohort_vcf=f"{RESULT_ROOT}/merge/common_var_{_COHORT}.vcf.gz",
+            cohort_tbi=f"{RESULT_ROOT}/merge/common_var_{_COHORT}.vcf.gz.tbi",
         output:
-            vcf=f"results/merge/{_STEM}.vcf.gz",
-            tbi=f"results/merge/{_STEM}.vcf.gz.tbi",
+            vcf=f"{RESULT_ROOT}/merge/{_STEM}.vcf.gz",
+            tbi=f"{RESULT_ROOT}/merge/{_STEM}.vcf.gz.tbi",
         log:
-            f"logs/merge/merge_cohorts_{_STEM}.log",
+            f"{LOG_ROOT}/merge/merge_cohorts_{_STEM}.log",
         benchmark:
-            f"benchmarks/merge/merge_cohorts_{_STEM}.tsv"
+            f"{BENCHMARK_ROOT}/merge/merge_cohorts_{_STEM}.tsv"
         threads: config["threads"]["bcftools"]
         conda:
             "../envs/bcftools.yaml"
@@ -141,15 +141,15 @@ elif config["merge"]["tool"] == "plink":
             vcf=config["reference"]["cohort_vcf"],
             tbi=config["reference"]["cohort_vcf"] + ".tbi",
         output:
-            bed=temp(f"results/merge/plink/{REF}.bed"),
-            bim=temp(f"results/merge/plink/{REF}.bim"),
-            fam=temp(f"results/merge/plink/{REF}.fam"),
+            bed=temp(f"{RESULT_ROOT}/merge/plink/{REF}.bed"),
+            bim=temp(f"{RESULT_ROOT}/merge/plink/{REF}.bim"),
+            fam=temp(f"{RESULT_ROOT}/merge/plink/{REF}.fam"),
         params:
-            prefix=f"results/merge/plink/{REF}",
+            prefix=f"{RESULT_ROOT}/merge/plink/{REF}",
         log:
-            f"logs/merge/vcf_to_bed_{REF}.log",
+            f"{LOG_ROOT}/merge/vcf_to_bed_{REF}.log",
         benchmark:
-            f"benchmarks/merge/vcf_to_bed_{REF}.tsv"
+            f"{BENCHMARK_ROOT}/merge/vcf_to_bed_{REF}.tsv"
         threads: config["threads"]["plink"]
         conda:
             "../envs/plink.yaml"
@@ -169,15 +169,15 @@ elif config["merge"]["tool"] == "plink":
             vcf=get_cohort_vcf_for_merge(),
             tbi=get_cohort_vcf_for_merge() + ".tbi",
         output:
-            bed=temp("results/merge/plink/{cohort}.bed"),
-            bim=temp("results/merge/plink/{cohort}.bim"),
-            fam=temp("results/merge/plink/{cohort}.fam"),
+            bed=temp(f"{RESULT_ROOT}/merge/plink/{{cohort}}.bed"),
+            bim=temp(f"{RESULT_ROOT}/merge/plink/{{cohort}}.bim"),
+            fam=temp(f"{RESULT_ROOT}/merge/plink/{{cohort}}.fam"),
         params:
-            prefix="results/merge/plink/{cohort}",
+            prefix=f"{RESULT_ROOT}/merge/plink/{{cohort}}",
         log:
-            "logs/merge/vcf_to_bed_{cohort}.log",
+            f"{LOG_ROOT}/merge/vcf_to_bed_{{cohort}}.log",
         benchmark:
-            "benchmarks/merge/vcf_to_bed_{cohort}.tsv"
+            f"{BENCHMARK_ROOT}/merge/vcf_to_bed_{{cohort}}.tsv"
         threads: config["threads"]["plink"]
         conda:
             "../envs/plink.yaml"
@@ -195,12 +195,12 @@ elif config["merge"]["tool"] == "plink":
 
     rule common_vars_plink:
         input:
-            ref_bim=f"results/merge/plink/{REF}.bim",
-            cohort_bim="results/merge/plink/{cohort}.bim",
+            ref_bim=f"{RESULT_ROOT}/merge/plink/{REF}.bim",
+            cohort_bim=f"{RESULT_ROOT}/merge/plink/{{cohort}}.bim",
         output:
-            common="results/merge/plink/common_{cohort}.vars",
+            common=f"{RESULT_ROOT}/merge/plink/common_{{cohort}}.vars",
         log:
-            "logs/merge/common_vars_{cohort}.log",
+            f"{LOG_ROOT}/merge/common_vars_{{cohort}}.log",
         run:
             with open(input.ref_bim) as f:
                 ref_vars = {line.split()[1] for line in f}
@@ -214,21 +214,21 @@ elif config["merge"]["tool"] == "plink":
 
     rule extract_common_plink_ref:
         input:
-            bed=f"results/merge/plink/{REF}.bed",
-            bim=f"results/merge/plink/{REF}.bim",
-            fam=f"results/merge/plink/{REF}.fam",
-            common="results/merge/plink/common_{cohort}.vars",
+            bed=f"{RESULT_ROOT}/merge/plink/{REF}.bed",
+            bim=f"{RESULT_ROOT}/merge/plink/{REF}.bim",
+            fam=f"{RESULT_ROOT}/merge/plink/{REF}.fam",
+            common=f"{RESULT_ROOT}/merge/plink/common_{{cohort}}.vars",
         output:
-            bed=temp(f"results/merge/plink/{REF}_common_{{cohort}}.bed"),
-            bim=temp(f"results/merge/plink/{REF}_common_{{cohort}}.bim"),
-            fam=temp(f"results/merge/plink/{REF}_common_{{cohort}}.fam"),
+            bed=temp(f"{RESULT_ROOT}/merge/plink/{REF}_common_{{cohort}}.bed"),
+            bim=temp(f"{RESULT_ROOT}/merge/plink/{REF}_common_{{cohort}}.bim"),
+            fam=temp(f"{RESULT_ROOT}/merge/plink/{REF}_common_{{cohort}}.fam"),
         params:
-            in_prefix=f"results/merge/plink/{REF}",
-            out_prefix=f"results/merge/plink/{REF}_common_{{cohort}}",
+            in_prefix=f"{RESULT_ROOT}/merge/plink/{REF}",
+            out_prefix=f"{RESULT_ROOT}/merge/plink/{REF}_common_{{cohort}}",
         log:
-            f"logs/merge/extract_common_plink_{REF}_{{cohort}}.log",
+            f"{LOG_ROOT}/merge/extract_common_plink_{REF}_{{cohort}}.log",
         benchmark:
-            f"benchmarks/merge/extract_common_plink_{REF}_{{cohort}}.tsv"
+            f"{BENCHMARK_ROOT}/merge/extract_common_plink_{REF}_{{cohort}}.tsv"
         threads: config["threads"]["plink"]
         conda:
             "../envs/plink.yaml"
@@ -245,21 +245,21 @@ elif config["merge"]["tool"] == "plink":
 
     rule extract_common_plink_cohort:
         input:
-            bed="results/merge/plink/{cohort}.bed",
-            bim="results/merge/plink/{cohort}.bim",
-            fam="results/merge/plink/{cohort}.fam",
-            common="results/merge/plink/common_{cohort}.vars",
+            bed=f"{RESULT_ROOT}/merge/plink/{{cohort}}.bed",
+            bim=f"{RESULT_ROOT}/merge/plink/{{cohort}}.bim",
+            fam=f"{RESULT_ROOT}/merge/plink/{{cohort}}.fam",
+            common=f"{RESULT_ROOT}/merge/plink/common_{{cohort}}.vars",
         output:
-            bed=temp("results/merge/plink/{cohort}_common.bed"),
-            bim=temp("results/merge/plink/{cohort}_common.bim"),
-            fam=temp("results/merge/plink/{cohort}_common.fam"),
+            bed=temp(f"{RESULT_ROOT}/merge/plink/{{cohort}}_common.bed"),
+            bim=temp(f"{RESULT_ROOT}/merge/plink/{{cohort}}_common.bim"),
+            fam=temp(f"{RESULT_ROOT}/merge/plink/{{cohort}}_common.fam"),
         params:
-            in_prefix="results/merge/plink/{cohort}",
-            out_prefix="results/merge/plink/{cohort}_common",
+            in_prefix=f"{RESULT_ROOT}/merge/plink/{{cohort}}",
+            out_prefix=f"{RESULT_ROOT}/merge/plink/{{cohort}}_common",
         log:
-            "logs/merge/extract_common_plink_{cohort}.log",
+            f"{LOG_ROOT}/merge/extract_common_plink_{{cohort}}.log",
         benchmark:
-            "benchmarks/merge/extract_common_plink_{cohort}.tsv"
+            f"{BENCHMARK_ROOT}/merge/extract_common_plink_{{cohort}}.tsv"
         threads: config["threads"]["plink"]
         conda:
             "../envs/plink.yaml"
@@ -277,24 +277,24 @@ elif config["merge"]["tool"] == "plink":
 
     rule bmerge:
         input:
-            ref_bed=f"results/merge/plink/{REF}_common_{{cohort}}.bed",
-            ref_bim=f"results/merge/plink/{REF}_common_{{cohort}}.bim",
-            ref_fam=f"results/merge/plink/{REF}_common_{{cohort}}.fam",
-            cohort_bed="results/merge/plink/{cohort}_common.bed",
-            cohort_bim="results/merge/plink/{cohort}_common.bim",
-            cohort_fam="results/merge/plink/{cohort}_common.fam",
+            ref_bed=f"{RESULT_ROOT}/merge/plink/{REF}_common_{{cohort}}.bed",
+            ref_bim=f"{RESULT_ROOT}/merge/plink/{REF}_common_{{cohort}}.bim",
+            ref_fam=f"{RESULT_ROOT}/merge/plink/{REF}_common_{{cohort}}.fam",
+            cohort_bed=f"{RESULT_ROOT}/merge/plink/{{cohort}}_common.bed",
+            cohort_bim=f"{RESULT_ROOT}/merge/plink/{{cohort}}_common.bim",
+            cohort_fam=f"{RESULT_ROOT}/merge/plink/{{cohort}}_common.fam",
         output:
-            bed=temp(f"results/merge/plink/{_STEM}.bed"),
-            bim=temp(f"results/merge/plink/{_STEM}.bim"),
-            fam=temp(f"results/merge/plink/{_STEM}.fam"),
+            bed=temp(f"{RESULT_ROOT}/merge/plink/{_STEM}.bed"),
+            bim=temp(f"{RESULT_ROOT}/merge/plink/{_STEM}.bim"),
+            fam=temp(f"{RESULT_ROOT}/merge/plink/{_STEM}.fam"),
         params:
-            ref_prefix=f"results/merge/plink/{REF}_common_{{cohort}}",
-            cohort_prefix="results/merge/plink/{cohort}_common",
-            out_prefix=f"results/merge/plink/{_STEM}",
+            ref_prefix=f"{RESULT_ROOT}/merge/plink/{REF}_common_{{cohort}}",
+            cohort_prefix=f"{RESULT_ROOT}/merge/plink/{{cohort}}_common",
+            out_prefix=f"{RESULT_ROOT}/merge/plink/{_STEM}",
         log:
-            f"logs/merge/bmerge_{_STEM}.log",
+            f"{LOG_ROOT}/merge/bmerge_{_STEM}.log",
         benchmark:
-            f"benchmarks/merge/bmerge_{_STEM}.tsv"
+            f"{BENCHMARK_ROOT}/merge/bmerge_{_STEM}.tsv"
         threads: config["threads"]["plink"]
         conda:
             "../envs/plink.yaml"
@@ -311,19 +311,19 @@ elif config["merge"]["tool"] == "plink":
 
     rule plink_to_vcf:
         input:
-            bed=f"results/merge/plink/{_STEM}.bed",
-            bim=f"results/merge/plink/{_STEM}.bim",
-            fam=f"results/merge/plink/{_STEM}.fam",
+            bed=f"{RESULT_ROOT}/merge/plink/{_STEM}.bed",
+            bim=f"{RESULT_ROOT}/merge/plink/{_STEM}.bim",
+            fam=f"{RESULT_ROOT}/merge/plink/{_STEM}.fam",
         output:
-            vcf=f"results/merge/{_STEM}.vcf.gz",
-            tbi=f"results/merge/{_STEM}.vcf.gz.tbi",
+            vcf=f"{RESULT_ROOT}/merge/{_STEM}.vcf.gz",
+            tbi=f"{RESULT_ROOT}/merge/{_STEM}.vcf.gz.tbi",
         params:
-            in_prefix=f"results/merge/plink/{_STEM}",
-            out_prefix=f"results/merge/plink/{_STEM}_vcf",
+            in_prefix=f"{RESULT_ROOT}/merge/plink/{_STEM}",
+            out_prefix=f"{RESULT_ROOT}/merge/plink/{_STEM}_vcf",
         log:
-            f"logs/merge/plink_to_vcf_{_STEM}.log",
+            f"{LOG_ROOT}/merge/plink_to_vcf_{_STEM}.log",
         benchmark:
-            f"benchmarks/merge/plink_to_vcf_{_STEM}.tsv"
+            f"{BENCHMARK_ROOT}/merge/plink_to_vcf_{_STEM}.tsv"
         threads: config["threads"]["plink"]
         conda:
             "../envs/plink.yaml"

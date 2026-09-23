@@ -12,11 +12,11 @@ _sex_csv = config["relatedness"].get("sex_metadata_csv", "")
 
 def _king_sex_input(wildcards):
     """Return sex_file path when available, else empty list (no dependency)."""
-    return "results/relatedness/sex_file.txt" if _sex_csv else []
+    return f"{RESULT_ROOT}/relatedness/sex_file.txt" if _sex_csv else []
 
 
 _sex_flag = (
-    "--update-sex results/relatedness/sex_file.txt"
+    f"--update-sex {RESULT_ROOT}/relatedness/sex_file.txt"
     if _sex_csv
     else "--autosome"
 )
@@ -34,9 +34,9 @@ if config["relatedness"]["enabled"]:
             input:
                 csv=_sex_csv,
             output:
-                sex_file="results/relatedness/sex_file.txt",
+                sex_file=f"{RESULT_ROOT}/relatedness/sex_file.txt",
             log:
-                "logs/relatedness/prepare_sex_file.log",
+                f"{LOG_ROOT}/relatedness/prepare_sex_file.log",
             run:
                 import pandas as pd
 
@@ -64,21 +64,21 @@ if config["relatedness"]["enabled"]:
 
     rule king_table:
         input:
-            vcf="results/normalized/newID_{cohort}.vcf.gz",
-            tbi="results/normalized/newID_{cohort}.vcf.gz.tbi",
+            vcf=f"{RESULT_ROOT}/normalized/newID_{{cohort}}.vcf.gz",
+            tbi=f"{RESULT_ROOT}/normalized/newID_{{cohort}}.vcf.gz.tbi",
             sex_file=_king_sex_input,
         output:
-            cutoff_ids="results/relatedness/{cohort}.king.cutoff.out.id",
-            king_table="results/relatedness/{cohort}.kin0",
+            cutoff_ids=f"{RESULT_ROOT}/relatedness/{{cohort}}.king.cutoff.out.id",
+            king_table=f"{RESULT_ROOT}/relatedness/{{cohort}}.kin0",
         params:
-            prefix="results/relatedness/{cohort}",
+            prefix=f"{RESULT_ROOT}/relatedness/{{cohort}}",
             king_cutoff=config["relatedness"]["king_cutoff"],
             king_table_filter=config["relatedness"]["king_table_filter"],
             sex_flag=_sex_flag,
         log:
-            "logs/relatedness/king_table_{cohort}.log",
+            f"{LOG_ROOT}/relatedness/king_table_{{cohort}}.log",
         benchmark:
-            "benchmarks/relatedness/king_table_{cohort}.tsv"
+            f"{BENCHMARK_ROOT}/relatedness/king_table_{{cohort}}.tsv"
         threads: config["threads"]["plink"]
         conda:
             "../envs/plink.yaml"
@@ -98,11 +98,11 @@ if config["relatedness"]["enabled"]:
 
     rule related_list:
         input:
-            cutoff_ids="results/relatedness/{cohort}.king.cutoff.out.id",
+            cutoff_ids=f"{RESULT_ROOT}/relatedness/{{cohort}}.king.cutoff.out.id",
         output:
-            related="results/relatedness/related_samples_{cohort}.txt",
+            related=f"{RESULT_ROOT}/relatedness/related_samples_{{cohort}}.txt",
         log:
-            "logs/relatedness/related_list_{cohort}.log",
+            f"{LOG_ROOT}/relatedness/related_list_{{cohort}}.log",
         run:
             import pandas as pd
             df = pd.read_csv(input.cutoff_ids, sep="\t", header=None, names=["IID"])
@@ -121,16 +121,16 @@ if config["relatedness"]["enabled"]:
 
     rule drop_related:
         input:
-            vcf="results/normalized/newID_{cohort}.vcf.gz",
-            tbi="results/normalized/newID_{cohort}.vcf.gz.tbi",
-            related="results/relatedness/related_samples_{cohort}.txt",
+            vcf=f"{RESULT_ROOT}/normalized/newID_{{cohort}}.vcf.gz",
+            tbi=f"{RESULT_ROOT}/normalized/newID_{{cohort}}.vcf.gz.tbi",
+            related=f"{RESULT_ROOT}/relatedness/related_samples_{{cohort}}.txt",
         output:
-            vcf="results/relatedness/unrelated_{cohort}.vcf.gz",
-            tbi="results/relatedness/unrelated_{cohort}.vcf.gz.tbi",
+            vcf=f"{RESULT_ROOT}/relatedness/unrelated_{{cohort}}.vcf.gz",
+            tbi=f"{RESULT_ROOT}/relatedness/unrelated_{{cohort}}.vcf.gz.tbi",
         log:
-            "logs/relatedness/drop_related_{cohort}.log",
+            f"{LOG_ROOT}/relatedness/drop_related_{{cohort}}.log",
         benchmark:
-            "benchmarks/relatedness/drop_related_{cohort}.tsv"
+            f"{BENCHMARK_ROOT}/relatedness/drop_related_{{cohort}}.tsv"
         threads: config["threads"]["bcftools"]
         conda:
             "../envs/bcftools.yaml"
