@@ -10,6 +10,7 @@ from typing import Any, Dict, List
 
 import pytest
 
+from nig.services.omics.errors import OmicsQuotaExceeded
 from nig.services.omics.uploader import DEFAULT_CHUNK_SIZE, OmicsUploader, chunk_checksum
 
 
@@ -131,6 +132,28 @@ def test_upload_file_resume_skips_already_uploaded_parts(tmp_path: Path) -> None
     chunk_calls = [c for c in request.calls if c[1] == "/upload/chunk"]
     assert len(chunk_calls) == 1
     assert chunk_calls[0][2]["data"]["chunk_number"] == 2
+
+
+def test_upload_file_aborts_the_session_when_quota_is_exceeded(tmp_path: Path) -> None:
+    file_path = tmp_path.joinpath("sample.fastq.gz")
+    file_path.write_bytes(b"A" * 10)
+    request = FakeRequest()
+    request.program(
+        "/upload/start",
+        FakeResponse({"upload_id": "u1", "recommended_chunk_size": 10}),
+    )
+    request.program("/upload/abort/u1", FakeResponse({}))
+    uploader = OmicsUploader(request, timeout=30)
+
+    def quota_error(*args: Any, **kwargs: Any) -> None:
+        raise OmicsQuotaExceeded("Storage limit reached")
+
+    uploader._upload_chunk = quota_error  # type: ignore[assignment]
+
+    with pytest.raises(OmicsQuotaExceeded):
+        uploader.upload_file(file_path)
+
+    assert any(call[1] == "/upload/abort/u1" for call in request.calls)
 
 
 def test_abort_calls_delete_endpoint() -> None:

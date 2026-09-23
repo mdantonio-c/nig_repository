@@ -10,6 +10,7 @@ import hashlib
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set
 
+from nig.services.omics.errors import OmicsQuotaExceeded
 from nig.services.omics.models import UploadSession
 
 # Fallback only: the server's `recommended_chunk_size` from /upload/start is
@@ -81,18 +82,28 @@ class OmicsUploader:
                 int(part["part_number"]) for part in session.uploaded_parts
             }
 
-        with path.open("rb") as stream:
-            chunk_number = 0
-            while True:
-                chunk = stream.read(chunk_size)
-                if not chunk:
-                    break
-                chunk_number += 1
-                if chunk_number in already_uploaded:
-                    continue
-                self._upload_chunk(session.upload_id, chunk_number, chunk)
+        try:
+            with path.open("rb") as stream:
+                chunk_number = 0
+                while True:
+                    chunk = stream.read(chunk_size)
+                    if not chunk:
+                        break
+                    chunk_number += 1
+                    if chunk_number in already_uploaded:
+                        continue
+                    self._upload_chunk(session.upload_id, chunk_number, chunk)
 
-        return self.complete(session.upload_id, tags=tags)
+            return self.complete(session.upload_id, tags=tags)
+        except OmicsQuotaExceeded:
+            # A partial upload never belongs to a later batch. Best-effort
+            # abort is intentionally local to the uploader because it is the
+            # only layer that still knows the server-side upload session id.
+            try:
+                self.abort(session.upload_id)
+            except Exception:  # pragma: no cover - remote cleanup failure
+                pass
+            raise
 
     def _upload_chunk(self, upload_id: str, chunk_number: int, chunk: bytes) -> None:
         checksum = chunk_checksum(chunk)

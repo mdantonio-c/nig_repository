@@ -1,5 +1,4 @@
 import gzip
-import re
 from pathlib import Path
 from typing import Any, Tuple
 
@@ -13,6 +12,8 @@ from restapi.rest.definition import Response
 from restapi.services.authentication import User
 from restapi.services.uploader import Uploader
 from restapi.utilities.logs import log
+
+from nig.services.fastq import FASTQ_FILENAME_PATTERN
 
 
 class FileOutput(Schema):
@@ -255,8 +256,7 @@ class FileUpload(Uploader, NIGEndpoint):
         path = self.getPath(user=user, dataset=dataset)
 
         # check if the filename is correct
-        name_pattern = r"([a-zA-Z0-9_-]+)_(R[12]).fastq.gz"
-        if not re.match(name_pattern, name):
+        if not FASTQ_FILENAME_PATTERN.match(name):
             raise BadRequest(
                 "Filename does not follow the correct naming convention: "
                 "SampleName_R1/R2.fastq.gz"
@@ -270,7 +270,7 @@ class FileUpload(Uploader, NIGEndpoint):
         for f in path.iterdir():
             # check if the pattern is respected
             fname = f.name
-            if re.match(name_pattern, fname):
+            if FASTQ_FILENAME_PATTERN.match(fname):
                 files_already_uploaded.append(fname)
         # check if max allowed files for dataset is respected
         if len(files_already_uploaded) == 2:
@@ -278,8 +278,8 @@ class FileUpload(Uploader, NIGEndpoint):
                 f"Dataset {dataset.name} contains too many fastq files: max allowed files are 2 per dataset"
             )
         elif len(files_already_uploaded) == 1 and not testing:
-            uploaded_match = re.match(name_pattern, files_already_uploaded[0])
-            to_upload_match = re.match(name_pattern, name)
+            uploaded_match = FASTQ_FILENAME_PATTERN.match(files_already_uploaded[0])
+            to_upload_match = FASTQ_FILENAME_PATTERN.match(name)
             # check if the names of the two samples corresponds
             if to_upload_match.group(1) != uploaded_match.group(1):
                 raise BadRequest(

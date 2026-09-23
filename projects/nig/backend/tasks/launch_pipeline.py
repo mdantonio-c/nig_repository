@@ -13,6 +13,7 @@ from juan.qc.fastqc import Fastqc  # type: ignore
 from juan.qc.haplotype import HaploType  # type: ignore
 from juan.qc.samsort import SamSort  # type: ignore
 from nig.endpoints import INPUT_ROOT, OUTPUT_ROOT
+from nig.services.fastq import FASTQ_FILENAME_PATTERN
 from pandas import DataFrame
 from restapi.config import DATA_PATH
 from restapi.connectors import neo4j
@@ -47,7 +48,7 @@ def launch_pipeline(
     # get the file list from the dataset list
     file_list = []
     # the pattern is check also in the file upload endpoint. This is an additional check
-    pattern = r"([a-zA-Z0-9_-]+)_(R[12]).fastq.gz"
+    pattern = FASTQ_FILENAME_PATTERN
     analized_datasets = []
     for d in dataset_list:
         # get the path of the dataset directory

@@ -163,6 +163,26 @@ class Sender:
         return "task-1"
 
 
+def test_send_run_batch_uses_the_batch_uuid_as_celery_task_id(monkeypatch: Any) -> None:
+    calls: List[Dict[str, Any]] = []
+
+    class FakeCeleryApp:
+        @staticmethod
+        def send_task(*args: Any, **kwargs: Any) -> Any:
+            calls.append({"args": args, "kwargs": kwargs})
+            return type("TaskResult", (), {"id": "batch-1"})()
+
+    monkeypatch.setattr(
+        dispatcher.celery,
+        "get_instance",
+        lambda: type("Connector", (), {"celery_app": FakeCeleryApp()})(),
+    )
+
+    assert dispatcher.send_run_batch("batch-1", ["dataset-1"]) == "batch-1"
+    assert calls[0]["args"] == (dispatcher.RUN_BATCH_TASK,)
+    assert calls[0]["kwargs"]["task_id"] == "batch-1"
+
+
 # -- selection --------------------------------------------------------------
 
 
@@ -253,12 +273,21 @@ def test_run_skips_when_max_concurrent_batches_reached() -> None:
 def test_run_warns_about_stale_batches() -> None:
     stale = FakeBatch("stuck", created=NOW - timedelta(hours=100))
     graph = FakeGraph([], batches=[stale])
+    notifications: List[Any] = []
 
-    report = dispatcher.run(
-        graph, FakeClient(), settings(), dry_run=True, now=NOW, send_task=Sender()
+    original = dispatcher.notify_stale_batch
+    dispatcher.notify_stale_batch = lambda batch, hours: notifications.append(
+        (batch.uuid, hours)
     )
+    try:
+        report = dispatcher.run(
+            graph, FakeClient(), settings(), dry_run=True, now=NOW, send_task=Sender()
+        )
+    finally:
+        dispatcher.notify_stale_batch = original
 
     assert report["stale_batches"] == ["stuck"]
+    assert notifications == [("stuck", 48)]
 
 
 def test_run_skips_without_ready_genome_datasets() -> None:

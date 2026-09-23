@@ -339,12 +339,36 @@ def notify_oversized(graph: Any, dataset_uuid: str) -> None:
     )
 
 
+def notify_stale_batch(batch: Any, stale_hours: int) -> None:
+    """Best-effort alert for a batch that may require manual recovery."""
+    send_notification(
+        subject="An Omics batch appears to be stuck",
+        template="dataset_error.html",
+        to_address=None,
+        data={
+            "dataset_id": "N/A",
+            "dataset_name": "N/A",
+            "study_id": "N/A",
+            "study_name": "N/A",
+            "error_message": (
+                f"Omics batch {batch.uuid} has been active for more than "
+                f"{stale_hours} hours"
+            ),
+            "output_path": "N/A",
+            "job_path": "N/A",
+        },
+    )
+
+
 def send_run_batch(batch_uuid: str, dataset_uuids: List[str]) -> str:
     c = celery.get_instance()
     task = c.celery_app.send_task(
-        RUN_BATCH_TASK, args=(batch_uuid, dataset_uuids), countdown=1
+        RUN_BATCH_TASK,
+        args=(batch_uuid, dataset_uuids),
+        countdown=1,
+        task_id=batch_uuid,
     )
-    return str(task)
+    return str(task.id)
 
 
 def run(
@@ -371,6 +395,13 @@ def run(
             batch_uuid,
             settings.batch_stale_hours,
         )
+        batch = next(batch for batch in active if str(batch.uuid) == batch_uuid)
+        try:
+            notify_stale_batch(batch, settings.batch_stale_hours)
+        except Exception as exc:  # notification must not stop dispatching
+            log.error(
+                "Notification for stale Omics batch {} failed: {}", batch_uuid, exc
+            )
     report["active_batches"] = [str(b.uuid) for b in active]
     report["stale_batches"] = stale
 
