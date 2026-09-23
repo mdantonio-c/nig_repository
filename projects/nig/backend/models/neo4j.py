@@ -135,6 +135,18 @@ class OmicsBatch(TimestampedNode):
     )
 
 
+class OmicsDispatcherLock(StructuredNode):  # type: ignore
+    """Singleton node write-locked by each Omics dispatcher claim.
+
+    Serialises concurrent ``init_omics_pipeline.py`` runs, so two runs cannot
+    claim the same datasets or reserve the same quota twice.
+    """
+
+    name = StringProperty(required=True, unique_index=True)
+    locked_at = DateTimeProperty()
+    holder = StringProperty()
+
+
 class VariantRelation(StructuredRel):  # type: ignore
     quality = FloatProperty()
     heterozygosity = FloatProperty()
