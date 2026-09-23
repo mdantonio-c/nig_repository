@@ -1,6 +1,7 @@
 import os
 
 include: "Basic.smk"
+include: "/snakemake/vcf_standardization/workflow/rules/common.smk"
 
 # Reference genome
 refg=config["GENOME"]["hg38"]
@@ -27,8 +28,9 @@ if gvcfs:
 
 rule all:
     input:
-        "/data/output/gatk_filtered_multisamples/multisample_filtered_vars.vcf",
-        "all_samples.vcf.log" if gvcfs else []
+        "/data/output/gatk_filtered_multisamples/multisample_filtered_vars.vcf.gz",
+        "all_samples.vcf.log" if gvcfs else [],
+        get_final_targets(config)
 
 rule GenomicsDBImport:
     input:
@@ -68,7 +70,8 @@ rule VariantFiltration:
         i1=rules.GenotypeGVCFs.output,
         i2=config["IFILES"]["inter"]
     output:
-        "/data/output/gatk_filtered_multisamples/multisample_filtered_vars.vcf"
+        vcf="/data/output/gatk_filtered_multisamples/multisample_filtered_vars.vcf.gz",
+        tbi="/data/output/gatk_filtered_multisamples/multisample_filtered_vars.vcf.gz.tbi"
     log:
         "/data/output/gatk_filtered_multisamples/multisample_filtered_vars.log"
     benchmark:
@@ -77,4 +80,13 @@ rule VariantFiltration:
         p1=config["PARAMS"]["vrfl"]
     shell:
         '''gatk --java-options "-Xms3g" VariantFiltration -V {input.i1} \
-        -L {input.i2} --filter-expression {params.p1} --filter-name "HardFiltered" -O {output} > {log} 2>&1'''
+        -L {input.i2} --filter-expression {params.p1} --filter-name "HardFiltered" -O {output.vcf} > {log} 2>&1'''
+
+# Continue the joint DAG with the reusable VCF standardization workflow.
+include: "/snakemake/vcf_standardization/workflow/rules/normalize.smk"
+include: "/snakemake/vcf_standardization/workflow/rules/relatedness.smk"
+include: "/snakemake/vcf_standardization/workflow/rules/split_trio.smk"
+include: "/snakemake/vcf_standardization/workflow/rules/merge.smk"
+include: "/snakemake/vcf_standardization/workflow/rules/pca.smk"
+include: "/snakemake/vcf_standardization/workflow/rules/outliers.smk"
+include: "/snakemake/vcf_standardization/workflow/rules/annotate.smk"

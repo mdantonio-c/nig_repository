@@ -32,3 +32,50 @@ JAVA:
   hapl: '--java-options "-XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xms20G -Xmx20G -XX:ParallelGCThreads=2" '
 UPDATE:
   GDBI: True
+
+# VCF standardization. The joint workflow overrides metadata file paths in its
+# per-job config before Snakemake starts.
+cohort_name: joint_cohort
+output_dir: "/data/output/vcf_standardization"
+log_dir: "/data/output/vcf_standardization/logs"
+benchmark_dir: "/data/output/vcf_standardization/benchmarks"
+input:
+  vcf: "/data/output/gatk_filtered_multisamples/multisample_filtered_vars.vcf.gz"
+  has_chr_prefix: true
+reference:
+  cohort_name: ITvarGM
+  cohort_vcf: "/snakemake/vcf_standardization/data/ITvarGM.vcf.gz"
+  fasta: "/resources/genome/Homo_sapiens_assembly38.fasta"
+conventions:
+  chr_rename: "/snakemake/vcf_standardization/data/chr_name_convention.txt"
+  no_chr_rename: "/snakemake/vcf_standardization/data/no_chr_convention.txt"
+relatedness:
+  enabled: false
+  king_cutoff: 0.088
+  king_table_filter: 0.088
+  sex_metadata_csv: ""
+trio:
+  enabled: false
+  parents_file: ""
+  probands_file: ""
+merge:
+  tool: bcftools
+pca:
+  n_components: 10
+  mahalanobis_quantile: 0.999
+annotation:
+  fill_tags: "AN,AC,AC_Hemi,AC_Hom,AC_Het,AF,MAF,NS"
+  outliers_groups_file: ""
+  remove_outliers_from_merge: true
+  outlier_removal_scope: all
+covariates:
+  macroarea_file: ""
+threads:
+  bcftools: 4
+  plink: 4
+
+STANDARDIZATION:
+  # Exact, case-insensitive phenotype name, HPO ID, or HPO label -> protocol
+  # group (or list of groups).
+  # Supported protocol groups: cardio, neuro, cancer, not_affected.
+  phenotype_groups: {}
