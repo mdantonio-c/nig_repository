@@ -2,7 +2,7 @@ import gzip
 from pathlib import Path
 from typing import Any, Tuple
 
-from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
+from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint, verify_not_omics_locked
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.decorators import ChunkUpload
@@ -130,6 +130,7 @@ class SingleFile(NIGEndpoint):
         responses={
             200: "File successfully deleted",
             404: "This file cannot be found or you are not authorized to access",
+            409: "The dataset is being analysed",
         },
     )
     @decorators.database_transaction
@@ -144,6 +145,7 @@ class SingleFile(NIGEndpoint):
         self.verifyDatasetAccess(dataset, user=user, error_type="File")
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, user=user, error_type="File")
+        verify_not_omics_locked(dataset)
         path = self.getPath(user=user, file=file)
 
         file.delete()
@@ -168,6 +170,7 @@ class FileUpload(Uploader, NIGEndpoint):
             200: "File uploaded succesfully",
             400: "The uploaded file has an invalid content",
             404: "File not found",
+            409: "The dataset is being analysed",
             500: "Fail in uploading file",
         },
     )
@@ -181,6 +184,8 @@ class FileUpload(Uploader, NIGEndpoint):
 
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, user=user, error_type="Dataset")
+        # an upload initialised before the Omics claim must not change the inputs
+        verify_not_omics_locked(dataset)
 
         path = self.getPath(user=user, dataset=dataset)
         completed, response = self.chunk_upload(Path(path), filename)
@@ -237,7 +242,7 @@ class FileUpload(Uploader, NIGEndpoint):
         responses={
             201: "Upload initialized",
             400: "File extension not allowed",
-            409: "File already exists",
+            409: "File already exists or the dataset is being analysed",
         },
     )
     @decorators.database_transaction
@@ -252,6 +257,7 @@ class FileUpload(Uploader, NIGEndpoint):
 
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, user=user, error_type="Dataset")
+        verify_not_omics_locked(dataset)
 
         path = self.getPath(user=user, dataset=dataset)
 

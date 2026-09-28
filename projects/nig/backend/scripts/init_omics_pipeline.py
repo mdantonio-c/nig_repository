@@ -34,7 +34,9 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import pytz
 from nig.services.omics import OmicsClient
+from nig.services.omics.batch_state import ACTIVE_DATASET_STATUSES, batch_outcome
 from nig.services.omics.planner import DatasetCandidate, effective_quota, plan_batch
+from nig.services.omics.settings import USER_DATASET_TOO_LARGE
 from restapi.connectors import celery, neo4j
 from restapi.connectors.smtp.notifications import send_notification
 from restapi.env import Env
@@ -52,14 +54,7 @@ OVERSIZED_ERROR = "Dataset larger than the Omics storage quota"
 # batches still holding (or about to hold) remote quota
 ACTIVE_BATCH_STATUSES = ["PLANNED", "RUNNING"]
 # dataset omics states owned by an in-flight batch: never claimable again
-ACTIVE_OMICS_STATUSES = [
-    "QUEUED",
-    "UPLOADING",
-    "SUBMITTED",
-    "RUNNING",
-    "FETCHING",
-    "CLEANING",
-]
+ACTIVE_OMICS_STATUSES = list(ACTIVE_DATASET_STATUSES)
 
 # The lock node is created by its own auto-commit statement (ENSURE_LOCK_QUERY):
 # a MERGE inside the claim would let two first-time runs each create (and
@@ -92,6 +87,7 @@ MATCH (d:Dataset)
 WHERE d.uuid IN $dataset_uuids
   AND d.status = $ready_status
   AND (d.omics_status IS NULL OR NOT d.omics_status IN $active_omics_statuses)
+  AND d.omics_task_id IS NULL
 WITH collect(d) AS claimed
 WHERE size(claimed) > 0
 CREATE (b:OmicsBatch {
@@ -140,7 +136,7 @@ REJECT_QUERY = (
 MATCH (d:Dataset)
 WHERE d.uuid IN $dataset_uuids AND d.status = $ready_status
 SET d.status = 'ERROR',
-    d.error_message = $message,
+    d.error_message = $user_message,
     d.status_update = $now,
     d.omics_status = 'ERROR',
     d.omics_error_message = $message,
@@ -205,6 +201,14 @@ def select_omics_datasets(datasets: Sequence[Any]) -> List[Any]:
                 dataset.omics_status,
             )
             continue
+        if dataset.omics_task_id:
+            # reset to ready after a previous Omics run: its task and
+            # artifacts would be mixed with a new one, needs a manual reset
+            log.warning(
+                "Dataset {} still references a previous Omics task, skipping",
+                dataset.uuid,
+            )
+            continue
         selected.append(dataset)
     return selected
 
@@ -262,6 +266,12 @@ def find_stale_batches(
     return [str(b.uuid) for b in batches if b.created and b.created < threshold]
 
 
+def stale_alert_due(batch: Any, now: datetime, stale_hours: int) -> bool:
+    """Alert once per ``stale_hours`` window, not at every dispatcher run."""
+    last = batch.stale_notified_at
+    return last is None or last <= now - timedelta(hours=stale_hours)
+
+
 def claim_batch(
     graph: Any,
     batch_uuid: str,
@@ -315,6 +325,7 @@ def reject_oversized(graph: Any, dataset_uuids: List[str], now: datetime) -> Lis
         dataset_uuids=dataset_uuids,
         ready_status=READY_STATUS,
         message=OVERSIZED_ERROR,
+        user_message=USER_DATASET_TOO_LARGE,
     )
 
 
@@ -387,7 +398,22 @@ def run(
         "skipped_reason": None,
     }
 
-    active = find_active_batches(graph)
+    # Close batches whose datasets are all closed (or deleted): no later task
+    # event would do it, and an orphan active batch blocks every new claim.
+    active = []
+    finalized: Dict[str, str] = {}
+    for batch in find_active_batches(graph):
+        outcome = batch_outcome(batch)
+        if outcome is None:
+            active.append(batch)
+            continue
+        finalized[str(batch.uuid)] = outcome
+        if not dry_run:
+            log.warning("Closing Omics batch {} as {}", batch.uuid, outcome)
+            batch.status = outcome
+            batch.save()
+    report["finalized_batches"] = finalized
+
     stale = find_stale_batches(active, now, settings.batch_stale_hours)
     for batch_uuid in stale:
         log.warning(
@@ -396,12 +422,17 @@ def run(
             settings.batch_stale_hours,
         )
         batch = next(batch for batch in active if str(batch.uuid) == batch_uuid)
+        if dry_run or not stale_alert_due(batch, now, settings.batch_stale_hours):
+            continue
         try:
             notify_stale_batch(batch, settings.batch_stale_hours)
         except Exception as exc:  # notification must not stop dispatching
             log.error(
                 "Notification for stale Omics batch {} failed: {}", batch_uuid, exc
             )
+            continue
+        batch.stale_notified_at = now
+        batch.save()
     report["active_batches"] = [str(b.uuid) for b in active]
     report["stale_batches"] = stale
 

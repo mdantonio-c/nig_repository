@@ -9,8 +9,9 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
+import requests
 
-from nig.services.omics.errors import OmicsQuotaExceeded
+from nig.services.omics.errors import OmicsQuotaExceeded, OmicsRequestError
 from nig.services.omics.uploader import DEFAULT_CHUNK_SIZE, OmicsUploader, chunk_checksum
 
 
@@ -29,7 +30,7 @@ class FakeRequest:
         self.calls: List[Any] = []
         self._responses: Dict[str, List[FakeResponse]] = {}
 
-    def program(self, path: str, response: FakeResponse) -> None:
+    def program(self, path: str, response: Any) -> None:
         self._responses.setdefault(path, []).append(response)
 
     def __call__(self, method: str, path: str, **kwargs: Any) -> FakeResponse:
@@ -37,7 +38,10 @@ class FakeRequest:
         queue = self._responses.get(path)
         if not queue:
             raise AssertionError(f"No programmed response for {method} {path}")
-        return queue.pop(0)
+        response = queue.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
 
 
 def test_start_returns_upload_session_with_defaults() -> None:
@@ -54,6 +58,15 @@ def test_start_returns_upload_session_with_defaults() -> None:
     assert session.recommended_chunk_size == 1024
     assert session.resuming is False
     assert session.uploaded_parts == []
+
+
+def test_start_declares_fastq_filetype() -> None:
+    request = FakeRequest()
+    request.program("/upload/start", FakeResponse({"upload_id": "u1"}))
+
+    OmicsUploader(request, timeout=30).start("sample_R1.fastq.gz", 2048)
+
+    assert request.calls[0][2]["json"]["filetype"] == "Fastq"
 
 
 def test_start_falls_back_to_default_chunk_size_when_missing() -> None:
@@ -179,3 +192,119 @@ def test_status_calls_status_endpoint() -> None:
 
     assert status["upload_id"] == "u1"
     assert request.calls[0][0] == "GET"
+
+
+def _single_chunk_upload(tmp_path: Path, size: int = 10) -> Any:
+    file_path = tmp_path.joinpath("sample_R1.fastq.gz")
+    file_path.write_bytes(b"A" * size)
+    request = FakeRequest()
+    request.program(
+        "/upload/start",
+        FakeResponse({"upload_id": "u1", "recommended_chunk_size": 10}),
+    )
+    sleeps: List[float] = []
+    return file_path, request, OmicsUploader(request, timeout=30, sleep=sleeps.append), sleeps
+
+
+def test_upload_uses_the_dataset_scoped_remote_filename(tmp_path: Path) -> None:
+    file_path, request, uploader, _ = _single_chunk_upload(tmp_path)
+    request.program("/upload/chunk", FakeResponse({}))
+    request.program("/upload/complete", FakeResponse({"file_id": "f1"}))
+
+    uploader.upload_file(file_path, remote_filename="d1_sample_R1.fastq.gz")
+
+    start = request.calls[0][2]["json"]
+    assert start["filename"] == "d1_sample_R1.fastq.gz"
+    # never overwrite a remote file: collisions must fail, not replace data
+    assert start["overwrite"] is False
+
+
+@pytest.mark.parametrize(
+    "transient",
+    [
+        requests.ConnectionError("reset"),
+        requests.Timeout("slow"),
+        OmicsRequestError("bad gateway", status_code=502),
+    ],
+)
+def test_transient_chunk_errors_are_retried(tmp_path: Path, transient: Exception) -> None:
+    file_path, request, uploader, sleeps = _single_chunk_upload(tmp_path)
+    request.program("/upload/chunk", transient)
+    request.program("/upload/chunk", FakeResponse({}))
+    request.program("/upload/complete", FakeResponse({"file_id": "f1"}))
+
+    assert uploader.upload_file(file_path) == "f1"
+    assert len([c for c in request.calls if c[1] == "/upload/chunk"]) == 2
+    assert sleeps == [2.0]
+
+
+def test_client_chunk_errors_are_not_retried_and_abort(tmp_path: Path) -> None:
+    file_path, request, uploader, sleeps = _single_chunk_upload(tmp_path)
+    request.program("/upload/chunk", OmicsRequestError("bad checksum", status_code=400))
+    request.program("/upload/abort/u1", FakeResponse({}))
+
+    with pytest.raises(OmicsRequestError):
+        uploader.upload_file(file_path)
+
+    assert len([c for c in request.calls if c[1] == "/upload/chunk"]) == 1
+    assert sleeps == []
+    assert request.calls[-1][1] == "/upload/abort/u1"
+
+
+def test_persistent_transient_errors_give_up_and_abort(tmp_path: Path) -> None:
+    file_path, request, uploader, sleeps = _single_chunk_upload(tmp_path)
+    for _ in range(3):
+        request.program("/upload/chunk", requests.ConnectionError("down"))
+    request.program("/upload/abort/u1", FakeResponse({}))
+
+    with pytest.raises(requests.ConnectionError):
+        uploader.upload_file(file_path)
+
+    assert sleeps == [2.0, 4.0]
+    assert request.calls[-1][1] == "/upload/abort/u1"
+
+
+def test_generic_error_mid_upload_aborts_the_session(tmp_path: Path) -> None:
+    file_path, request, uploader, _ = _single_chunk_upload(tmp_path)
+    request.program("/upload/chunk", FakeResponse({}))
+    request.program("/upload/complete", RuntimeError("unexpected"))
+    request.program("/upload/abort/u1", FakeResponse({}))
+
+    with pytest.raises(RuntimeError):
+        uploader.upload_file(file_path)
+
+    assert request.calls[-1][1] == "/upload/abort/u1"
+
+
+@pytest.mark.parametrize(
+    "parts",
+    [
+        [{"part_number": 3, "size": 10}],  # beyond the local file
+        [{"part_number": 1, "size": 7}],  # size of a different file
+        [{"part_number": 0}],
+    ],
+)
+def test_resume_of_a_non_matching_session_is_rejected(
+    tmp_path: Path, parts: List[Dict[str, Any]]
+) -> None:
+    file_path = tmp_path.joinpath("sample_R1.fastq.gz")
+    file_path.write_bytes(b"A" * 20)
+    request = FakeRequest()
+    request.program(
+        "/upload/start",
+        FakeResponse(
+            {
+                "upload_id": "u1",
+                "recommended_chunk_size": 10,
+                "resuming": True,
+                "uploaded_parts": parts,
+            }
+        ),
+    )
+    request.program("/upload/abort/u1", FakeResponse({}))
+
+    with pytest.raises(OmicsRequestError):
+        OmicsUploader(request, timeout=30).upload_file(file_path)
+
+    assert not [c for c in request.calls if c[1] == "/upload/chunk"]
+    assert request.calls[-1][1] == "/upload/abort/u1"

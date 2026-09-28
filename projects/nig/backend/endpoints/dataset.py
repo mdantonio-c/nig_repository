@@ -3,7 +3,12 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Type, Union
 
 import pytz
-from nig.endpoints import PHENOTYPE_NOT_FOUND, TECHMETA_NOT_FOUND, NIGEndpoint
+from nig.endpoints import (
+    PHENOTYPE_NOT_FOUND,
+    TECHMETA_NOT_FOUND,
+    NIGEndpoint,
+    verify_not_omics_locked,
+)
 from nig.endpoints._injectors import (
     verify_dataset_access,
     verify_dataset_status_update,
@@ -336,6 +341,7 @@ class Dataset(NIGEndpoint):
             200: "Status successfully modified",
             400: "Status can't be modified",
             404: "This dataset cannot be found or you are not authorized to access",
+            409: "The dataset is being analysed",
         },
     )
     @decorators.preload(callback=verify_dataset_status_update)
@@ -363,6 +369,8 @@ class Dataset(NIGEndpoint):
             and not self.auth.is_admin(user)
         ):
             raise BadRequest(f"The status of dataset {dataset.name} cannot be modified")
+        # not even an admin: it would detach the dataset from its Omics batch
+        verify_not_omics_locked(dataset)
 
         if status == "-1":
             dataset.status = None
@@ -384,6 +392,7 @@ class Dataset(NIGEndpoint):
             200: "Dataset successfully deleted",
             404: "This dataset cannot be found or you are not authorized to access",
             403: "You are not authorized to perform actions on this dataset",
+            409: "The dataset is being analysed",
         },
     )
     @decorators.database_transaction
@@ -397,6 +406,7 @@ class Dataset(NIGEndpoint):
 
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, user=user, error_type="Dataset")
+        verify_not_omics_locked(dataset)
         input_path = self.getPath(user=user, dataset=dataset)
         output_path = self.getPath(user=user, dataset=dataset, get_output_dir=True)
 

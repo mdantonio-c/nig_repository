@@ -1,23 +1,17 @@
 """Tests for the Omics dispatcher ``init_omics_pipeline.py``.
 
-* orchestration (``run``/``main``) with fake graph/client/celery: no network,
-  no writes in ``--dry-run``;
-* atomic claim / concurrency guard against the real Neo4j of
-  the test environment, including two concurrent claims.
+Orchestration (``run``/``main``) with fake graph/client/celery: no network,
+no writes in ``--dry-run``. The atomic claim against the real Neo4j lives in
+``tests/integration/test_omics_dispatcher_claim.py``.
 """
 
-import threading
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, List, Optional
 
-import pytest
 import pytz
 from nig.scripts import init_omics_pipeline as dispatcher
 from nig.services.omics.models import StorageUsage
-from restapi.connectors import neo4j
-from restapi.tests import FlaskClient
 
 NOW = datetime(2026, 1, 10, tzinfo=pytz.utc)
 GB = 1_000_000_000
@@ -57,11 +51,13 @@ class FakeDataset:
         sizes: Optional[List[Optional[int]]] = None,
         ready_at: Optional[datetime] = None,
         omics_status: Optional[str] = None,
+        omics_task_id: Optional[str] = None,
     ) -> None:
         self.uuid = uuid
         self.name = uuid
         self.status = "UPLOAD COMPLETED"
         self.omics_status = omics_status
+        self.omics_task_id = omics_task_id
         self.status_update = ready_at or NOW
         self.created = NOW
         study = [FakeStudy(study_type)] if study_type else []
@@ -70,11 +66,34 @@ class FakeDataset:
 
 
 @dataclass
+class FakeRelation:
+    status: str
+
+
+class FakeMembers(FakeManager):
+    def relationship(self, member: FakeRelation) -> FakeRelation:
+        return member
+
+
+@dataclass
 class FakeBatch:
     uuid: str
     planned_bytes: int = 0
     uploaded_bytes: int = 0
     created: datetime = NOW
+    stale_notified_at: Optional[datetime] = None
+    saves: int = 0
+    status: str = "RUNNING"
+    # SENT_TO_OMICS statuses of its members: by default still open
+    relation_statuses: List[str] = field(default_factory=lambda: ["RUNNING"])
+
+    @property
+    def datasets(self) -> FakeMembers:
+        return FakeMembers([FakeRelation(s) for s in self.relation_statuses])
+
+    def save(self) -> "FakeBatch":
+        self.saves += 1
+        return self
 
 
 class FakeNodeSet:
@@ -192,9 +211,10 @@ def test_select_omics_datasets_keeps_only_idle_genome_datasets() -> None:
     orphan = FakeDataset("orphan", study_type=None)
     in_flight = FakeDataset("in-flight", omics_status="RUNNING")
     failed_before = FakeDataset("retry", omics_status="ERROR")
+    stale_task = FakeDataset("reset", omics_status="ERROR", omics_task_id="t-old")
 
     selected = dispatcher.select_omics_datasets(
-        [genome, exome, orphan, in_flight, failed_before]
+        [genome, exome, orphan, in_flight, failed_before, stale_task]
     )
 
     assert selected == [genome, failed_before]
@@ -270,24 +290,136 @@ def test_run_skips_when_max_concurrent_batches_reached() -> None:
     assert sender.calls == []
 
 
-def test_run_warns_about_stale_batches() -> None:
+def test_run_closes_orphan_batches_and_frees_the_slot() -> None:
+    # every dataset deleted, or all relations closed without a final event
+    emptied = FakeBatch("emptied", relation_statuses=[])
+    released = FakeBatch("released", relation_statuses=["UPLOAD COMPLETED"])
+    graph = FakeGraph([FakeDataset("a")], batches=[emptied, released])
+    sender = Sender()
+
+    report = dispatcher.run(
+        graph,
+        FakeClient(),
+        settings(max_concurrent_batches=1),
+        dry_run=False,
+        now=NOW,
+        send_task=sender,
+    )
+
+    assert report["finalized_batches"] == {"emptied": "ERROR", "released": "PARTIAL"}
+    assert emptied.status == "ERROR" and emptied.saves == 1
+    assert released.status == "PARTIAL" and released.saves == 1
+    assert report["active_batches"] == []
+    assert report["batch"]["datasets"] == ["a"]
+
+
+def test_dry_run_reports_orphan_batches_without_closing_them() -> None:
+    emptied = FakeBatch("emptied", relation_statuses=[])
+
+    report = dispatcher.run(
+        ReadOnlyGraph([], batches=[emptied]),
+        FakeClient(),
+        settings(),
+        dry_run=True,
+        now=NOW,
+        send_task=Sender(),
+    )
+
+    assert report["finalized_batches"] == {"emptied": "ERROR"}
+    assert emptied.status == "RUNNING" and emptied.saves == 0
+
+
+def test_uncertain_submit_keeps_holding_the_slot() -> None:
+    held = FakeBatch("held", relation_statuses=["COMPLETED", "SUBMIT_UNKNOWN"])
+    graph = FakeGraph([FakeDataset("a")], batches=[held])
+
+    report = dispatcher.run(
+        graph, FakeClient(), settings(), dry_run=False, now=NOW, send_task=Sender()
+    )
+
+    assert report["finalized_batches"] == {}
+    assert report["skipped_reason"] == "max concurrent batches reached"
+    assert held.status == "RUNNING"
+
+
+def test_run_warns_about_stale_batches(monkeypatch: Any) -> None:
     stale = FakeBatch("stuck", created=NOW - timedelta(hours=100))
     graph = FakeGraph([], batches=[stale])
     notifications: List[Any] = []
-
-    original = dispatcher.notify_stale_batch
-    dispatcher.notify_stale_batch = lambda batch, hours: notifications.append(
-        (batch.uuid, hours)
+    monkeypatch.setattr(
+        dispatcher,
+        "notify_stale_batch",
+        lambda batch, hours: notifications.append((batch.uuid, hours)),
     )
-    try:
-        report = dispatcher.run(
-            graph, FakeClient(), settings(), dry_run=True, now=NOW, send_task=Sender()
-        )
-    finally:
-        dispatcher.notify_stale_batch = original
+
+    report = dispatcher.run(
+        graph, FakeClient(), settings(), dry_run=False, now=NOW, send_task=Sender()
+    )
 
     assert report["stale_batches"] == ["stuck"]
     assert notifications == [("stuck", 48)]
+    assert stale.stale_notified_at == NOW
+
+    # next dispatcher runs within the window: still reported, not re-notified
+    for hours in (1, 47):
+        dispatcher.run(
+            graph,
+            FakeClient(),
+            settings(),
+            dry_run=False,
+            now=NOW + timedelta(hours=hours),
+            send_task=Sender(),
+        )
+    assert notifications == [("stuck", 48)]
+
+    # a full window later: reminded once more
+    later = NOW + timedelta(hours=48)
+    dispatcher.run(
+        graph, FakeClient(), settings(), dry_run=False, now=later, send_task=Sender()
+    )
+    assert notifications == [("stuck", 48), ("stuck", 48)]
+    assert stale.stale_notified_at == later
+
+
+def test_dry_run_does_not_notify_stale_batches(monkeypatch: Any) -> None:
+    stale = FakeBatch("stuck", created=NOW - timedelta(hours=100))
+    notifications: List[Any] = []
+    monkeypatch.setattr(
+        dispatcher, "notify_stale_batch", lambda b, h: notifications.append(b)
+    )
+
+    report = dispatcher.run(
+        FakeGraph([], batches=[stale]),
+        FakeClient(),
+        settings(),
+        dry_run=True,
+        now=NOW,
+        send_task=Sender(),
+    )
+
+    assert report["stale_batches"] == ["stuck"]
+    assert notifications == []
+    assert stale.stale_notified_at is None
+    assert stale.saves == 0
+
+
+def test_failed_stale_notification_is_retried(monkeypatch: Any) -> None:
+    stale = FakeBatch("stuck", created=NOW - timedelta(hours=100))
+
+    def fail(batch: Any, hours: int) -> None:
+        raise RuntimeError("smtp down")
+
+    monkeypatch.setattr(dispatcher, "notify_stale_batch", fail)
+    dispatcher.run(
+        FakeGraph([], batches=[stale]),
+        FakeClient(),
+        settings(),
+        dry_run=False,
+        now=NOW,
+        send_task=Sender(),
+    )
+
+    assert stale.stale_notified_at is None
 
 
 def test_run_skips_without_ready_genome_datasets() -> None:
@@ -466,214 +598,3 @@ def test_settings_defaults_match_the_plan() -> None:
     assert defaults.safety_margin_pct == 5
     assert defaults.max_concurrent_batches == 1
     assert defaults.batch_stale_hours == 48
-
-
-# -- atomic claim against the real Neo4j ------------------------------------
-
-TEST_LOCK = "omics_dispatcher_test"
-
-
-class ClaimEnv:
-    def __init__(self, graph: Any) -> None:
-        self.graph = graph
-        self.dataset_uuids: List[str] = []
-        self.batch_uuids: List[str] = []
-
-    def dataset(self, status: str = "UPLOAD COMPLETED") -> str:
-        node = self.graph.Dataset(name="omics-claim-test", status=status).save()
-        self.dataset_uuids.append(node.uuid)
-        return str(node.uuid)
-
-    def batch_id(self) -> str:
-        uuid = f"test-batch-{len(self.batch_uuids)}-{time.time_ns()}"
-        self.batch_uuids.append(uuid)
-        return uuid
-
-    def claim(
-        self, sizes: Dict[str, int], max_batches: int = 1, reserved: int = 0
-    ) -> List[str]:
-        return dispatcher.claim_batch(
-            self.graph, self.batch_id(), sizes, max_batches, reserved, NOW
-        )
-
-    def cleanup(self) -> None:
-        # best effort, always run every removal
-        for query, params in (
-            (
-                "MATCH (b:OmicsBatch) WHERE b.uuid IN $uuids DETACH DELETE b",
-                {"uuids": self.batch_uuids},
-            ),
-            (
-                "MATCH (d:Dataset) WHERE d.uuid IN $uuids DETACH DELETE d",
-                {"uuids": self.dataset_uuids},
-            ),
-            (
-                "MATCH (l:OmicsDispatcherLock {name: $name}) DELETE l",
-                {"name": TEST_LOCK},
-            ),
-        ):
-            try:
-                self.graph.cypher(query, **params)
-            except Exception:  # pragma: no cover
-                pass
-
-
-@pytest.fixture
-def claim_env(client: FlaskClient, monkeypatch: Any) -> Iterator[ClaimEnv]:
-    monkeypatch.setattr(dispatcher, "LOCK_NAME", TEST_LOCK)
-    env = ClaimEnv(neo4j.get_instance())
-    yield env
-    env.cleanup()
-
-
-def test_claim_creates_batch_and_queues_datasets(claim_env: ClaimEnv) -> None:
-    graph = claim_env.graph
-    a, b = claim_env.dataset(), claim_env.dataset()
-
-    claimed = claim_env.claim({a: 10, b: 32})
-
-    assert sorted(claimed) == sorted([a, b])
-    batch = graph.OmicsBatch.nodes.get(uuid=claim_env.batch_uuids[0])
-    assert batch.status == "PLANNED"
-    assert batch.planned_bytes == 42
-    assert batch.uploaded_bytes == 0
-    assert batch.created == NOW
-    for uuid in (a, b):
-        dataset = graph.Dataset.nodes.get(uuid=uuid)
-        assert dataset.status == "QUEUED"
-        assert dataset.omics_status == "QUEUED"
-        assert dataset.status_update == NOW
-        rel = dataset.omics_batch.relationship(batch)
-        assert rel.status == "QUEUED"
-
-
-def test_claim_is_refused_while_a_batch_is_active(claim_env: ClaimEnv) -> None:
-    a, b = claim_env.dataset(), claim_env.dataset()
-    assert claim_env.claim({a: 10}) == [a]
-
-    # max 1 active batch: a new, disjoint dataset is not claimed either
-    assert claim_env.claim({b: 10}) == []
-
-    assert claim_env.graph.Dataset.nodes.get(uuid=b).status == "UPLOAD COMPLETED"
-    assert claim_env.graph.OmicsBatch.nodes.get_or_none(
-        uuid=claim_env.batch_uuids[1]
-    ) is None
-
-
-def test_claim_rejects_stale_reserved_quota(claim_env: ClaimEnv) -> None:
-    a, b = claim_env.dataset(), claim_env.dataset()
-    assert claim_env.claim({a: 10}, max_batches=2) == [a]
-
-    # planned assuming nothing reserved, but 10 bytes are reserved now
-    assert claim_env.claim({b: 10}, max_batches=2, reserved=0) == []
-    # planned with the current reservation: accepted
-    assert claim_env.claim({b: 10}, max_batches=2, reserved=10) == [b]
-
-
-def test_claim_never_takes_the_same_dataset_twice(claim_env: ClaimEnv) -> None:
-    a = claim_env.dataset()
-    assert claim_env.claim({a: 10}, max_batches=5) == [a]
-
-    assert claim_env.claim({a: 10}, max_batches=5, reserved=10) == []
-    assert (
-        claim_env.graph.OmicsBatch.nodes.get_or_none(uuid=claim_env.batch_uuids[1])
-        is None
-    )
-
-
-def test_claim_ignores_datasets_not_ready(claim_env: ClaimEnv) -> None:
-    ready = claim_env.dataset()
-    running = claim_env.dataset(status="RUNNING")
-
-    assert claim_env.claim({ready: 10, running: 10}) == [ready]
-    batch = claim_env.graph.OmicsBatch.nodes.get(uuid=claim_env.batch_uuids[0])
-    assert batch.planned_bytes == 10
-
-
-def test_release_restores_datasets_and_frees_the_slot(claim_env: ClaimEnv) -> None:
-    graph = claim_env.graph
-    a = claim_env.dataset()
-    assert claim_env.claim({a: 10}) == [a]
-    batch_uuid = claim_env.batch_uuids[0]
-
-    released = dispatcher.release_batch(graph, batch_uuid, "broker down", NOW)
-
-    assert released == [a]
-    dataset = graph.Dataset.nodes.get(uuid=a)
-    assert dataset.status == "UPLOAD COMPLETED"
-    assert dataset.omics_status is None
-    batch = graph.OmicsBatch.nodes.get(uuid=batch_uuid)
-    assert batch.status == "ERROR"
-    assert dataset.omics_batch.relationship(batch).error_message == "broker down"
-    # the ERROR batch no longer blocks the next claim
-    assert claim_env.claim({a: 10}) == [a]
-
-
-def test_reject_oversized_only_touches_ready_datasets(claim_env: ClaimEnv) -> None:
-    graph = claim_env.graph
-    ready = claim_env.dataset()
-    running = claim_env.dataset(status="RUNNING")
-
-    rejected = dispatcher.reject_oversized(graph, [ready, running], NOW)
-
-    assert rejected == [ready]
-    dataset = graph.Dataset.nodes.get(uuid=ready)
-    assert dataset.status == "ERROR"
-    assert dataset.error_message == dispatcher.OVERSIZED_ERROR
-    assert graph.Dataset.nodes.get(uuid=running).status == "RUNNING"
-    # already rejected: a second run does not reject (nor notify) again
-    assert dispatcher.reject_oversized(graph, [ready], NOW) == []
-
-
-def test_concurrent_claims_are_serialised(claim_env: ClaimEnv) -> None:
-    """Run B starts while run A holds its uncommitted claim.
-
-    Both planned from the same state (nothing reserved, max 2 batches). Without
-    the lock B would still read the datasets as ready and claim them again;
-    with the lock B waits for A to commit, then sees the reservation and
-    claims nothing.
-    """
-    graph = claim_env.graph
-    a, b = claim_env.dataset(), claim_env.dataset()
-    sizes = {a: 10, b: 10}
-    first_id, second_id = claim_env.batch_id(), claim_env.batch_id()
-    # as after the first production run: the lock node already exists
-    dispatcher.ensure_lock(graph)
-    a_claimed = threading.Event()
-    results: Dict[str, Any] = {}
-
-    def run_a() -> None:
-        try:
-            graph.db.begin()
-            results["a"] = dispatcher.claim_batch(graph, first_id, sizes, 2, 0, NOW)
-            a_claimed.set()
-            # keep the transaction (and the lock) open while B starts
-            time.sleep(1.5)
-            graph.db.commit()
-        except Exception as exc:  # pragma: no cover
-            results["a_error"] = exc
-            a_claimed.set()
-
-    def run_b() -> None:
-        a_claimed.wait(10)
-        try:
-            results["b_started"] = time.monotonic()
-            results["b"] = dispatcher.claim_batch(graph, second_id, sizes, 2, 0, NOW)
-            results["b_done"] = time.monotonic()
-        except Exception as exc:  # pragma: no cover
-            results["b_error"] = exc
-
-    threads = [threading.Thread(target=run_a), threading.Thread(target=run_b)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join(30)
-
-    assert "a_error" not in results and "b_error" not in results, results
-    assert sorted(results["a"]) == sorted([a, b])
-    assert results["b"] == []
-    # B was actually blocked by A's lock
-    assert results["b_done"] - results["b_started"] > 1.0
-    assert graph.OmicsBatch.nodes.get_or_none(uuid=second_id) is None
-    for uuid in (a, b):
-        assert len(graph.Dataset.nodes.get(uuid=uuid).omics_batch.all()) == 1

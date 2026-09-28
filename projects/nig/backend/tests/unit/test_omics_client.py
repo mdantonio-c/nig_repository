@@ -117,6 +117,45 @@ def test_quota_exceeded_403_with_matching_detail_raises_omics_quota_exceeded() -
         client.get_storage_usage()
 
 
+def test_quota_exceeded_403_in_mmf_message_shape_raises_omics_quota_exceeded() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            403,
+            {"message": "Storage limit reached", "code": "FORBIDDEN", "request_id": "r"},
+        )
+    )
+    client = _client(session)
+
+    with pytest.raises(OmicsQuotaExceeded):
+        client.get_storage_usage()
+
+
+def test_422_mmf_error_body_carries_message_and_field_errors() -> None:
+    secret_id = "gAAAAABmZ0123456789abcdefXYZ::deadbeefcafebabe"
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            422,
+            {
+                "message": "A completed, nonempty FASTQ upload is required",
+                "code": "VALIDATION_ERROR",
+                "request_id": "r",
+                "errors": [{"field": "output_vcf", "message": f"bad {secret_id}"}],
+            },
+        )
+    )
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError) as exc_info:
+        client.submit_nig_germline(["a" * 10], output_vcf="out.vcf.gz")
+
+    message = str(exc_info.value)
+    assert "A completed, nonempty FASTQ upload is required" in message
+    assert "output_vcf: bad" in message
+    assert secret_id not in message
+
+
 def test_403_without_quota_detail_raises_omics_request_error() -> None:
     session = _logged_in_session()
     session.request_queue.append(FakeResponse(403, {"detail": "Forbidden"}))
@@ -148,6 +187,48 @@ def test_other_error_status_raises_omics_request_error() -> None:
         client.get_storage_usage()
 
 
+def test_422_error_message_carries_sanitized_validation_detail() -> None:
+    secret_id = "gAAAAABmZ0123456789abcdefXYZ::deadbeefcafebabe"
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            422,
+            {
+                "detail": [
+                    {
+                        "loc": ["body", "input_files", 0],
+                        "msg": f"File {secret_id} not found",
+                        "type": "value_error",
+                        "input": secret_id,
+                    }
+                ]
+            },
+        )
+    )
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError) as exc_info:
+        client.submit_nig_germline(["a" * 10], output_vcf="out.vcf.gz")
+
+    message = str(exc_info.value)
+    assert exc_info.value.status_code == 422
+    assert "body.input_files.0: File" in message
+    assert "not found" in message
+    assert secret_id not in message
+    assert "deadbeefcafebabe" not in message
+
+
+def test_5xx_error_message_does_not_include_server_detail() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(500, {"detail": "stack trace"}))
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError) as exc_info:
+        client.get_storage_usage()
+
+    assert "stack trace" not in str(exc_info.value)
+
+
 def test_get_storage_usage_maps_fields() -> None:
     session = _logged_in_session()
     session.request_queue.append(
@@ -165,17 +246,32 @@ def test_get_storage_usage_maps_fields() -> None:
     )
 
 
-def test_list_uploaded_files_returns_json_list() -> None:
+def test_list_uploaded_files_unwraps_the_files_object() -> None:
+    # FileListResponse from the Omics OpenAPI spec, confirmed live on dev2
     session = _logged_in_session()
     response = FakeResponse(200)
-    response._payload = [{"file_id": "f1"}]
-    response.content = b'[{"file_id": "f1"}]'
+    response._payload = {"files": [{"file_id": "f1"}]}
+    response.content = b'{"files": [{"file_id": "f1"}]}'
     session.request_queue.append(response)
     client = _client(session)
 
     files = client.list_uploaded_files()
 
     assert files == [{"file_id": "f1"}]
+
+
+@pytest.mark.parametrize("payload", [[{"file_id": "f1"}], {"items": []}, {"files": None}])
+def test_list_uploaded_files_rejects_unexpected_payloads(payload: Any) -> None:
+    # never mistake an unknown shape for an empty listing
+    session = _logged_in_session()
+    response = FakeResponse(200)
+    response._payload = payload
+    response.content = b"x"
+    session.request_queue.append(response)
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError):
+        client.list_uploaded_files()
 
 
 def test_list_uploaded_files_returns_empty_list_on_204_no_content() -> None:
@@ -308,3 +404,148 @@ def test_download_file_rejects_wrong_size_and_removes_partial_file(tmp_path: Pat
 
     assert not destination.exists()
     assert not destination.with_name(destination.name + ".part").exists()
+
+
+def test_get_task_files_accepts_the_documented_list_of_mappings() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            200,
+            {
+                "files": [
+                    {"gvcf": {"file_id": "f1"}, "tbi": {"file_id": "f2"}},
+                    {"bam": [{"file_id": "f3"}], "log": {"file_id": "f4"}},
+                ]
+            },
+        )
+    )
+
+    files = _client(session).get_task_files("t1")
+
+    assert [(f["_kind"], f["file_id"]) for f in files] == [
+        ("gvcf", "f1"),
+        ("tbi", "f2"),
+        ("bam", "f3"),
+        ("log", "f4"),
+    ]
+
+
+def test_get_task_files_keeps_flat_entries_and_skips_garbage() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            200,
+            {"files": [{"file_id": "f1", "_kind": "gvcf"}, "garbage", 3, {"bam": 7}]},
+        )
+    )
+
+    files = _client(session).get_task_files("t1")
+
+    assert files == [{"file_id": "f1", "_kind": "gvcf"}]
+
+
+@pytest.mark.parametrize("payload", [{"files": "nope"}, {"files": None}, {}])
+def test_get_task_files_tolerates_unexpected_payloads(payload: Dict[str, Any]) -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(200, payload or {"other": 1}))
+
+    assert _client(session).get_task_files("t1") == []
+
+
+class BrokenStream(FakeResponse):
+    def __init__(self) -> None:
+        super().__init__(200)
+        self.closed = False
+
+    def iter_content(self, chunk_size: int = 1):
+        yield b"abc"
+        raise ConnectionResetError("peer reset")
+
+    def close(self) -> None:
+        self.closed = True
+
+
+@pytest.fixture
+def plenty_of_disk(monkeypatch: Any) -> None:
+    usage = type("Usage", (), {"free": 10**15})()
+    monkeypatch.setattr("shutil.disk_usage", lambda path: usage)
+
+
+def test_mid_stream_error_removes_part_and_closes_response(
+    tmp_path: Path, plenty_of_disk: None
+) -> None:
+    session = _logged_in_session()
+    response = BrokenStream()
+    session.request_queue.append(response)
+    destination = tmp_path.joinpath("sample.bam")
+
+    with pytest.raises(ConnectionResetError):
+        _client(session).download_file("f1", destination, expected_size=6)
+
+    assert not destination.exists()
+    assert not destination.with_name("sample.bam.part").exists()
+    assert response.closed
+
+
+def test_stream_longer_than_expected_is_aborted(
+    tmp_path: Path, plenty_of_disk: None
+) -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(200, content_chunks=[b"abc", b"def"]))
+    destination = tmp_path.joinpath("sample.bam")
+
+    with pytest.raises(OmicsRequestError, match="larger than expected"):
+        _client(session).download_file("f1", destination, expected_size=4)
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_download_limit_applies_without_declared_size(tmp_path: Path) -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(200, content_chunks=[b"abc", b"def"]))
+    client = OmicsClient(
+        base_url="https://omics.dev.cineca.it/api/v1/",
+        username="nig-service",
+        password="s3cr3t",
+        timeout=10,
+        session=session,
+        max_download_bytes=5,
+    )
+
+    with pytest.raises(OmicsRequestError):
+        client.download_file("f1", tmp_path.joinpath("sample.bam"))
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_declared_size_over_the_limit_is_refused_before_download(tmp_path: Path) -> None:
+    session = _logged_in_session()
+    client = OmicsClient(
+        base_url="https://omics.dev.cineca.it/api/v1/",
+        username="nig-service",
+        password="s3cr3t",
+        timeout=10,
+        session=session,
+        max_download_bytes=5,
+    )
+
+    with pytest.raises(OmicsRequestError, match="size limit"):
+        client.download_file("f1", tmp_path.joinpath("sample.bam"), expected_size=6)
+
+    assert [c for c in session.calls if c[0] == "GET"] == []
+
+
+def test_insufficient_disk_space_is_refused_before_download(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    session = _logged_in_session()
+    usage = type("Usage", (), {"free": 100})()
+    monkeypatch.setattr("shutil.disk_usage", lambda path: usage)
+
+    with pytest.raises(OmicsRequestError, match="disk space"):
+        _client(session).download_file(
+            "f1", tmp_path.joinpath("sample.bam"), expected_size=6
+        )
+
+    assert [c for c in session.calls if c[0] == "GET"] == []
+    assert list(tmp_path.iterdir()) == []

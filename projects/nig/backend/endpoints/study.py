@@ -1,7 +1,7 @@
 import shutil
 from typing import Any
 
-from nig.endpoints import NIGEndpoint
+from nig.endpoints import NIGEndpoint, verify_not_omics_locked
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.exceptions import Conflict
@@ -177,6 +177,7 @@ class Study(NIGEndpoint):
             200: "Study successfully deleted",
             404: "This study cannot be found or you are not authorized to access",
             403: "You are not authorized to perform actions on this study",
+            409: "A dataset of the study is being analysed",
         },
     )
     @decorators.database_transaction
@@ -186,6 +187,8 @@ class Study(NIGEndpoint):
 
         study = graph.Study.nodes.get_or_none(uuid=uuid)
         self.verifyStudyAccess(study, user=user)
+        for d in study.datasets.all():
+            verify_not_omics_locked(d)
 
         input_path = self.getPath(user=user, study=study)
         output_path = self.getPath(user=user, study=study, get_output_dir=True)

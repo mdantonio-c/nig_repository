@@ -267,6 +267,41 @@ class TestApp(BaseTests):
         output_path.mkdir(parents=True)
         assert output_path.is_dir()
 
+        # a dataset analysed on Omics cannot be modified, not even by an admin
+        dataset = graph.Dataset.nodes.get_or_none(uuid=dataset1_uuid)
+        dataset.omics_status = "RUNNING"
+        dataset.save()
+        r = client.delete(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_B1_headers)
+        assert r.status_code == 409
+        r = client.patch(
+            f"{API_URI}/dataset/{dataset1_uuid}",
+            headers=admin_headers,
+            json={"status": "UPLOAD COMPLETED"},
+        )
+        assert r.status_code == 409
+        r = client.delete(f"{API_URI}/study/{study1_uuid}", headers=user_B1_headers)
+        assert r.status_code == 409
+        r = client.post(
+            f"{API_URI}/dataset/{dataset1_uuid}/files/upload",
+            headers=user_B1_headers,
+            json={
+                "name": f"{faker.pystr()}_R1.fastq.gz",
+                "mimeType": "application/gzip",
+                "size": faker.pyint(),
+                "lastModified": faker.pyint(),
+            },
+        )
+        assert r.status_code == 409
+        r = client.put(
+            f"{API_URI}/dataset/{dataset1_uuid}/files/upload/sample_R1.fastq.gz",
+            headers=user_B1_headers,
+            data=b"chunk",
+        )
+        assert r.status_code == 409
+        assert dir_path.is_dir()
+        dataset.omics_status = None
+        dataset.save()
+
         # delete a dataset
         # delete a dataset you do not own
         r = client.delete(f"{API_URI}/dataset/{dataset1_uuid}", headers=user_A1_headers)

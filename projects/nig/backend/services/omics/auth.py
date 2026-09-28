@@ -41,7 +41,8 @@ class OmicsAuth:
         if response.status_code != 200:
             detail = ""
             try:
-                detail = str(response.json().get("detail", ""))
+                body = response.json()
+                detail = str(body.get("message") or body.get("detail") or "")
             except (ValueError, AttributeError):
                 pass
             message = f"Omics login failed with status {response.status_code}"

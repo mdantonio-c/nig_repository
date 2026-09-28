@@ -14,6 +14,8 @@ Design constraints:
   its own graph.
 """
 
+import re
+import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -33,10 +35,12 @@ from nig.services.omics.models import StorageUsage, TaskInfo
 from nig.services.omics.uploader import OmicsUploader
 
 DEFAULT_TIMEOUT = 60
-# Confirmed against the real Omics contract: a quota-exceeded condition is
-# reported as HTTP 403 with body {"detail": "Storage limit reached"}.
+# A quota-exceeded condition is HTTP 403 "Storage limit reached"; MMF's error
+# handler returns it as {"message": ...} (plain FastAPI would use "detail").
 QUOTA_STATUS_CODE = 403
 QUOTA_DETAIL_MARKER = "storage limit reached"
+# Free space always left on the local filesystem after a download.
+MIN_FREE_DISK_BYTES = 1024**3
 
 
 def _obscure(identifier: str) -> str:
@@ -44,6 +48,62 @@ def _obscure(identifier: str) -> str:
     if len(identifier) <= 8:
         return "***"
     return f"{identifier[:4]}...{identifier[-4:]}"
+
+
+# long opaque tokens (encrypted file ids, task ids) inside server messages
+_OPAQUE_TOKEN = re.compile(r"[A-Za-z0-9_\-=:.]{16,}")
+MAX_DETAIL_LENGTH = 300
+
+
+def _body_message(response: requests.Response) -> str:
+    """Top-level server message: MMF ``message`` or plain FastAPI ``detail``."""
+    try:
+        body = response.json()
+        message = body.get("message") or body.get("detail")
+    except (ValueError, AttributeError):
+        return ""
+    return message if isinstance(message, str) else ""
+
+
+def _hide_ids(text: str) -> str:
+    return _OPAQUE_TOKEN.sub(lambda match: _obscure(match.group(0)), text)
+
+
+def _error_detail(response: requests.Response) -> str:
+    """Short, sanitized server explanation of a 4xx.
+
+    Omics (MMF) answers ``{"message", "code", "request_id", "errors":
+    [{"field", "message"}]}``; plain FastAPI answers ``{"detail": ...}``.
+    Only field names and messages are kept (never echoed inputs), and opaque
+    ids are obscured.
+    """
+    try:
+        body = response.json()
+        detail = body.get("detail")
+    except (ValueError, AttributeError):
+        return ""
+    if detail is None and isinstance(body.get("message"), str):
+        parts = [_hide_ids(body["message"])]
+        errors = body.get("errors")
+        for item in errors[:3] if isinstance(errors, list) else []:
+            if isinstance(item, dict):
+                field = str(item.get("field", ""))
+                msg = _hide_ids(str(item.get("message", "")))
+                parts.append(f"{field}: {msg}".strip(": "))
+        return "; ".join(parts)[:MAX_DETAIL_LENGTH]
+    if isinstance(detail, list):
+        parts = []
+        for item in detail[:3]:
+            if isinstance(item, dict):
+                loc = ".".join(str(part) for part in item.get("loc") or [])
+                msg = _hide_ids(str(item.get("msg", "")))
+                parts.append(f"{loc}: {msg}".strip(": "))
+        text = "; ".join(parts)
+    elif detail is None:
+        return ""
+    else:
+        text = _hide_ids(str(detail))
+    return text[:MAX_DETAIL_LENGTH]
 
 
 class OmicsClient:
@@ -55,9 +115,11 @@ class OmicsClient:
         timeout: int = DEFAULT_TIMEOUT,
         session: Optional[requests.Session] = None,
         max_retries: int = 3,
+        max_download_bytes: Optional[int] = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
+        self._max_download_bytes = max_download_bytes
         self._session = session or self._build_session(max_retries)
         self._auth = OmicsAuth(
             self._session, self._base_url, username, password, timeout
@@ -110,18 +172,16 @@ class OmicsClient:
         if response.status_code == 401:
             raise OmicsAuthError("Omics authentication failed (401 after refresh)")
         if response.status_code == QUOTA_STATUS_CODE:
-            detail = ""
-            try:
-                detail = str(response.json().get("detail", ""))
-            except (ValueError, AttributeError):
-                pass
+            detail = _body_message(response)
             if QUOTA_DETAIL_MARKER in detail.lower():
                 raise OmicsQuotaExceeded(
                     f"Omics storage quota exceeded (status {response.status_code}: "
                     f"{detail})"
                 )
+        detail = _error_detail(response) if 400 <= response.status_code < 500 else ""
         raise OmicsRequestError(
-            f"Omics request failed with status {response.status_code}",
+            f"Omics request failed with status {response.status_code}"
+            + (f": {detail}" if detail else ""),
             status_code=response.status_code,
         )
 
@@ -142,7 +202,17 @@ class OmicsClient:
         # uploaded files, instead of 200 with an empty JSON list.
         if response.status_code == 204 or not response.content:
             return []
-        return response.json()
+        # FileListResponse: {"files": [FileResponse, ...]} (OpenAPI spec,
+        # confirmed live). An unknown shape must not look like an empty
+        # listing: callers would then consider remote files already removed.
+        payload = response.json()
+        files = payload.get("files") if isinstance(payload, dict) else None
+        if not isinstance(files, list):
+            raise OmicsRequestError(
+                "Unexpected Omics uploaded files payload",
+                status_code=response.status_code,
+            )
+        return [item for item in files if isinstance(item, dict)]
 
     def delete_file(self, file_id: str) -> bool:
         # Fallback cleanup path only: the caller must
@@ -156,28 +226,73 @@ class OmicsClient:
         destination: Path,
         expected_size: Optional[int] = None,
     ) -> Path:
-        response = self._request(
-            "GET", f"/storage/objects/download/{file_id}", stream=True
-        )
+        """Stream one object to ``destination`` through a ``.part`` file.
+
+        The final name only appears after the whole body has been received
+        and its size verified; any failure removes the partial file.
+        """
+        limit = self._max_download_bytes
+        if expected_size is not None:
+            if expected_size < 0:
+                raise OmicsRequestError("Omics download has an invalid size")
+            if limit is not None and expected_size > limit:
+                raise OmicsRequestError(
+                    "Omics download exceeds the configured size limit"
+                )
+            self.ensure_free_space(destination.parent, expected_size)
+            limit = expected_size
+
         tmp_path = destination.with_name(destination.name + ".part")
-        downloaded = 0
-        with tmp_path.open("wb") as stream:
-            for block in response.iter_content(chunk_size=1024 * 1024):
-                if block:
-                    stream.write(block)
-                    downloaded += len(block)
-        if expected_size is not None and downloaded != expected_size:
-            tmp_path.unlink(missing_ok=True)
-            raise OmicsRequestError(
-                "Omics download has an unexpected size: "
-                f"expected {expected_size}, received {downloaded}"
+        response: Optional[requests.Response] = None
+        try:
+            response = self._request(
+                "GET", f"/storage/objects/download/{file_id}", stream=True
             )
-        tmp_path.rename(destination)
+            downloaded = 0
+            with tmp_path.open("wb") as stream:
+                for block in response.iter_content(chunk_size=1024 * 1024):
+                    if not block:
+                        continue
+                    downloaded += len(block)
+                    if limit is not None and downloaded > limit:
+                        raise OmicsRequestError(
+                            "Omics download is larger than expected"
+                        )
+                    stream.write(block)
+            if expected_size is not None and downloaded != expected_size:
+                raise OmicsRequestError(
+                    "Omics download has an unexpected size: "
+                    f"expected {expected_size}, received {downloaded}"
+                )
+            tmp_path.replace(destination)
+        except BaseException:
+            tmp_path.unlink(missing_ok=True)
+            raise
+        finally:
+            close = getattr(response, "close", None)
+            if callable(close):
+                close()
         return destination
 
+    @staticmethod
+    def ensure_free_space(directory: Path, required_bytes: int) -> None:
+        free = shutil.disk_usage(directory).free
+        if free < required_bytes + MIN_FREE_DISK_BYTES:
+            raise OmicsRequestError(
+                "Not enough local disk space for the Omics download: "
+                f"required {required_bytes} bytes, free {free} bytes"
+            )
+
     # -- upload ---------------------------------------------------------------
-    def upload_file(self, path: Path, tags: Optional[List[str]] = None) -> str:
-        file_id = self._uploader.upload_file(path, tags=tags)
+    def upload_file(
+        self,
+        path: Path,
+        tags: Optional[List[str]] = None,
+        remote_filename: Optional[str] = None,
+    ) -> str:
+        file_id = self._uploader.upload_file(
+            path, tags=tags, remote_filename=remote_filename
+        )
         log.info(
             "Uploaded {} to Omics as file_id={}", path.name, _obscure(file_id)
         )
@@ -220,35 +335,56 @@ class OmicsClient:
     def get_task_files(self, task_id: str) -> List[Dict[str, Any]]:
         """Flatten the nested ``/files/proc/{task_id}`` output wrapper.
 
-        The endpoint returns ``{"files": {<kind>: <entry-or-list>, ...}}``. 
-        Unknown output kinds are ignored but logged, they
-        are never silently dropped without a trace.
+        Accepted shapes, each value being an entry or a list of entries:
+
+        * ``{"files": [{<kind>: <entry>, ...}, ...]}`` (documented contract);
+        * ``{"files": {<kind>: <entry>, ...}}``;
+        * ``{"files": [<entry>, ...]}`` with already flat entries.
+
+        Every returned entry carries its output kind in ``_kind`` (flat
+        entries keep their own ``_kind``, if any). Unexpected values are
+        ignored but logged, never silently dropped.
         """
         response = self._request("GET", f"/files/proc/{task_id}")
         payload = response.json()
-        files_by_kind = payload.get("files", {})
+        files = payload.get("files", []) if isinstance(payload, dict) else None
 
         flattened: List[Dict[str, Any]] = []
-        if isinstance(files_by_kind, dict):
-            for kind, entry in files_by_kind.items():
-                entries = entry if isinstance(entry, list) else [entry]
-                for item in entries:
-                    if isinstance(item, dict):
-                        flattened.append({**item, "_kind": kind})
-                    else:
-                        log.warning(
-                            "Ignoring unexpected /files/proc/{} entry of kind"
-                            " '{}': {}",
-                            task_id,
-                            kind,
-                            type(item),
-                        )
-        elif isinstance(files_by_kind, list):
-            flattened = [f for f in files_by_kind if isinstance(f, dict)]
+        if isinstance(files, dict):
+            self._flatten_mapping(task_id, files, flattened)
+        elif isinstance(files, list):
+            for element in files:
+                if isinstance(element, dict) and "file_id" in element:
+                    flattened.append(dict(element))
+                elif isinstance(element, dict):
+                    self._flatten_mapping(task_id, element, flattened)
+                else:
+                    log.warning(
+                        "Ignoring unexpected output element for task {}: {}",
+                        _obscure(task_id),
+                        type(element).__name__,
+                    )
         else:
             log.warning(
-                "Unexpected 'files' payload type in /files/proc/{}: {}",
-                task_id,
-                type(files_by_kind),
+                "Unexpected 'files' payload type for task {}: {}",
+                _obscure(task_id),
+                type(files).__name__,
             )
         return flattened
+
+    @staticmethod
+    def _flatten_mapping(
+        task_id: str, mapping: Dict[str, Any], flattened: List[Dict[str, Any]]
+    ) -> None:
+        for kind, entry in mapping.items():
+            entries = entry if isinstance(entry, list) else [entry]
+            for item in entries:
+                if isinstance(item, dict):
+                    flattened.append({**item, "_kind": kind})
+                else:
+                    log.warning(
+                        "Ignoring unexpected output entry of kind '{}' for task {}: {}",
+                        kind,
+                        _obscure(task_id),
+                        type(item).__name__,
+                    )

@@ -69,6 +69,7 @@ class Dataset(TimestampedNode):
     omics_status_update = DateTimeProperty()
     omics_error_message = StringProperty()
     omics_output_prefix = StringProperty()
+    omics_fetch_attempts = IntegerProperty()
 
     ownership = RelationshipTo(
         "restapi.connectors.neo4j.models.User", "IS_OWNED_BY", cardinality=ZeroOrMore
@@ -126,9 +127,11 @@ class OmicsBatch(TimestampedNode):
     """A batch of datasets submitted together to Omics, governed by quota."""
 
     uuid = StringProperty(required=True, unique_index=True)
-    status = StringProperty()  # PLANNED | RUNNING | COMPLETED | ERROR
+    status = StringProperty()  # PLANNED | RUNNING | COMPLETED | PARTIAL | ERROR
     planned_bytes = IntegerProperty()
     uploaded_bytes = IntegerProperty()
+    # last stale alert sent, so the dispatcher does not repeat it every run
+    stale_notified_at = DateTimeProperty()
 
     datasets = RelationshipFrom(
         "Dataset", "SENT_TO_OMICS", cardinality=ZeroOrMore, model=JobRelation
