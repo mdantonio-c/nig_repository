@@ -1,5 +1,29 @@
 version: "3.9"
 
+# RAPyDo's backend/celery templates forward only their predefined variables:
+# every project variable used at runtime must be listed explicitly.
+# OMICS_USERNAME/OMICS_PASSWORD are runtime secrets: define them only in the
+# untracked .projectrc (or the deployment secret store), never in the repo.
+x-omics-environment: &omics-environment
+  OMICS_ENABLE: ${OMICS_ENABLE}
+  OMICS_API_URL: ${OMICS_API_URL}
+  OMICS_USERNAME: "${OMICS_USERNAME:-}"
+  OMICS_PASSWORD: "${OMICS_PASSWORD:-}"
+  OMICS_REFERENCE_VERSION: ${OMICS_REFERENCE_VERSION}
+  OMICS_PIPELINE: ${OMICS_PIPELINE}
+  OMICS_EXPECTED_QUOTA_BYTES: ${OMICS_EXPECTED_QUOTA_BYTES}
+  OMICS_QUOTA_SAFETY_MARGIN_PCT: ${OMICS_QUOTA_SAFETY_MARGIN_PCT}
+  OMICS_MAX_CONCURRENT_BATCHES: ${OMICS_MAX_CONCURRENT_BATCHES}
+  OMICS_UPLOAD_WORKERS: ${OMICS_UPLOAD_WORKERS}
+  OMICS_POLL_INTERVAL_MINUTES: ${OMICS_POLL_INTERVAL_MINUTES}
+  OMICS_BATCH_STALE_HOURS: ${OMICS_BATCH_STALE_HOURS}
+  OMICS_ORPHAN_TTL_HOURS: ${OMICS_ORPHAN_TTL_HOURS}
+  OMICS_REQUEST_TIMEOUT: ${OMICS_REQUEST_TIMEOUT}
+  OMICS_CLEANUP_DELETE: ${OMICS_CLEANUP_DELETE}
+  OMICS_FETCH_RETRY_MINUTES: ${OMICS_FETCH_RETRY_MINUTES}
+  OMICS_FETCH_MAX_ATTEMPTS: ${OMICS_FETCH_MAX_ATTEMPTS}
+  OMICS_MAX_DOWNLOAD_BYTES: ${OMICS_MAX_DOWNLOAD_BYTES}
+
 services:
   backend:
     build: ${PROJECT_DIR}/builds/backend
@@ -10,6 +34,7 @@ services:
       - ${PROJECT_DIR}/backend/snakemake:/snakemake
       - ${SUBMODULE_DIR}/quality-checks:/code/juan
     environment:
+      <<: *omics-environment
       # celery configuration for samples analysis
       CHUNKS_LIMIT: ${CHUNKS_LIMIT}
       # Project policy setting; RAPyDo's inherited backend template only
@@ -32,6 +57,8 @@ services:
       - ${DATA_DIR}/resources:/resources
       - ${PROJECT_DIR}/backend/snakemake:/snakemake
       - ${SUBMODULE_DIR}/quality-checks:/code/juan
+    environment:
+      <<: *omics-environment
 
   flower:
     build: ${PROJECT_DIR}/builds/backend

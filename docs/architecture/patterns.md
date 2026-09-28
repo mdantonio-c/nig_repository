@@ -53,7 +53,8 @@ Container paths (`/data`, `/resources`, `/snakemake`) are referenced via `restap
 
 ## Testing conventions
 
-- One `test_api_<domain>.py` file per endpoint group under `projects/nig/backend/tests/`.
+- Tests are split under `projects/nig/backend/tests/`: `unit/` (fakes/monkeypatch, no app or Neo4j), `integration/` (Flask client and/or real Neo4j) and `live/` (real Omics, skipped unless credentials and opt-in variables are set).
+- One `integration/test_api_<domain>.py` file per endpoint group.
 - Use the NIG `test_env` pytest fixture for exception-safe setup/cleanup.
 - `projects/nig/backend/tasks/test_task.py` is RAPyDo test infrastructure, not NIG business logic.
 

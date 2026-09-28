@@ -22,6 +22,27 @@ variables:
     CRONTAB_ENABLE: 1
     DATA_PATH: /data
 
+    # Omics/Parabricks remains inert until the controlled real-environment
+    # validation is complete. Credentials are runtime secrets, never here.
+    OMICS_ENABLE: 0
+    OMICS_API_URL: https://omics.cineca.it/api/v1/
+    OMICS_REFERENCE_VERSION: hg38
+    OMICS_PIPELINE: nig/germline
+    OMICS_EXPECTED_QUOTA_BYTES: 1000000000000
+    OMICS_QUOTA_SAFETY_MARGIN_PCT: 5
+    OMICS_MAX_CONCURRENT_BATCHES: 1
+    OMICS_UPLOAD_WORKERS: 4
+    OMICS_POLL_INTERVAL_MINUTES: 15
+    OMICS_BATCH_STALE_HOURS: 48
+    OMICS_ORPHAN_TTL_HOURS: 72
+    OMICS_REQUEST_TIMEOUT: 60
+    OMICS_CLEANUP_DELETE: 0
+    # result retrieval recovery: back-off between fetch attempts and limit
+    OMICS_FETCH_RETRY_MINUTES: 60
+    OMICS_FETCH_MAX_ATTEMPTS: 5
+    # hard cap for a single downloaded output (500 GB)
+    OMICS_MAX_DOWNLOAD_BYTES: 500000000000
+
     BACKEND_BUILD_MODE: backend-legacy39
     PYTHON_PATH: /usr/local/lib/python3.9/dist-packages
     FRONTEND_FRAMEWORK: angular

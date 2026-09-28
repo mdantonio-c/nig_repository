@@ -12,7 +12,7 @@
 1. Add or edit a class extending `NIGEndpoint` in `projects/nig/backend/endpoints/`.
 2. Define/adjust Marshmallow schemas for input (`use_kwargs`) and output (`marshal_with`).
 3. Add auth via `@decorators.auth.require()`.
-4. Add a matching test in `projects/nig/backend/tests/test_api_<domain>.py`.
+4. Add a matching test in `projects/nig/backend/tests/integration/test_api_<domain>.py`.
 
 ## Change administrative users, Root/Staff policy, or its migration
 
