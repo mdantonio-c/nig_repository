@@ -22,10 +22,10 @@ read_ids <- function(path) {
 }
 
 outliers <- read_ids(snakemake@input[["outliers_to_remove"]])
-outliers$pca_class <- "outliers"
+outliers$pca_class <- rep("outliers", nrow(outliers))
 
 pca_ita <- read_ids(snakemake@input[["pca_ita"]])
-pca_ita$pca_class <- "pca_ita"
+pca_ita$pca_class <- rep("pca_ita", nrow(pca_ita))
 
 pca_df <- rbind(outliers[, c("ID", "pca_class")],
                 pca_ita[, c("ID", "pca_class")])
