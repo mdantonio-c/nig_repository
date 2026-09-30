@@ -22,8 +22,8 @@ _OGF  = config["annotation"]["outliers_groups_file"]
 
 rule filter_pca_groups_to_cohort:
     input:
-        vcf=config["input"]["vcf"],
-        tbi=config["input"]["vcf"] + ".tbi",
+        vcf=get_cohort_vcf_for_merge(),
+        tbi=get_cohort_vcf_for_merge() + ".tbi",
         outliers=f"{RESULT_ROOT}/outliers/outliers_to_remove_{{cohort}}.samples.txt",
         pca_ita=f"{RESULT_ROOT}/outliers/pca_ita_{{cohort}}.txt",
     output:
@@ -92,8 +92,8 @@ rule build_groups:
 
 rule annotate_vcf:
     input:
-        vcf=config["input"]["vcf"],
-        tbi=config["input"]["vcf"] + ".tbi",
+        vcf=get_cohort_vcf_for_merge(),
+        tbi=get_cohort_vcf_for_merge() + ".tbi",
         groups=get_groups_file,
     output:
         vcf=f"{RESULT_ROOT}/annotated/groups_INFOtags_{{cohort}}.vcf.gz",
