@@ -28,7 +28,9 @@ variables:
     OMICS_API_URL: https://omics.cineca.it/api/v1/
     OMICS_REFERENCE_VERSION: hg38
     OMICS_PIPELINE: nig/germline
-    OMICS_EXPECTED_QUOTA_BYTES: 1000000000000
+    OMICS_EXPECTED_QUOTA_BYTES: 1099511627776
+    # Omics refuses /upload/start once usage/quota >= this ratio
+    OMICS_EXPECTED_UPLOAD_LIMIT: 0.8
     OMICS_QUOTA_SAFETY_MARGIN_PCT: 5
     OMICS_MAX_CONCURRENT_BATCHES: 1
     OMICS_UPLOAD_WORKERS: 4

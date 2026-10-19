@@ -35,7 +35,12 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 import pytz
 from nig.services.omics import OmicsClient
 from nig.services.omics.batch_state import ACTIVE_DATASET_STATUSES, batch_outcome
-from nig.services.omics.planner import DatasetCandidate, effective_quota, plan_batch
+from nig.services.omics.planner import (
+    DatasetCandidate,
+    effective_quota,
+    plan_batch,
+    upload_ceiling,
+)
 from nig.services.omics.settings import USER_DATASET_TOO_LARGE
 from restapi.connectors import celery, neo4j
 from restapi.connectors.smtp.notifications import send_notification
@@ -155,6 +160,7 @@ class DispatcherSettings:
     password: str
     request_timeout: int
     expected_quota_bytes: int
+    expected_upload_limit: float
     safety_margin_pct: int
     max_concurrent_batches: int
     batch_stale_hours: int
@@ -168,7 +174,10 @@ class DispatcherSettings:
             password=Env.get("OMICS_PASSWORD", ""),
             request_timeout=Env.get_int("OMICS_REQUEST_TIMEOUT", 60),
             expected_quota_bytes=Env.get_int(
-                "OMICS_EXPECTED_QUOTA_BYTES", 1_000_000_000_000
+                "OMICS_EXPECTED_QUOTA_BYTES", 1_099_511_627_776
+            ),
+            expected_upload_limit=float(
+                Env.get("OMICS_EXPECTED_UPLOAD_LIMIT", "") or 0.8
             ),
             safety_margin_pct=Env.get_int("OMICS_QUOTA_SAFETY_MARGIN_PCT", 5),
             max_concurrent_batches=Env.get_int("OMICS_MAX_CONCURRENT_BATCHES", 1),
@@ -461,9 +470,11 @@ def run(
             settings.expected_quota_bytes,
         )
     quota = effective_quota(usage.quota, settings.expected_quota_bytes)
+    ceiling = upload_ceiling(quota, usage.limit, settings.expected_upload_limit)
     plan = plan_batch(
-        candidates, quota, usage.usage + reserved, settings.safety_margin_pct
+        candidates, ceiling, usage.usage + reserved, settings.safety_margin_pct
     )
+    report["upload_ceiling_bytes"] = ceiling
     report["reserved_bytes"] = reserved
     report["plan"] = asdict(plan)
 

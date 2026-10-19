@@ -9,6 +9,7 @@ from nig.services.omics.planner import (
     DatasetCandidate,
     effective_quota,
     plan_batch,
+    upload_ceiling,
 )
 
 T0 = datetime(2026, 1, 1, tzinfo=pytz.utc)
@@ -170,3 +171,18 @@ def test_effective_quota_prefers_remote_value() -> None:
 @pytest.mark.parametrize("remote", [None, 0])
 def test_effective_quota_falls_back_to_expected(remote: int) -> None:
     assert effective_quota(remote, 1000) == 1000
+
+
+def test_upload_ceiling_prefers_remote_limit() -> None:
+    assert upload_ceiling(1000, 0.5, 0.8) == 500
+
+
+@pytest.mark.parametrize("remote", [None, 0.0, -0.1, 1.5])
+def test_upload_ceiling_falls_back_to_expected_limit(remote: float) -> None:
+    assert upload_ceiling(1000, remote, 0.8) == 800
+
+
+@pytest.mark.parametrize("expected", [0.0, 1.5])
+def test_upload_ceiling_rejects_invalid_expected_limit(expected: float) -> None:
+    with pytest.raises(ValueError):
+        upload_ceiling(1000, None, expected)

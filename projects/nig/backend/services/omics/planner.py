@@ -1,12 +1,14 @@
 """Quota-aware batch planning for Omics (pure logic, no I/O).
 
-The caller provides the authoritative remote ``quota``/``usage`` read from
-``GET /storage/objects/usage`` (plus any bytes already reserved by NIG batches
-not yet uploaded); this module only decides which datasets fit.
+The caller provides the authoritative remote ``quota``/``usage``/``limit`` read
+from ``GET /storage/objects/usage`` (plus any bytes already reserved by NIG
+batches not yet uploaded); this module only decides which datasets fit.
 
 Algorithm:
 
-* ``capacity = quota * (1 - margin)``; ``usable = capacity - used``;
+* Omics refuses ``/upload/start`` once ``usage / quota >= limit``, so the
+  ceiling is ``quota * limit`` (see ``upload_ceiling``);
+* ``capacity = ceiling * (1 - margin)``; ``usable = capacity - used``;
 * datasets are visited FIFO by readiness date, tie-break on size ascending
   (then uuid, for a deterministic order);
 * a dataset larger than ``capacity`` can never fit: it is reported as
@@ -43,6 +45,23 @@ def effective_quota(remote_quota: Optional[int], expected_quota: int) -> int:
     if remote_quota and remote_quota > 0:
         return int(remote_quota)
     return int(expected_quota)
+
+
+def upload_ceiling(
+    quota_bytes: int, remote_limit: Optional[float], expected_limit: float
+) -> int:
+    """Bytes usable before Omics refuses new uploads (``usage/quota >= limit``).
+
+    The remote limit is authoritative; fall back to the agreed value when it
+    is missing or out of range.
+    """
+    if remote_limit and 0 < remote_limit <= 1:
+        limit = float(remote_limit)
+    else:
+        limit = float(expected_limit)
+    if not 0 < limit <= 1:
+        raise ValueError("upload limit must be in (0, 1]")
+    return int(quota_bytes * limit)
 
 
 def _fifo_key(candidate: DatasetCandidate) -> Tuple[bool, float, int, str]:

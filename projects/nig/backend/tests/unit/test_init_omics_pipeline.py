@@ -162,6 +162,7 @@ def settings(**overrides: Any) -> dispatcher.DispatcherSettings:
         password="secret",
         request_timeout=5,
         expected_quota_bytes=100 * GB,
+        expected_upload_limit=1.0,
         safety_margin_pct=5,
         max_concurrent_batches=1,
         batch_stale_hours=48,
@@ -467,6 +468,45 @@ def test_run_falls_back_to_expected_quota() -> None:
     assert report["plan"]["selected"] == ["a"]
 
 
+def test_run_plans_below_the_remote_upload_limit() -> None:
+    # Omics refuses uploads at usage/quota >= 0.8: ceiling 80 GB, capacity 76 GB
+    client = FakeClient(
+        StorageUsage(usage=0, quota=100 * GB, limit=0.8, can_upload=True)
+    )
+    graph = FakeGraph(
+        [
+            FakeDataset("a", sizes=[40 * GB], ready_at=NOW - timedelta(hours=2)),
+            FakeDataset("b", sizes=[40 * GB], ready_at=NOW - timedelta(hours=1)),
+        ]
+    )
+
+    report = dispatcher.run(
+        graph, client, settings(), dry_run=True, now=NOW, send_task=Sender()
+    )
+
+    assert report["upload_ceiling_bytes"] == 80 * GB
+    assert report["plan"]["capacity_bytes"] == 76 * GB
+    assert report["plan"]["selected"] == ["a"]
+    assert report["plan"]["deferred"] == ["b"]
+
+
+def test_run_falls_back_to_expected_upload_limit() -> None:
+    client = FakeClient(StorageUsage(usage=0, quota=0, limit=0.0, can_upload=True))
+    graph = FakeGraph([FakeDataset("a", sizes=[10 * GB])])
+
+    report = dispatcher.run(
+        graph,
+        client,
+        settings(expected_quota_bytes=20 * GB, expected_upload_limit=0.5),
+        dry_run=True,
+        now=NOW,
+        send_task=Sender(),
+    )
+
+    assert report["upload_ceiling_bytes"] == 10 * GB
+    assert report["plan"]["oversized"] == ["a"]
+
+
 def test_run_includes_quota_reserved_by_active_batches() -> None:
     # 60 GB still to be uploaded by the active batch: only 35 GB usable
     active = FakeBatch("active", planned_bytes=60 * GB, uploaded_bytes=0)
@@ -594,7 +634,8 @@ def test_settings_defaults_match_the_plan() -> None:
     defaults = dispatcher.DispatcherSettings.from_env()
 
     assert defaults.enabled is False
-    assert defaults.expected_quota_bytes == 1_000_000_000_000
+    assert defaults.expected_quota_bytes == 1_099_511_627_776
+    assert defaults.expected_upload_limit == 0.8
     assert defaults.safety_margin_pct == 5
     assert defaults.max_concurrent_batches == 1
     assert defaults.batch_stale_hours == 48
