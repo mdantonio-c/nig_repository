@@ -1,0 +1,4 @@
+SHELL=/bin/bash
+
+# Omics dispatcher: plans and sends genome batches (inert with OMICS_ENABLE=0)
+45 */8 * * * set -a && source /etc/rapydo-environment && /usr/bin/python3 /code/nig/scripts/init_omics_pipeline.py >> /logs/init_omics_pipeline.log 2>&1

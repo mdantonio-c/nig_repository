@@ -39,6 +39,10 @@ variables:
     OMICS_ORPHAN_TTL_HOURS: 72
     OMICS_REQUEST_TIMEOUT: 60
     OMICS_CLEANUP_DELETE: 0
+    # daily report-only reconciliation: files land in OMICS_REPORT_DIR (host:
+    # data/logs/omics/cleanup/), only the newest OMICS_REPORT_KEEP are kept
+    OMICS_REPORT_DIR: /logs/omics/cleanup
+    OMICS_REPORT_KEEP: 15
     # result retrieval recovery: back-off between fetch attempts and limit
     OMICS_FETCH_RETRY_MINUTES: 60
     OMICS_FETCH_MAX_ATTEMPTS: 5

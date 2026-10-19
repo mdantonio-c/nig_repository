@@ -224,3 +224,35 @@ def test_cleanup_does_nothing_when_omics_is_disabled(monkeypatch: Any) -> None:
     inspect.unwrap(cleanup.omics_cleanup.__wrapped__)(None)
 
     assert calls == []
+
+
+def test_write_report_keeps_only_the_newest_reports(tmp_path: Any) -> None:
+    report = {"remote_count": 1}
+    for day in range(1, 6):
+        cleanup.write_report(
+            report, tmp_path, keep=3, now=datetime(2026, 1, day, tzinfo=pytz.utc)
+        )
+
+    names = sorted(path.name for path in tmp_path.iterdir())
+    assert names == [
+        "latest.json",
+        "omics_cleanup_20260103T000000Z.json",
+        "omics_cleanup_20260104T000000Z.json",
+        "omics_cleanup_20260105T000000Z.json",
+    ]
+
+
+def test_write_report_is_private_atomic_and_has_a_latest_copy(tmp_path: Any) -> None:
+    target = cleanup.write_report({"a": 1}, tmp_path / "nested", now=NOW)
+
+    assert target.stat().st_mode & 0o777 == 0o640
+    assert (tmp_path / "nested" / "latest.json").read_text() == target.read_text()
+    assert not list((tmp_path / "nested").glob("*.part"))
+
+
+def test_write_report_never_prunes_foreign_files(tmp_path: Any) -> None:
+    (tmp_path / "notes.txt").write_text("keep")
+
+    cleanup.write_report({}, tmp_path, keep=1, now=NOW)
+
+    assert (tmp_path / "notes.txt").exists()

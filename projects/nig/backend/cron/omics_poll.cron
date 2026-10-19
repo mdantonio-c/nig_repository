@@ -1,0 +1,10 @@
+SHELL=/bin/bash
+
+# Omics task polling every 15 minutes (inert with OMICS_ENABLE=0). Only errors
+# are appended to the log: the task itself logs its summary.
+*/15 * * * * set -a && source /etc/rapydo-environment && /usr/bin/python3 /code/nig/scripts/init_omics_task.py omics_poll_tasks > /dev/null 2>> /logs/init_omics_poll.err
+
+# Daily report-only reconciliation of the remote storage. Reports are written
+# to /logs/omics/cleanup/ (host: data/logs/omics/cleanup/): latest.json plus
+# the newest OMICS_REPORT_KEEP dated files. Nothing is deleted on Omics.
+10 3 * * * set -a && source /etc/rapydo-environment && /usr/bin/python3 /code/nig/scripts/init_omics_task.py omics_cleanup > /dev/null 2>> /logs/init_omics_cleanup.err

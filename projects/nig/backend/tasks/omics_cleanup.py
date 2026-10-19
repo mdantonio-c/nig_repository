@@ -6,7 +6,10 @@ a retention policy is validated with Omics. The report never contains full
 remote identifiers: only counts, bytes and truncated ids.
 """
 
+import json
+import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import pytz
@@ -20,6 +23,11 @@ from restapi.utilities.logs import log
 TERMINAL_DATASET_STATUSES = ("COMPLETED", "ERROR")
 DEFAULT_ORPHAN_TTL_HOURS = 72
 MAX_SAMPLE_IDS = 20
+# Host path: data/logs/omics/cleanup/ (``/logs`` is a mounted volume).
+DEFAULT_REPORT_DIR = "/logs/omics/cleanup"
+DEFAULT_REPORT_KEEP = 15
+REPORT_PREFIX = "omics_cleanup_"
+LATEST_REPORT = "latest.json"
 CATEGORIES = (
     # not in Neo4j and older than the TTL: candidates for the agreed cleanup
     "orphan_candidates",
@@ -150,6 +158,34 @@ def reconcile(
     }
 
 
+def write_report(
+    report: Dict[str, Any],
+    directory: Path,
+    keep: int = DEFAULT_REPORT_KEEP,
+    now: Optional[datetime] = None,
+) -> Path:
+    """Persist one report as JSON, keeping only the newest ``keep`` files.
+
+    ``latest.json`` always holds the most recent report. Files are written
+    atomically with mode 0640; only ``omics_cleanup_*.json`` files in the
+    report directory are ever pruned. Reports hold counts, bytes and
+    truncated ids only.
+    """
+    stamp = _now(now).strftime("%Y%m%dT%H%M%SZ")
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory.joinpath(f"{REPORT_PREFIX}{stamp}.json")
+    payload = json.dumps(report, indent=2, sort_keys=True, default=str)
+    for path in (target, directory.joinpath(LATEST_REPORT)):
+        tmp = path.with_name(path.name + ".part")
+        tmp.write_text(payload)
+        os.chmod(tmp, 0o640)
+        tmp.replace(path)
+    reports = sorted(directory.glob(f"{REPORT_PREFIX}*.json"))
+    for old in reports[: max(0, len(reports) - max(1, keep))]:
+        old.unlink(missing_ok=True)
+    return target
+
+
 @CeleryExt.task(idempotent=True, autoretry_for=(ConnectionResetError,))
 def omics_cleanup(self: Task[[], None]) -> None:
     if not omics_enabled():
@@ -169,4 +205,14 @@ def omics_cleanup(self: Task[[], None]) -> None:
             categories["orphan_candidates"]["count"],
             categories["cleanup_not_observed"]["count"],
         )
-    log.info("Omics cleanup report: {}", report)
+    try:
+        path = write_report(
+            report,
+            Path(Env.get("OMICS_REPORT_DIR", DEFAULT_REPORT_DIR)),
+            keep=Env.get_int("OMICS_REPORT_KEEP", DEFAULT_REPORT_KEEP),
+        )
+    except OSError as exc:
+        log.error("Cannot write the Omics cleanup report: {}", exc)
+        log.info("Omics cleanup report: {}", report)
+        return
+    log.info("Omics cleanup report written to {}", path)
