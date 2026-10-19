@@ -281,15 +281,15 @@ def _run_dataset(
 
         # Persist this state before submit. A request timeout after this
         # point is never automatically re-submitted (T4 protection).
-        output_vcf = f"{sample}_{dataset.uuid}.g.vcf.gz"
+        output_gvcf = f"{sample}_{dataset.uuid}.g.vcf.gz"
         dataset.omics_status = SUBMITTING_STATUS
         dataset.omics_status_update = timestamp
-        dataset.omics_output_prefix = output_vcf
+        dataset.omics_output_prefix = output_gvcf
         dataset.save()
         submit_attempted = True
         response = client.submit_nig_germline(
             input_ids,
-            output_vcf=output_vcf,
+            output_gvcf=output_gvcf,
             reference=Env.get("OMICS_REFERENCE_VERSION", OMICS_REFERENCE),
         )
         task_id = str(response.get("task_id") or "") or None

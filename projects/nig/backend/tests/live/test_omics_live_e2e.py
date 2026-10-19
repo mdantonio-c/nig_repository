@@ -35,21 +35,18 @@ import base64
 import gzip
 import json
 import os
+import shutil
+import subprocess
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterator, List, Optional
 
 import pytest
 
 from nig.services.omics import OmicsClient
 from nig.services.omics.errors import OmicsError, OmicsRequestError
-from nig.tasks.omics_fetch_results import (
-    ALLOWED_SUFFIXES,
-    REQUIRED_KINDS,
-    RETAINED_RAW_KINDS,
-    _kind,
-)
+from nig.tasks.omics_fetch_results import _expected_outputs, _kind
 
 OMICS_TEST_BASE_URL = os.environ.get("OMICS_TEST_BASE_URL")
 OMICS_TEST_USERNAME = os.environ.get("OMICS_TEST_USERNAME")
@@ -63,12 +60,10 @@ KEEP_REMOTE = os.environ.get("OMICS_TEST_E2E_KEEP") == "1"
 REPORT_PATH = Path(os.environ.get("OMICS_TEST_E2E_REPORT", "/tmp/omics_live_e2e.json"))
 TERMINAL_STATUSES = {"complete", "error"}
 KNOWN_TASK_STATUSES = {"pending", "received", "processing", "complete", "error"}
-# Temporary Omics-side limitation (2026-09-28, dev2): the germline task's
-# output listing omits BAM/BAI entirely, even though the worker publishes
-# them. Tolerated here only so the live suite keeps validating the rest of
-# the contract; drop this once Omics confirms the fix, so a real regression
-# (e.g. the gVCF or TBI itself going missing) fails the test again.
-KNOWN_MISSING_KINDS = {"BAM", "BAI"}
+# gVCF, BAM and the tabix index (TBI) are all BGZF-compressed; the BAM index
+# (BAI) is a separate plain binary format with its own magic bytes.
+BGZF_MAGIC = b"\x1f\x8b"
+BAI_MAGIC = b"BAI\x01"
 
 pytestmark = pytest.mark.skipif(
     not (
@@ -229,48 +224,6 @@ def _fastqs() -> List[Path]:
             assert stream.readline().startswith("@"), f"{path.name} is not a FASTQ"
     return files
 
-
-def _retained_outputs_allow_known_gap(
-    outputs: List[Dict[str, Any]],
-) -> Tuple[List[Dict[str, Any]], Set[str]]:
-    """Validate task outputs like the production ``_expected_outputs``, but
-    tolerate ``KNOWN_MISSING_KINDS`` being absent entirely (see its comment).
-
-    Returns ``(retained, missing_kinds)``; raises :class:`OmicsError` for any
-    other contract violation (duplicates, bad filenames, mismatched indexes).
-    """
-    selected = [
-        output
-        for output in outputs
-        if str(output.get("_kind", "")).lower() in RETAINED_RAW_KINDS
-    ]
-    kinds = [_kind(output) for output in selected]
-    if len(kinds) != len(set(kinds)):
-        raise OmicsError(f"Omics task outputs have duplicate kinds: {sorted(kinds)}")
-    missing = REQUIRED_KINDS - set(kinds)
-    if missing and missing != KNOWN_MISSING_KINDS:
-        raise OmicsError(
-            "Omics task outputs must include exactly gVCF, TBI, BAM and BAI; "
-            f"received {sorted(kinds)}"
-        )
-    names: Dict[str, str] = {}
-    for output in selected:
-        if not output.get("file_id") or not output.get("user_filename"):
-            raise OmicsError("Omics output is missing file_id or user_filename")
-        if int(output.get("size", 0)) <= 0:
-            raise OmicsError("Omics output has an invalid size")
-        kind = _kind(output)
-        filename = str(output["user_filename"])
-        if Path(filename).name != filename or not filename.endswith(ALLOWED_SUFFIXES[kind]):
-            raise OmicsError(f"Unexpected Omics {kind} output filename")
-        names[kind] = filename
-    if "TBI" in names and names["TBI"] != f"{names.get('GVCF', '')}.tbi":
-        raise OmicsError("Omics TBI output does not match the gVCF output")
-    if "BAI" in names and names["BAI"] != f"{names.get('BAM', '')}.bai":
-        raise OmicsError("Omics BAI output does not match the BAM output")
-    return selected, missing
-
-
 @pytest.fixture(scope="module")
 def live_run() -> Iterator[LiveRun]:
     assert OMICS_TEST_BASE_URL is not None
@@ -399,7 +352,8 @@ def test_live_germline_submit_poll_and_fetch(
     if len(live_run.input_ids) != 2:
         pytest.skip("inputs not uploaded")
     client = live_run.client
-    output_vcf = f"{live_run.sample}_{live_run.run_id}.g.vcf.gz"
+    output_gvcf = f"{live_run.sample}_{live_run.run_id}.g.vcf.gz"
+    expected_sample = output_gvcf[: -len(".g.vcf.gz")]
 
     # The ids returned by upload differ from those listed in /files/uploaded
     # (re-encrypted per response): if the upload ids are rejected, record why
@@ -421,7 +375,7 @@ def test_live_germline_submit_poll_and_fetch(
                 attempts[label] = {"skipped": "inputs not listed"}
                 break
         try:
-            response = client.submit_nig_germline(input_ids, output_vcf=output_vcf)
+            response = client.submit_nig_germline(input_ids, output_gvcf=output_gvcf)
         except OmicsRequestError as exc:
             attempts[label] = {"status_code": exc.status_code, "error": str(exc)}
             live_run.save()
@@ -434,7 +388,7 @@ def test_live_germline_submit_poll_and_fetch(
     if response is None:
         assert last_error is not None
         raise last_error
-    live_run.report["submit"] = {"keys": sorted(response), "output_vcf": output_vcf}
+    live_run.report["submit"] = {"keys": sorted(response), "output_gvcf": output_gvcf}
     task_id = response.get("task_id")
     assert task_id, f"submit response without task_id: {sorted(response)}"
     live_run.task_id = str(task_id)
@@ -453,7 +407,13 @@ def test_live_germline_submit_poll_and_fetch(
         if not statuses or statuses[-1] != status:
             statuses.append(status)
             live_run.save()
-        if status in TERMINAL_STATUSES or time.monotonic() >= deadline:
+        # Error + cleanup_pending is not final: Omics recovery may complete it
+        cleanup_pending = isinstance(task.parameters, dict) and bool(
+            task.parameters.get("cleanup_pending")
+        )
+        if (
+            status in TERMINAL_STATUSES and not cleanup_pending
+        ) or time.monotonic() >= deadline:
             break
         time.sleep(POLL_SECONDS)
         task = client.get_task(live_run.task_id)
@@ -465,7 +425,7 @@ def test_live_germline_submit_poll_and_fetch(
             "end": task.end,
             "elapsed_time": task.elapsed_time,
             "parameter_keys": sorted(parameters),
-            "parameters_output_vcf": parameters.get("output_vcf"),
+            "parameters_output_gvcf": parameters.get("output_gvcf"),
         }
     )
     live_run.save()
@@ -495,16 +455,13 @@ def test_live_germline_submit_poll_and_fetch(
     live_run.save()
 
     try:
-        retained, missing_kinds = _retained_outputs_allow_known_gap(outputs)
+        retained = _expected_outputs(outputs)
     except OmicsError as exc:
         fetch["fetch_rejects"] = str(exc)
         live_run.save()
         raise
-    if missing_kinds:
-        fetch["known_missing_kinds"] = sorted(missing_kinds)
-        live_run.save()
     gvcf = next(item for item in retained if _kind(item) == "GVCF")
-    fetch["gvcf_name_equals_output_vcf"] = gvcf["user_filename"] == output_vcf
+    fetch["gvcf_name_equals_output_gvcf"] = gvcf["user_filename"] == output_gvcf
     retained_ids = [str(item["file_id"]) for item in retained]
     retained_names = [str(item["user_filename"]) for item in retained]
     fetch["outputs_listed_before_download"] = live_run.matches(retained_ids, retained_names)
@@ -515,24 +472,54 @@ def test_live_germline_submit_poll_and_fetch(
         client.download_file(
             str(item["file_id"]), destination, expected_size=int(item["size"])
         )
-        # gVCF and BAM are BGZF, the tabix index is BGZF too
-        assert destination.read_bytes()[:2] == b"\x1f\x8b", destination.name
-        downloaded[str(item["_kind"]).upper()] = destination.stat().st_size
+        # gVCF, BAM and TBI are BGZF; BAI (BAM index) has its own magic instead.
+        kind = _kind(item)
+        expected_magic = BAI_MAGIC if kind == "BAI" else BGZF_MAGIC
+        magic = destination.read_bytes()[: len(expected_magic)]
+        assert magic == expected_magic, destination.name
+        downloaded[kind] = destination.stat().st_size
     fetch["downloaded_sizes"] = downloaded
-    with gzip.open(tmp_path / str(gvcf["user_filename"]), "rt") as stream:
+    gvcf_path = tmp_path / str(gvcf["user_filename"])
+    samples: List[str] = []
+    with gzip.open(gvcf_path, "rt") as stream:
         fetch["gvcf_header_ok"] = stream.readline().startswith("##fileformat=VCF")
+        # the agreed output is a per-sample gVCF: it must carry reference blocks
+        fetch["gvcf_is_gvcf"] = False
+        for line in stream:
+            if not line.startswith("#"):
+                break
+            if line.startswith("##GVCFBlock") or "<NON_REF>" in line:
+                fetch["gvcf_is_gvcf"] = True
+            if line.startswith("#CHROM"):
+                samples = line.rstrip("\n").split("\t")[9:]
+    if shutil.which("bcftools"):
+        listed = subprocess.run(
+            ["bcftools", "query", "-l", str(gvcf_path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        samples = listed.stdout.split()
+    fetch["gvcf_samples"] = samples
+    fetch["gvcf_sample_equals_expected"] = samples == [expected_sample]
     live_run.save()
     assert fetch["gvcf_header_ok"]
+    assert fetch["gvcf_is_gvcf"]
+    assert fetch["gvcf_sample_equals_expected"], samples
 
-    # the fetch task closes a dataset only once Omics no longer lists outputs
-    cleanup_deadline = time.monotonic() + CLEANUP_WAIT
-    while True:
-        seen = live_run.matches(retained_ids, retained_names)
-        if not any(seen["by_id"] + seen["by_name"]) or time.monotonic() >= cleanup_deadline:
-            break
-        time.sleep(min(POLL_SECONDS, 15))
-    fetch["outputs_listed_after_download"] = seen
-    fetch["output_tags_after_download"] = [
+    # Omics retains outputs after download: NIG deletes every locally verified
+    # artifact using the id from ``/files/proc/{task_id}``. Listing cannot prove
+    # cleanup because task outputs are absent from ``/files/uploaded``.
+    fetch["output_tags_before_delete"] = [
         live_run.probe("GET", f"/files/{file_id}/tags") for file_id in retained_ids
     ]
+    fetch["output_delete_results"] = [client.delete_file(file_id) for file_id in retained_ids]
+    assert all(fetch["output_delete_results"])
+    fetch["output_tags_after_delete"] = [
+        live_run.probe("GET", f"/files/{file_id}/tags") for file_id in retained_ids
+    ]
+    assert all(result.get("status") == 403 for result in fetch["output_tags_after_delete"])
+    # The fixture still cleans the inputs; outputs have already been explicitly
+    # deleted here, exactly as the production fetch task does.
+    live_run.output_ids.clear()
     live_run.save()

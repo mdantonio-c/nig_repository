@@ -141,18 +141,18 @@ def test_422_mmf_error_body_carries_message_and_field_errors() -> None:
                 "message": "A completed, nonempty FASTQ upload is required",
                 "code": "VALIDATION_ERROR",
                 "request_id": "r",
-                "errors": [{"field": "output_vcf", "message": f"bad {secret_id}"}],
+                "errors": [{"field": "output_gvcf", "message": f"bad {secret_id}"}],
             },
         )
     )
     client = _client(session)
 
     with pytest.raises(OmicsRequestError) as exc_info:
-        client.submit_nig_germline(["a" * 10], output_vcf="out.vcf.gz")
+        client.submit_nig_germline(["a" * 10], output_gvcf="out.g.vcf.gz")
 
     message = str(exc_info.value)
     assert "A completed, nonempty FASTQ upload is required" in message
-    assert "output_vcf: bad" in message
+    assert "output_gvcf: bad" in message
     assert secret_id not in message
 
 
@@ -208,7 +208,7 @@ def test_422_error_message_carries_sanitized_validation_detail() -> None:
     client = _client(session)
 
     with pytest.raises(OmicsRequestError) as exc_info:
-        client.submit_nig_germline(["a" * 10], output_vcf="out.vcf.gz")
+        client.submit_nig_germline(["a" * 10], output_gvcf="out.g.vcf.gz")
 
     message = str(exc_info.value)
     assert exc_info.value.status_code == 422
@@ -294,7 +294,7 @@ def test_submit_nig_germline_rejects_invalid_input_count(
     client = _client(session)
 
     with pytest.raises(ValueError):
-        client.submit_nig_germline(input_files, output_vcf="sample.g.vcf.gz")
+        client.submit_nig_germline(input_files, output_gvcf="sample.g.vcf.gz")
 
 
 @pytest.mark.parametrize("input_files", [["r1"], ["r1", "r2"]])
@@ -307,13 +307,15 @@ def test_submit_nig_germline_accepts_one_or_two_inputs(
     )
     client = _client(session)
 
-    result = client.submit_nig_germline(input_files, output_vcf="sample.g.vcf.gz")
+    result = client.submit_nig_germline(input_files, output_gvcf="sample.g.vcf.gz")
 
     assert result == {"task_id": "t1", "status": "Received"}
     _, url, _, kwargs = [c for c in session.calls if c[0] != "POST-auth"][0]
     assert url.endswith("/tools/nig/germline")
-    assert kwargs["json"]["input_files"] == input_files
+    assert kwargs["json"]["output_gvcf"] == "sample.g.vcf.gz"
+    assert "output_vcf" not in kwargs["json"]
     assert kwargs["json"]["reference"] == "hg38"
+    assert kwargs["json"]["input_files"] == input_files
 
 
 def test_get_task_returns_task_info() -> None:
@@ -376,6 +378,21 @@ def test_delete_file_returns_true_on_success() -> None:
     client = _client(session)
 
     assert client.delete_file("f1") is True
+
+
+def test_delete_file_treats_404_as_already_deleted() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(404))
+
+    assert _client(session).delete_file("f1") is True
+
+
+def test_delete_file_propagates_other_errors() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(403))
+
+    with pytest.raises(OmicsRequestError):
+        _client(session).delete_file("f1")
 
 
 def test_download_file_streams_to_part_then_renames(tmp_path: Path) -> None:

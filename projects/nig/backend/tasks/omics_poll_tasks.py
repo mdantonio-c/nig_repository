@@ -152,8 +152,15 @@ def _poll_one(
         dataset.omics_fetch_attempts = 0
         return "fetching" if _dispatch_fetch(dataset, send_task, now) else None
     elif status == "error":
-        mark_error(dataset, "Remote task reported Error", now)
-        return "failed"
+        parameters = remote.parameters if isinstance(remote.parameters, dict) else {}
+        if parameters.get("cleanup_pending"):
+            # Omics is still cleaning up (its recovery thread may still turn
+            # the task into Complete): not terminal yet, keep polling.
+            log.warning("Omics task of {} is Error with cleanup pending", dataset.uuid)
+            local_status = RUNNING
+        else:
+            mark_error(dataset, "Remote task reported Error", now)
+            return "failed"
     else:
         log.warning("Unknown Omics task status '{}' for {}", remote.status, dataset.uuid)
         return None

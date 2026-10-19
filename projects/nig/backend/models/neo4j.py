@@ -105,7 +105,7 @@ class JointAnalysisJob(Job):
 
 
 class OmicsArtifact(TimestampedNode):
-    """An Omics/Parabricks output file (gVCF, TBI or BAM) for a Dataset.
+    """An Omics/Parabricks output file (gVCF, TBI, BAM or BAI) for a Dataset.
 
     Tracked separately from ``File`` because these ids come from Omics'
     ``/files/proc/{task_id}`` response, not from a NIG-owned upload.
@@ -115,7 +115,7 @@ class OmicsArtifact(TimestampedNode):
     name = StringProperty(required=True)
     extension = StringProperty()
     size = IntegerProperty()
-    kind = StringProperty()  # GVCF | TBI | BAM
+    kind = StringProperty()  # GVCF | TBI | BAM | BAI
     status = StringProperty()  # DISCOVERED | DOWNLOADING | DOWNLOADED | DELETED | ERROR
     local_path = StringProperty()
     downloaded_at = DateTimeProperty()

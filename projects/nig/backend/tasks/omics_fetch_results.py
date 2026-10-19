@@ -1,10 +1,10 @@
-"""Retrieve, validate and persist the retained outputs of an Omics task.
+"""Retrieve, validate, persist and explicitly delete Omics task outputs.
 
-Idempotent and resumable: Omics deletes an output after its first complete
-download, so artifacts already downloaded and present locally are never
-requested again; a retry only fetches what is still missing. The poller
-re-dispatches this task for ``FETCHING`` (failed/lost fetch) and
-``CLEANUP PENDING`` (remote cleanup not yet observed) datasets.
+Idempotent and resumable: only fully downloaded, validated local artifacts are
+deleted remotely. A retry downloads only a locally missing artifact that has
+not yet been deleted; it otherwise retries its pending remote DELETE. The
+poller re-dispatches this task for ``FETCHING`` (failed/lost fetch) and
+``CLEANUP PENDING`` (failed remote deletion) datasets.
 """
 
 import os
@@ -17,6 +17,7 @@ from nig.endpoints import OUTPUT_ROOT
 from nig.services.omics import OmicsError
 from nig.services.omics.batch_state import set_relation_status
 from nig.services.omics.settings import client_from_env, omics_enabled
+from nig.tasks.omics_poll_tasks import mark_error
 from restapi.connectors import neo4j
 from restapi.connectors.celery import CeleryExt, Task
 from restapi.utilities.logs import log
@@ -26,10 +27,10 @@ CLEANUP_PENDING = "CLEANUP PENDING"
 COMPLETED = "COMPLETED"
 ERROR = "ERROR"
 DOWNLOADED = "DOWNLOADED"
-# Omics exposes the graph class name in ``_kind`` (``Vcf``/``Bam``, covering
+# Omics exposes the graph class name in ``_kind`` (``Gvcf``/``Bam``, covering
 # both an artifact and its index) with no separate index flag in the API
 # response; the ``extension`` suffix is the only way to tell them apart.
-RETAINED_RAW_KINDS = {"vcf", "bam"}
+RETAINED_RAW_KINDS = {"gvcf", "bam"}
 REQUIRED_KINDS = {"GVCF", "TBI", "BAM", "BAI"}
 ALLOWED_SUFFIXES = {
     "GVCF": ".g.vcf.gz",
@@ -57,7 +58,7 @@ def _output_dir(dataset: Any) -> Path:
 def _kind(output: Dict[str, Any]) -> str:
     raw = str(output.get("_kind", "")).lower()
     extension = str(output.get("extension", "")).lower()
-    if raw == "vcf":
+    if raw == "gvcf":
         return "TBI" if extension.endswith("tbi") else "GVCF"
     if raw == "bam":
         return "BAI" if extension.endswith("bai") else "BAM"
@@ -86,7 +87,7 @@ def _downloaded_artifacts(dataset: Any) -> Dict[str, Any]:
     found: Dict[str, Any] = {}
     for artifact in dataset.omics_artifacts.all():
         if (
-            artifact.status == DOWNLOADED
+            artifact.status in (DOWNLOADED, "DELETED")
             and artifact.local_path
             and Path(artifact.local_path).is_file()
         ):
@@ -139,26 +140,39 @@ def _expected_outputs(
     return remaining
 
 
-def _cleanup_observed(client: Any, remote_names: List[str]) -> bool:
-    """Return true only when completed download outputs no longer appear remotely.
+def _delete_remote_outputs(client: Any, artifacts: List[Any]) -> bool:
+    """Delete every verified output stored by NIG, returning whether all succeeded.
 
-    Omics re-encrypts every ``file_id`` on each response, so a previously
-    saved id can never be found again in a fresh listing: ``user_filename``
-    is the only stable, NIG-owned key (dataset-uuid-prefixed, so unique).
+    Omics retains task outputs after download and does not reliably expose them
+    from ``/files/uploaded``. A successful local download is therefore the
+    prerequisite for NIG's explicit DELETE, using only ids persisted on its
+    own ``OmicsArtifact`` nodes. Already deleted artifacts are not retried.
     """
-    remote = client.list_uploaded_files()
-    listed = {str(item.get("user_filename")) for item in remote if isinstance(item, dict)}
-    return not any(name in listed for name in remote_names)
+    deleted = True
+    for artifact in artifacts:
+        if artifact.status == "DELETED":
+            continue
+        try:
+            if not client.delete_file(artifact.remote_file_id):
+                deleted = False
+                continue
+        except Exception as exc:
+            log.error("Cannot remove verified Omics output {}: {}", artifact.name, exc)
+            deleted = False
+            continue
+        artifact.status = "DELETED"
+        artifact.save()
+    return deleted
 
 
 def _complete_or_wait_cleanup(
-    dataset: Any, client: Any, remote_names: List[str], timestamp: datetime
+    dataset: Any, client: Any, artifacts: List[Any], timestamp: datetime
 ) -> bool:
-    """Close the dataset if the remote cleanup is observed; else CLEANUP PENDING."""
-    if not _cleanup_observed(client, remote_names):
+    """Close the dataset after NIG has deleted all verified remote outputs."""
+    if not _delete_remote_outputs(client, artifacts):
         dataset.status = "RUNNING"
         dataset.omics_status = CLEANUP_PENDING
-        dataset.omics_error_message = "Output cleanup not yet observed on Omics"
+        dataset.omics_error_message = "Verified output cleanup failed on Omics"
         dataset.omics_status_update = timestamp
         dataset.save()
         set_relation_status(dataset, CLEANUP_PENDING)
@@ -189,11 +203,25 @@ def fetch_results(
     current: Optional[Any] = None
     try:
         already = _downloaded_artifacts(dataset)
+        # A DELETED output without its local file cannot be fetched again:
+        # Omics no longer holds it. Retrying would never succeed.
+        unrecoverable = sorted(
+            str(artifact.name)
+            for artifact in dataset.omics_artifacts.all()
+            if artifact.status == "DELETED" and artifact.kind not in already
+        )
+        if unrecoverable:
+            mark_error(
+                dataset,
+                "Omics outputs deleted remotely but missing locally: "
+                + ", ".join(unrecoverable),
+                timestamp,
+            )
+            return {"downloaded": [], "error": dataset.omics_error_message}
         if dataset.omics_status == CLEANUP_PENDING:
             if set(already) == REQUIRED_KINDS:
-                remote_names = [str(a.name) for a in already.values()]
                 completed = _complete_or_wait_cleanup(
-                    dataset, client, remote_names, timestamp
+                    dataset, client, list(already.values()), timestamp
                 )
                 return {"downloaded": [], "cleanup_pending": not completed}
             # Local outputs lost after download: retrieve them again.
@@ -229,10 +257,9 @@ def fetch_results(
             downloaded.append(str(artifact.remote_file_id))
         current = None
 
-        remote_names = [str(a.name) for a in already.values()] + [
-            str(artifact.name) for artifact in artifacts
-        ]
-        completed = _complete_or_wait_cleanup(dataset, client, remote_names, timestamp)
+        completed = _complete_or_wait_cleanup(
+            dataset, client, list(already.values()) + artifacts, timestamp
+        )
         return {"downloaded": downloaded, "cleanup_pending": not completed}
     except Exception as exc:
         # Technical detail only: the dataset stays FETCHING (user sees

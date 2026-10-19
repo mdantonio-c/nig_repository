@@ -217,7 +217,14 @@ class OmicsClient:
     def delete_file(self, file_id: str) -> bool:
         # Fallback cleanup path only: the caller must
         # only pass ids already registered in NIG's own graph.
-        response = self._request("DELETE", f"/storage/objects/{file_id}")
+        try:
+            response = self._request("DELETE", f"/storage/objects/{file_id}")
+        except OmicsRequestError as exc:
+            # Already removed (e.g. a retry after an interrupted save): the
+            # DELETE is idempotent, so a 404 means the goal is reached.
+            if exc.status_code == 404:
+                return True
+            raise
         return response.ok
 
     def download_file(
@@ -305,7 +312,7 @@ class OmicsClient:
     def submit_nig_germline(
         self,
         input_file_ids: List[str],
-        output_vcf: str,
+        output_gvcf: str,
         reference: str = "hg38",
     ) -> Dict[str, str]:
         if not 1 <= len(input_file_ids) <= 2:
@@ -315,7 +322,7 @@ class OmicsClient:
         payload = {
             "input_files": input_file_ids,
             "reference": reference,
-            "output_vcf": output_vcf,
+            "output_gvcf": output_gvcf,
         }
         response = self._request("POST", "/tools/nig/germline", json=payload)
         return response.json()

@@ -189,7 +189,7 @@ def test_live_known_task_matches_poll_and_fetch_expectations(
     OBSERVED["known_task"] = {
         "status": task.status,
         "parameter_keys": sorted(parameters),
-        "output_vcf": parameters.get("output_vcf"),
+        "output_gvcf": parameters.get("output_gvcf"),
         "outputs": [
             {
                 "kind": item.get("_kind"),

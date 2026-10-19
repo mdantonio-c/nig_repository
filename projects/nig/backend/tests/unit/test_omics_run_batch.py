@@ -328,7 +328,7 @@ def test_output_prefix_is_persisted_before_submit() -> None:
     task.run_batch(Graph(batch, [dataset]), client, batch.uuid, ["d1"], NOW)
 
     assert seen == [("SUBMITTING", "sample_d1.g.vcf.gz")]
-    assert client.submits[0][1]["output_vcf"] == "sample_d1.g.vcf.gz"
+    assert client.submits[0][1]["output_gvcf"] == "sample_d1.g.vcf.gz"
 
 
 def test_redelivery_reuses_uploaded_files_without_duplicates() -> None:

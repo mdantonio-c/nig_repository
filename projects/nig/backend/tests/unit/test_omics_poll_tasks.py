@@ -147,11 +147,20 @@ class Artifact:
 
 
 class PollClient:
-    def __init__(self, statuses: Dict[str, str]) -> None:
+    def __init__(
+        self,
+        statuses: Dict[str, str],
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> None:
         self.statuses = statuses
+        self.parameters = parameters
 
     def get_task(self, task_id: str) -> TaskInfo:
-        return TaskInfo(task_id=task_id, status=self.statuses[task_id])
+        return TaskInfo(
+            task_id=task_id,
+            status=self.statuses[task_id],
+            parameters=self.parameters,
+        )
 
 
 @pytest.fixture(autouse=True)
@@ -202,6 +211,31 @@ def test_poll_remote_error_marks_dataset_error() -> None:
     assert "Remote task reported Error" in dataset.omics_error_message
     assert dataset._relation.status == "ERROR"
     assert dataset._batch.status == "ERROR"
+
+
+def test_poll_remote_error_with_cleanup_pending_is_not_terminal() -> None:
+    dataset = Dataset("cleaning")
+    client = PollClient(
+        {"task-1": "Error"},
+        parameters={"cleanup_pending": True, "outputs_ready": True},
+    )
+
+    report = poll.poll_tasks(Graph([dataset]), client, now=NOW)
+
+    assert report["running"] == ["cleaning"]
+    assert report["failed"] == []
+    assert dataset.status == dataset.omics_status == "RUNNING"
+    assert dataset._relation.status == "RUNNING"
+
+
+def test_poll_remote_error_after_cleanup_is_terminal() -> None:
+    dataset = Dataset("failed")
+    client = PollClient({"task-1": "Error"}, parameters={"cleanup_pending": False})
+
+    report = poll.poll_tasks(Graph([dataset]), client, now=NOW)
+
+    assert report["failed"] == ["failed"]
+    assert dataset.omics_status == "ERROR"
 
 
 def test_dispatch_failure_keeps_fetching_for_recovery() -> None:
@@ -330,22 +364,23 @@ def test_fetch_skips_non_fetching_dataset() -> None:
 
 
 class FetchClient:
-    def __init__(self, remains_remote: bool = False, fail_on: str = "") -> None:
-        self.remains_remote = remains_remote
+    def __init__(self, fail_on: str = "", fail_delete_on: str = "") -> None:
         self.fail_on = fail_on
+        self.fail_delete_on = fail_delete_on
         self.downloads: List[str] = []
+        self.deletes: List[str] = []
         self.served: set = set()
 
     def get_task_files(self, task_id: str) -> List[Dict[str, Any]]:
-        # Omics removes an output after its first complete download. The
-        # server exposes the graph class name in ``_kind`` (``Vcf``/``Bam``,
-        # shared by an artifact and its index) and distinguishes an index
-        # only through the ``extension`` suffix.
+        # The server exposes the graph class name in ``_kind`` (``Gvcf``/``Bam``,
+        # shared by an artifact and its index) and distinguishes an index only
+        # through the ``extension`` suffix. NIG deletes the outputs after it
+        # has completed and verified each local download.
         return [
             output
             for output in (
-                {"_kind": "Vcf", "file_id": "g", "user_filename": "a.g.vcf.gz", "size": 3, "extension": "vcf.gz"},
-                {"_kind": "Vcf", "file_id": "t", "user_filename": "a.g.vcf.gz.tbi", "size": 3, "extension": "vcf.gz.tbi"},
+                {"_kind": "Gvcf", "file_id": "g", "user_filename": "a.g.vcf.gz", "size": 3, "extension": "vcf.gz"},
+                {"_kind": "Gvcf", "file_id": "t", "user_filename": "a.g.vcf.gz.tbi", "size": 3, "extension": "vcf.gz.tbi"},
                 {"_kind": "Bam", "file_id": "b", "user_filename": "a.bam", "size": 3, "extension": "bam"},
                 {"_kind": "Bam", "file_id": "i", "user_filename": "a.bam.bai", "size": 3, "extension": "bam.bai"},
             )
@@ -364,8 +399,9 @@ class FetchClient:
         self.served.add(file_id)
         return destination
 
-    def list_uploaded_files(self) -> List[Dict[str, str]]:
-        return [{"file_id": "g", "user_filename": "a.g.vcf.gz"}] if self.remains_remote else []
+    def delete_file(self, file_id: str) -> bool:
+        self.deletes.append(file_id)
+        return file_id != self.fail_delete_on
 
 
 def test_fetch_persists_downloaded_outputs_and_completes_dataset(
@@ -374,17 +410,19 @@ def test_fetch_persists_downloaded_outputs_and_completes_dataset(
     dataset = Dataset("d1")
     dataset.omics_status = "FETCHING"
     graph = Graph([dataset])
+    client = FetchClient()
     monkeypatch.setattr(fetch, "_output_dir", lambda dataset: tmp_path)
 
-    report = fetch.fetch_results(graph, FetchClient(), "d1", NOW)
+    report = fetch.fetch_results(graph, client, "d1", NOW)
 
     assert report == {"downloaded": ["g", "t", "b", "i"], "cleanup_pending": False}
     assert dataset.status == dataset.omics_status == "COMPLETED"
     assert {artifact.kind for artifact in graph._artifacts.values()} == {"GVCF", "TBI", "BAM", "BAI"}
-    assert all(artifact.status == "DOWNLOADED" for artifact in graph._artifacts.values())
+    assert all(artifact.status == "DELETED" for artifact in graph._artifacts.values())
+    assert client.deletes == ["g", "t", "b", "i"]
 
 
-def test_fetch_marks_cleanup_pending_when_outputs_remain_remote(
+def test_fetch_marks_cleanup_pending_when_output_deletion_fails(
     monkeypatch: Any, tmp_path: Path
 ) -> None:
     dataset = Dataset("d1")
@@ -392,11 +430,15 @@ def test_fetch_marks_cleanup_pending_when_outputs_remain_remote(
     graph = Graph([dataset])
     monkeypatch.setattr(fetch, "_output_dir", lambda dataset: tmp_path)
 
-    report = fetch.fetch_results(graph, FetchClient(remains_remote=True), "d1", NOW)
+    report = fetch.fetch_results(graph, FetchClient(fail_delete_on="g"), "d1", NOW)
 
     assert report["cleanup_pending"] is True
     assert dataset.omics_status == "CLEANUP PENDING"
     assert dataset.status == "RUNNING"
+    assert graph._artifacts["g"].status == "DOWNLOADED"
+    assert all(
+        graph._artifacts[file_id].status == "DELETED" for file_id in ("t", "b", "i")
+    )
 
 
 def test_fetch_rejects_a_traversal_output_filename(
@@ -456,7 +498,7 @@ def test_fetch_rejects_duplicate_retained_output_kind(
             outputs = super().get_task_files(task_id)
             outputs.append(
                 {
-                    "_kind": "Vcf",
+                    "_kind": "Gvcf",
                     "file_id": "g2",
                     "user_filename": "b.g.vcf.gz",
                     "size": 3,
@@ -548,18 +590,19 @@ def test_cleanup_pending_recheck_completes_without_downloading(
 ) -> None:
     dataset = _fetching()
     graph = Graph([dataset])
-    client = FetchClient(remains_remote=True)
+    client = FetchClient(fail_delete_on="g")
     monkeypatch.setattr(fetch, "_output_dir", lambda dataset: tmp_path)
     fetch.fetch_results(graph, client, "d1", NOW)
     assert dataset.omics_status == "CLEANUP PENDING"
     assert dataset._batch.status == "RUNNING"
 
-    client.remains_remote = False
+    client.fail_delete_on = ""
     later = NOW + timedelta(hours=2)
     report = fetch.fetch_results(graph, client, "d1", later)
 
     assert report == {"downloaded": [], "cleanup_pending": False}
     assert client.downloads == ["g", "t", "b", "i"]
+    assert client.deletes == ["g", "t", "b", "i", "g"]
     assert dataset.status == dataset.omics_status == "COMPLETED"
     assert dataset.status_update == later
     assert dataset._batch.status == "COMPLETED"
@@ -570,15 +613,57 @@ def test_cleanup_pending_with_lost_local_output_downloads_it_again(
 ) -> None:
     dataset = _fetching()
     graph = Graph([dataset])
-    client = FetchClient(remains_remote=True)
+    client = FetchClient(fail_delete_on="b")
     monkeypatch.setattr(fetch, "_output_dir", lambda dataset: tmp_path)
     fetch.fetch_results(graph, client, "d1", NOW)
     tmp_path.joinpath("a.bam").chmod(0o640)
     tmp_path.joinpath("a.bam").unlink()
-    client.served.discard("b")  # still listed remotely
-    client.remains_remote = False
+    client.served.discard("b")  # this output was not deleted and remains remote
+    client.fail_delete_on = ""
 
     report = fetch.fetch_results(graph, client, "d1", NOW)
 
     assert report["downloaded"] == ["b"]
+    assert dataset.status == "COMPLETED"
+
+
+def test_deleted_output_lost_locally_is_a_terminal_error(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    dataset = _fetching()
+    graph = Graph([dataset])
+    client = FetchClient()
+    monkeypatch.setattr(fetch, "_output_dir", lambda dataset: tmp_path)
+    monkeypatch.setattr(fetch, "mark_error", poll.mark_error)
+    fetch.fetch_results(graph, client, "d1", NOW)
+    assert dataset.status == "COMPLETED"
+    tmp_path.joinpath("a.bam").chmod(0o640)
+    tmp_path.joinpath("a.bam").unlink()
+    dataset.omics_status = "FETCHING"
+    downloads = list(client.downloads)
+
+    report = fetch.fetch_results(graph, client, "d1", NOW)
+
+    assert "a.bam" in report["error"]
+    assert dataset.omics_status == "ERROR"
+    assert client.downloads == downloads
+
+
+def test_retry_after_remote_delete_before_local_save_is_idempotent(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    dataset = _fetching()
+    graph = Graph([dataset])
+    client = FetchClient()
+    monkeypatch.setattr(fetch, "_output_dir", lambda dataset: tmp_path)
+    fetch.fetch_results(graph, client, "d1", NOW)
+    # simulate a crash after the remote DELETE, before the local DELETED save
+    for artifact in graph._artifacts.values():
+        artifact.status = "DOWNLOADED"
+    dataset.status = dataset.omics_status = "FETCHING"
+
+    report = fetch.fetch_results(graph, client, "d1", NOW)
+
+    assert report == {"downloaded": [], "cleanup_pending": False}
+    assert client.downloads == ["g", "t", "b", "i"]
     assert dataset.status == "COMPLETED"
