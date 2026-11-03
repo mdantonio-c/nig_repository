@@ -1,0 +1,42 @@
+# Joint analysis settings per study type (single source of truth).
+#
+# Exome and genome are never aggregated together: each type has its own
+# reference bundle, GenomicsDB workspace and outputs. The task resolves these
+# values into joint_run.yaml (adding study_type and update) in the workdir.
+#
+# reference_id identifies a complete bundle (FASTA, indexes, known-sites,
+# interval list). Changing any of its files requires a new id (-v2, ...),
+# never an in-place edit. It is recorded on JointAnalysisJob and in the
+# <workspace>.reference_id marker beside the workspace.
+#
+# Use a single interval list sorted as the FASTA .dict: GATK intersects
+# multiple -L arguments.
+exome:
+  # label of the legacy bundle (no manifest/checksums exist for it)
+  reference_id: "nig-legacy-grch38p12-dbsnp154-v0"
+  fasta: "/resources/genome/Homo_sapiens_assembly38.fasta"
+  intervals: "/resources/hg38_resources/wgs_calling_regions.hg38.interval_list"
+  # existing workspace and outputs: do not move or rename
+  workspace: "/data/output/gatk_db"
+  genotype_dir: "/data/output/gatk_genotype_gvcf"
+  filtered_dir: "/data/output/gatk_filtered_multisamples"
+  java_heap: "-Xmx88g -Xms10g"
+  reader_threads: 48
+  batch_size: 50
+  annotations: ["StandardAnnotation", "StandardHCAnnotation", "AS_StandardAnnotation"]
+  # the existing workspace predates reference tracking and has no marker
+  allow_unmarked_workspace: true
+genome:
+  reference_id: "nig-grch38p14-dbsnp157-chr-v1"
+  fasta: "/resources/reference-bundles/nig-grch38p14-dbsnp157-chr-v1/bundle/Homo_sapiens_GRCh38.p14_nig_chr.fasta"
+  intervals: "/resources/reference-bundles/nig-grch38p14-dbsnp157-chr-v1/bundle/wgs_calling_regions.grch38p14_nig_chr.interval_list"
+  workspace: "/data/output/joint/genome/gatk_db"
+  genotype_dir: "/data/output/joint/genome/gatk_genotype_gvcf"
+  filtered_dir: "/data/output/joint/genome/gatk_filtered_multisamples"
+  java_heap: "-Xmx88g -Xms10g"
+  reader_threads: 48
+  batch_size: 50
+  # J9: AS annotations of Parabricks gVCFs to be verified on the first real
+  # Omics gVCF (V1); unchanged until then
+  annotations: ["StandardAnnotation", "StandardHCAnnotation", "AS_StandardAnnotation"]
+  allow_unmarked_workspace: false

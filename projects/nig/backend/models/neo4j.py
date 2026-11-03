@@ -101,6 +101,9 @@ class Job(TimestampedNode):
 
 
 class JointAnalysisJob(Job):
+    # optional: unset on jobs created before the per-type separation
+    study_type = StringProperty()
+    reference_id = StringProperty()
     datasets = RelationshipFrom("Dataset", "ANALYZED_BY", cardinality=ZeroOrMore)
 
 
