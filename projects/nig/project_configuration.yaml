@@ -25,6 +25,9 @@ variables:
     # Omics/Parabricks remains inert until the controlled real-environment
     # validation is complete. Credentials are runtime secrets, never here.
     OMICS_ENABLE: 0
+    # genome joint analysis stays off until validated on real Omics gVCFs
+    # (Step 7.5): with 0 only the exome joint is sent
+    JOINT_GENOME_ENABLE: 0
     OMICS_API_URL: https://omics.cineca.it/api/v1/
     OMICS_REFERENCE_VERSION: hg38
     OMICS_PIPELINE: nig/germline
