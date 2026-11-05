@@ -4,6 +4,7 @@ import gzip
 import json
 import struct
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
@@ -164,3 +165,32 @@ def test_main_report_and_exit_code(tmp_path: Path, capsys: Any) -> None:
 
     write_dict(tmp_path / "ref.dict", SEQUENCES[:2])
     assert arrival.main(argv) == 1
+
+
+def test_fetch_arrival_check_uses_the_requested_sample(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    from nig.tasks import omics_fetch_results as fetch
+
+    monkeypatch.setattr(arrival, "JOINT_YAML", joint_config(tmp_path))
+    gvcf = write_gvcf(tmp_path, info="")
+    bam = write_bam(tmp_path / f"{SAMPLE}.bam")
+    artifacts = {
+        "GVCF": SimpleNamespace(local_path=str(gvcf)),
+        "BAM": SimpleNamespace(local_path=str(bam)),
+    }
+    dataset = SimpleNamespace(uuid=UUID, omics_output_prefix=f"{SAMPLE}.g.vcf.gz")
+
+    report = fetch._arrival_check(dataset, artifacts)
+
+    assert report["result"] == "PASS"
+    assert {c["name"]: c["status"] for c in report["checks"]}[
+        "gvcf_as_annotations"
+    ] == "WARN"
+    saved = json.loads(tmp_path.joinpath(fetch.ARRIVAL_REPORT).read_text())
+    assert saved["expected_sample"] == SAMPLE
+
+    dataset.omics_output_prefix = f"WGS2_{UUID}.g.vcf.gz"
+    report = fetch._arrival_check(dataset, artifacts)
+    assert report["result"] == "FAIL"
+    assert {"gvcf_single_sample", "bam_rg_sm"} <= set(report["failed"])

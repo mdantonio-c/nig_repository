@@ -168,6 +168,19 @@ def no_mail(monkeypatch: Any) -> None:
     monkeypatch.setattr(poll, "_notify_error", lambda dataset, message: None)
 
 
+@pytest.fixture(autouse=True)
+def arrival_passes(monkeypatch: Any) -> List[Dict[str, Any]]:
+    """The fake outputs are not real gVCF/BAM: the arrival check is faked."""
+    calls: List[Dict[str, Any]] = []
+
+    def check(dataset: Any, artifacts: Dict[str, Any]) -> Dict[str, Any]:
+        calls.append(artifacts)
+        return {"result": "PASS", "failed": [], "checks": []}
+
+    monkeypatch.setattr(fetch, "_arrival_check", check)
+    return calls
+
+
 def test_poll_transitions_processing_and_complete_and_dispatches_fetch() -> None:
     processing, complete = Dataset("processing"), Dataset("complete")
     calls: List[str] = []
@@ -420,6 +433,75 @@ def test_fetch_persists_downloaded_outputs_and_completes_dataset(
     assert {artifact.kind for artifact in graph._artifacts.values()} == {"GVCF", "TBI", "BAM", "BAI"}
     assert all(artifact.status == "DELETED" for artifact in graph._artifacts.values())
     assert client.deletes == ["g", "t", "b", "i"]
+
+
+def test_fetch_arrival_check_runs_on_all_local_outputs(
+    monkeypatch: Any, tmp_path: Path, arrival_passes: List[Dict[str, Any]]
+) -> None:
+    dataset = _fetching()
+    graph = Graph([dataset])
+    client = FetchClient(fail_on="t")
+    monkeypatch.setattr(fetch, "_output_dir", lambda dataset: tmp_path)
+
+    fetch.fetch_results(graph, client, "d1", NOW)
+    assert arrival_passes == []  # not every output is local yet
+
+    client.fail_on = ""
+    fetch.fetch_results(graph, client, "d1", NOW)
+
+    # the gVCF of the first attempt is checked as well
+    assert [sorted(artifacts) for artifacts in arrival_passes] == [
+        ["BAI", "BAM", "GVCF", "TBI"]
+    ]
+    assert arrival_passes[0]["GVCF"] is graph._artifacts["g"]
+
+
+def test_fetch_arrival_failure_is_terminal_and_keeps_remote_outputs(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    dataset = _fetching()
+    graph = Graph([dataset])
+    client = FetchClient()
+    monkeypatch.setattr(fetch, "_output_dir", lambda dataset: tmp_path)
+    monkeypatch.setattr(
+        fetch,
+        "_arrival_check",
+        lambda dataset, artifacts: {
+            "result": "FAIL",
+            "failed": ["gvcf_contigs_eq_dict", "bam_sq_eq_dict"],
+            "checks": [],
+        },
+    )
+
+    report = fetch.fetch_results(graph, client, "d1", NOW)
+
+    assert report["downloaded"] == ["g", "t", "b", "i"]
+    assert "gvcf_contigs_eq_dict, bam_sq_eq_dict" in report["error"]
+    assert dataset.status == dataset.omics_status == "ERROR"
+    assert dataset.error_message == poll.USER_ANALYSIS_ERROR
+    assert dataset._relation.status == "ERROR"
+    assert client.deletes == []
+    assert all(a.status == "DOWNLOADED" for a in graph._artifacts.values())
+
+
+def test_fetch_arrival_check_error_is_retried(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    dataset = _fetching()
+    client = FetchClient()
+    monkeypatch.setattr(fetch, "_output_dir", lambda dataset: tmp_path)
+
+    def broken(dataset: Any, artifacts: Dict[str, Any]) -> Dict[str, Any]:
+        raise FileNotFoundError("/resources/bundle.dict")
+
+    monkeypatch.setattr(fetch, "_arrival_check", broken)
+
+    report = fetch.fetch_results(Graph([dataset]), client, "d1", NOW)
+
+    assert "bundle.dict" in report["error"]
+    assert dataset.status == "RUNNING"
+    assert dataset.omics_status == "FETCHING"
+    assert client.deletes == []
 
 
 def test_fetch_marks_cleanup_pending_when_output_deletion_fails(

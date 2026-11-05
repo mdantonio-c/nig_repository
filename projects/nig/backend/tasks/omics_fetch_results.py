@@ -5,8 +5,13 @@ deleted remotely. A retry downloads only a locally missing artifact that has
 not yet been deleted; it otherwise retries its pending remote DELETE. The
 poller re-dispatches this task for ``FETCHING`` (failed/lost fetch) and
 ``CLEANUP PENDING`` (failed remote deletion) datasets.
+
+Once all outputs are local, ``scripts/check_omics_arrival.py`` checks them
+against the genome bundle (#83): a FAIL is a terminal dataset ERROR and the
+remote outputs are kept, nothing is deleted on Omics.
 """
 
+import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +19,7 @@ from typing import Any, Dict, List, Optional
 
 import pytz
 from nig.endpoints import OUTPUT_ROOT
+from nig.scripts.check_omics_arrival import GVCF_SUFFIX, build_report, parse_args
 from nig.services.omics import OmicsError
 from nig.services.omics.batch_state import set_relation_status
 from nig.services.omics.settings import client_from_env, omics_enabled
@@ -38,6 +44,7 @@ ALLOWED_SUFFIXES = {
     "BAM": ".bam",
     "BAI": ".bam.bai",
 }
+ARRIVAL_REPORT = "arrival-check.json"
 
 
 def _now(now: Optional[datetime] = None) -> datetime:
@@ -138,6 +145,32 @@ def _expected_outputs(
     if names["BAI"] != f"{names['BAM']}.bai":
         raise OmicsError("Omics BAI output does not match the BAM output")
     return remaining
+
+
+def _arrival_check(dataset: Any, artifacts: Dict[str, Any]) -> Dict[str, Any]:
+    """Check the local gVCF and BAM against the genome bundle.
+
+    The expected ``SM`` is the ``output_gvcf`` NIG sent to Omics. The JSON
+    report is kept beside the outputs; WARNs (e.g. no AS_* annotations, J9)
+    are only logged.
+    """
+    gvcf = Path(artifacts["GVCF"].local_path)
+    argv = ["--gvcf", str(gvcf), "--dataset-uuid", str(dataset.uuid)]
+    argv += ["--bam", str(artifacts["BAM"].local_path)]
+    prefix = dataset.omics_output_prefix or ""
+    if prefix.endswith(GVCF_SUFFIX):
+        argv += ["--expected-sample", prefix[: -len(GVCF_SUFFIX)]]
+    report = build_report(parse_args(argv))
+    gvcf.parent.joinpath(ARRIVAL_REPORT).write_text(json.dumps(report, indent=2))
+    for check in report["checks"]:
+        if check["status"] == "WARN":
+            log.warning(
+                "Dataset {} arrival check {}: {}",
+                dataset.uuid,
+                check["name"],
+                check["detail"],
+            )
+    return report
 
 
 def _delete_remote_outputs(client: Any, artifacts: List[Any]) -> bool:
@@ -256,6 +289,18 @@ def fetch_results(
             artifact.save()
             downloaded.append(str(artifact.remote_file_id))
         current = None
+
+        local = dict(already)
+        local.update({artifact.kind: artifact for artifact in artifacts})
+        report = _arrival_check(dataset, local)
+        if report["result"] != "PASS":
+            mark_error(
+                dataset,
+                "Omics outputs failed the arrival check: "
+                + ", ".join(report["failed"]),
+                timestamp,
+            )
+            return {"downloaded": downloaded, "error": dataset.omics_error_message}
 
         completed = _complete_or_wait_cleanup(
             dataset, client, list(already.values()) + artifacts, timestamp
