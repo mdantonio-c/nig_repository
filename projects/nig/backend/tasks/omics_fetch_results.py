@@ -45,6 +45,8 @@ ALLOWED_SUFFIXES = {
     "BAI": ".bam.bai",
 }
 ARRIVAL_REPORT = "arrival-check.json"
+# each index right after its data file, so it is never older (htslib warns)
+DOWNLOAD_ORDER = ("GVCF", "TBI", "BAM", "BAI")
 
 
 def _now(now: Optional[datetime] = None) -> datetime:
@@ -267,6 +269,7 @@ def fetch_results(
             client.get_task_files(dataset.omics_task_id),
             {kind: artifact.name for kind, artifact in already.items()},
         )
+        outputs.sort(key=lambda output: DOWNLOAD_ORDER.index(_kind(output)))
         destination = _output_dir(dataset)
         destination.mkdir(parents=True, exist_ok=True)
         artifacts = [_artifact(graph, dataset, output) for output in outputs]

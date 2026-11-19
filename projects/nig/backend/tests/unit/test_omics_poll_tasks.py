@@ -435,6 +435,22 @@ def test_fetch_persists_downloaded_outputs_and_completes_dataset(
     assert client.deletes == ["g", "t", "b", "i"]
 
 
+def test_fetch_downloads_each_index_after_its_data_file(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    class IndexFirstClient(FetchClient):
+        def get_task_files(self, task_id: str) -> List[Dict[str, Any]]:
+            return list(reversed(super().get_task_files(task_id)))
+
+    dataset = _fetching()
+    client = IndexFirstClient()
+    monkeypatch.setattr(fetch, "_output_dir", lambda dataset: tmp_path)
+
+    fetch.fetch_results(Graph([dataset]), client, "d1", NOW)
+
+    assert client.downloads == ["g", "t", "b", "i"]
+
+
 def test_fetch_arrival_check_runs_on_all_local_outputs(
     monkeypatch: Any, tmp_path: Path, arrival_passes: List[Dict[str, Any]]
 ) -> None:
