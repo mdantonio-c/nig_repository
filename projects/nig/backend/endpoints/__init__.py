@@ -1,8 +1,9 @@
 from pathlib import Path
 from typing import Any, List, Optional
 
+from nig.services.omics.batch_state import omics_locked
 from restapi.config import DATA_PATH
-from restapi.exceptions import BadRequest, NotFound
+from restapi.exceptions import BadRequest, Conflict, NotFound
 from restapi.rest.definition import EndpointResource
 from restapi.services.authentication import User
 from restapi.utilities.logs import log
@@ -24,6 +25,15 @@ FILE_NOT_FOUND = "This file cannot be found or you are not authorized to access"
 Study = Any
 Dataset = Any
 File = Any
+
+
+def verify_not_omics_locked(dataset: Dataset) -> None:
+    """Refuse changes that would break an in-flight Omics analysis."""
+    if omics_locked(dataset):
+        raise Conflict(
+            f"Dataset {dataset.name} is being analysed and cannot be modified "
+            "until the analysis is over"
+        )
 
 
 class NIGEndpoint(EndpointResource):

@@ -77,8 +77,8 @@ nig-repository/
 | Cron trigger | `projects/nig/backend/cron/analysis_management.cron` |
 | Pipeline trigger script | `projects/nig/backend/scripts/init_pipeline.py` |
 | HPO loader script | `projects/nig/backend/scripts/init_hpo.sh`, `projects/nig/backend/scripts/parsing_hpo.py` |
-| Backend tests | `projects/nig/backend/tests/` |
-| Hierarchy tests | `projects/nig/backend/tests/test_admin_policy.py`, `projects/nig/backend/tests/test_api_admin_hierarchy.py`, `projects/nig/backend/tests/test_admin_hierarchy_scripts.py` |
+| Backend tests | `projects/nig/backend/tests/` (`unit/` no app/Neo4j, `integration/` Flask + Neo4j, `live/` real Omics, opt-in) |
+| Hierarchy tests | `projects/nig/backend/tests/unit/test_admin_policy.py`, `projects/nig/backend/tests/integration/test_api_admin_hierarchy.py`, `projects/nig/backend/tests/unit/test_admin_hierarchy_scripts.py` |
 | Frontend routing | `projects/nig/frontend/app/custom.module.ts` |
 | Frontend components | `projects/nig/frontend/app/components/` |
 | Frontend data service | `projects/nig/frontend/app/services/data.service.ts` |

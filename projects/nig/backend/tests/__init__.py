@@ -100,6 +100,12 @@ class TestEnv:
         user_B1_uuid, user_B1_headers = self.create_user(uuid_group_B)
         user_B2_uuid, user_B2_headers = self.create_user(uuid_group_B)
 
+        # In TESTING RAPyDo validates passwords for only 120 seconds. When it
+        # expires, the admin login done inside BaseTests.create_user() forces a
+        # password change, which invalidates every token the admin already
+        # holds (including the one acquired in __init__). Refresh it here.
+        self.admin_headers, _ = BaseTests.do_login(self.client, None, None)
+
         study1_uuid: Optional[str] = None
         study2_uuid: Optional[str] = None
         if study:

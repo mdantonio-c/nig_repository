@@ -1,0 +1,332 @@
+"""Retrieve, validate, persist and explicitly delete Omics task outputs.
+
+Idempotent and resumable: only fully downloaded, validated local artifacts are
+deleted remotely. A retry downloads only a locally missing artifact that has
+not yet been deleted; it otherwise retries its pending remote DELETE. The
+poller re-dispatches this task for ``FETCHING`` (failed/lost fetch) and
+``CLEANUP PENDING`` (failed remote deletion) datasets.
+
+Once all outputs are local, ``scripts/check_omics_arrival.py`` checks them
+against the genome bundle (#83): a FAIL is a terminal dataset ERROR and the
+remote outputs are kept, nothing is deleted on Omics.
+"""
+
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import pytz
+from nig.endpoints import OUTPUT_ROOT
+from nig.scripts.check_omics_arrival import GVCF_SUFFIX, build_report, parse_args
+from nig.services.omics import OmicsError
+from nig.services.omics.batch_state import set_relation_status
+from nig.services.omics.settings import client_from_env, omics_enabled
+from nig.tasks.omics_poll_tasks import mark_error
+from restapi.connectors import neo4j
+from restapi.connectors.celery import CeleryExt, Task
+from restapi.utilities.logs import log
+
+FETCHING = "FETCHING"
+CLEANUP_PENDING = "CLEANUP PENDING"
+COMPLETED = "COMPLETED"
+ERROR = "ERROR"
+DOWNLOADED = "DOWNLOADED"
+# Omics exposes the graph class name in ``_kind`` (``Gvcf``/``Bam``, covering
+# both an artifact and its index) with no separate index flag in the API
+# response; the ``extension`` suffix is the only way to tell them apart.
+RETAINED_RAW_KINDS = {"gvcf", "bam"}
+REQUIRED_KINDS = {"GVCF", "TBI", "BAM", "BAI"}
+ALLOWED_SUFFIXES = {
+    "GVCF": ".g.vcf.gz",
+    "TBI": ".g.vcf.gz.tbi",
+    "BAM": ".bam",
+    "BAI": ".bam.bai",
+}
+ARRIVAL_REPORT = "arrival-check.json"
+# each index right after its data file, so it is never older (htslib warns)
+DOWNLOAD_ORDER = ("GVCF", "TBI", "BAM", "BAI")
+
+
+def _now(now: Optional[datetime] = None) -> datetime:
+    return now or datetime.now(pytz.utc)
+
+
+def _output_dir(dataset: Any) -> Path:
+    owner = dataset.ownership.single()
+    study = dataset.parent_study.single()
+    if owner is None or study is None or owner.belongs_to.single() is None:
+        raise OmicsError("Dataset has no owner, group or parent study")
+    group = owner.belongs_to.single()
+    # The explicit Omics subdirectory prevents collisions with the established
+    # local Snakemake paths until joint analysis becomes backend-agnostic.
+    return OUTPUT_ROOT.joinpath(str(group.uuid), str(study.uuid), str(dataset.uuid), "omics")
+
+
+def _kind(output: Dict[str, Any]) -> str:
+    raw = str(output.get("_kind", "")).lower()
+    extension = str(output.get("extension", "")).lower()
+    if raw == "gvcf":
+        return "TBI" if extension.endswith("tbi") else "GVCF"
+    if raw == "bam":
+        return "BAI" if extension.endswith("bai") else "BAM"
+    raise KeyError(raw)
+
+
+def _artifact(graph: Any, dataset: Any, output: Dict[str, Any]) -> Any:
+    remote_id = str(output["file_id"])
+    artifact = graph.OmicsArtifact.nodes.get_or_none(remote_file_id=remote_id)
+    if artifact is None:
+        artifact = graph.OmicsArtifact(
+            remote_file_id=remote_id,
+            name=str(output["user_filename"]),
+        ).save()
+        artifact.dataset.connect(dataset)
+    artifact.extension = output.get("extension")
+    artifact.size = int(output["size"])
+    artifact.kind = _kind(output)
+    artifact.status = "DISCOVERED"
+    artifact.save()
+    return artifact
+
+
+def _downloaded_artifacts(dataset: Any) -> Dict[str, Any]:
+    """Artifacts already verified and still present on the local filesystem."""
+    found: Dict[str, Any] = {}
+    for artifact in dataset.omics_artifacts.all():
+        if (
+            artifact.status in (DOWNLOADED, "DELETED")
+            and artifact.local_path
+            and Path(artifact.local_path).is_file()
+        ):
+            found[artifact.kind] = artifact
+    return found
+
+
+def _expected_outputs(
+    outputs: List[Dict[str, Any]],
+    already: Optional[Dict[str, str]] = None,
+) -> List[Dict[str, Any]]:
+    """Validate the retained outputs, returning only those still to download.
+
+    ``already`` maps the kinds downloaded by a previous attempt to their
+    filename: Omics may no longer list them, and they are not requested again.
+    """
+    already = already or {}
+    selected = [
+        output
+        for output in outputs
+        if str(output.get("_kind", "")).lower() in RETAINED_RAW_KINDS
+    ]
+    kinds = [_kind(output) for output in selected]
+    remaining = [output for output in selected if _kind(output) not in already]
+    remaining_kinds = [_kind(output) for output in remaining]
+    if (
+        len(kinds) != len(set(kinds))
+        or len(remaining_kinds) != len(set(remaining_kinds))
+        or set(remaining_kinds) | set(already) != REQUIRED_KINDS
+    ):
+        raise OmicsError(
+            "Omics task outputs must include exactly gVCF, TBI, BAM and BAI; "
+            f"received {sorted(kinds)}, already downloaded {sorted(already)}"
+        )
+    names = dict(already)
+    for output in remaining:
+        if not output.get("file_id") or not output.get("user_filename"):
+            raise OmicsError("Omics output is missing file_id or user_filename")
+        if int(output.get("size", 0)) <= 0:
+            raise OmicsError("Omics output has an invalid size")
+        kind = _kind(output)
+        filename = str(output["user_filename"])
+        if Path(filename).name != filename or not filename.endswith(ALLOWED_SUFFIXES[kind]):
+            raise OmicsError(f"Unexpected Omics {kind} output filename")
+        names[kind] = filename
+    if names["TBI"] != f"{names['GVCF']}.tbi":
+        raise OmicsError("Omics TBI output does not match the gVCF output")
+    if names["BAI"] != f"{names['BAM']}.bai":
+        raise OmicsError("Omics BAI output does not match the BAM output")
+    return remaining
+
+
+def _arrival_check(dataset: Any, artifacts: Dict[str, Any]) -> Dict[str, Any]:
+    """Check the local gVCF and BAM against the genome bundle.
+
+    The expected ``SM`` is the ``output_gvcf`` NIG sent to Omics. The JSON
+    report is kept beside the outputs; WARNs (e.g. no AS_* annotations, J9)
+    are only logged.
+    """
+    gvcf = Path(artifacts["GVCF"].local_path)
+    argv = ["--gvcf", str(gvcf), "--dataset-uuid", str(dataset.uuid)]
+    argv += ["--bam", str(artifacts["BAM"].local_path)]
+    prefix = dataset.omics_output_prefix or ""
+    if prefix.endswith(GVCF_SUFFIX):
+        argv += ["--expected-sample", prefix[: -len(GVCF_SUFFIX)]]
+    report = build_report(parse_args(argv))
+    gvcf.parent.joinpath(ARRIVAL_REPORT).write_text(json.dumps(report, indent=2))
+    for check in report["checks"]:
+        if check["status"] == "WARN":
+            log.warning(
+                "Dataset {} arrival check {}: {}",
+                dataset.uuid,
+                check["name"],
+                check["detail"],
+            )
+    return report
+
+
+def _delete_remote_outputs(client: Any, artifacts: List[Any]) -> bool:
+    """Delete every verified output stored by NIG, returning whether all succeeded.
+
+    Omics retains task outputs after download and does not reliably expose them
+    from ``/files/uploaded``. A successful local download is therefore the
+    prerequisite for NIG's explicit DELETE, using only ids persisted on its
+    own ``OmicsArtifact`` nodes. Already deleted artifacts are not retried.
+    """
+    deleted = True
+    for artifact in artifacts:
+        if artifact.status == "DELETED":
+            continue
+        try:
+            if not client.delete_file(artifact.remote_file_id):
+                deleted = False
+                continue
+        except Exception as exc:
+            log.error("Cannot remove verified Omics output {}: {}", artifact.name, exc)
+            deleted = False
+            continue
+        artifact.status = "DELETED"
+        artifact.save()
+    return deleted
+
+
+def _complete_or_wait_cleanup(
+    dataset: Any, client: Any, artifacts: List[Any], timestamp: datetime
+) -> bool:
+    """Close the dataset after NIG has deleted all verified remote outputs."""
+    if not _delete_remote_outputs(client, artifacts):
+        dataset.status = "RUNNING"
+        dataset.omics_status = CLEANUP_PENDING
+        dataset.omics_error_message = "Verified output cleanup failed on Omics"
+        dataset.omics_status_update = timestamp
+        dataset.save()
+        set_relation_status(dataset, CLEANUP_PENDING)
+        return False
+
+    dataset.status = COMPLETED
+    dataset.status_update = timestamp
+    dataset.error_message = None
+    dataset.omics_status = COMPLETED
+    dataset.omics_status_update = timestamp
+    dataset.omics_error_message = None
+    dataset.save()
+    set_relation_status(dataset, COMPLETED)
+    return True
+
+
+def fetch_results(
+    graph: Any,
+    client: Any,
+    dataset_uuid: str,
+    now: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    timestamp = _now(now)
+    dataset = graph.Dataset.nodes.get_or_none(uuid=dataset_uuid)
+    if dataset is None or dataset.omics_status not in (FETCHING, CLEANUP_PENDING):
+        return {"downloaded": [], "skipped": True}
+
+    current: Optional[Any] = None
+    try:
+        already = _downloaded_artifacts(dataset)
+        # A DELETED output without its local file cannot be fetched again:
+        # Omics no longer holds it. Retrying would never succeed.
+        unrecoverable = sorted(
+            str(artifact.name)
+            for artifact in dataset.omics_artifacts.all()
+            if artifact.status == "DELETED" and artifact.kind not in already
+        )
+        if unrecoverable:
+            mark_error(
+                dataset,
+                "Omics outputs deleted remotely but missing locally: "
+                + ", ".join(unrecoverable),
+                timestamp,
+            )
+            return {"downloaded": [], "error": dataset.omics_error_message}
+        if dataset.omics_status == CLEANUP_PENDING:
+            if set(already) == REQUIRED_KINDS:
+                completed = _complete_or_wait_cleanup(
+                    dataset, client, list(already.values()), timestamp
+                )
+                return {"downloaded": [], "cleanup_pending": not completed}
+            # Local outputs lost after download: retrieve them again.
+            dataset.omics_status = FETCHING
+            dataset.omics_status_update = timestamp
+            dataset.save()
+            set_relation_status(dataset, FETCHING)
+
+        outputs = _expected_outputs(
+            client.get_task_files(dataset.omics_task_id),
+            {kind: artifact.name for kind, artifact in already.items()},
+        )
+        outputs.sort(key=lambda output: DOWNLOAD_ORDER.index(_kind(output)))
+        destination = _output_dir(dataset)
+        destination.mkdir(parents=True, exist_ok=True)
+        artifacts = [_artifact(graph, dataset, output) for output in outputs]
+        client.ensure_free_space(
+            destination, sum(int(artifact.size) for artifact in artifacts)
+        )
+        downloaded: List[str] = []
+        for artifact in artifacts:
+            current = artifact
+            artifact.status = "DOWNLOADING"
+            artifact.save()
+            target = destination.joinpath(artifact.name)
+            client.download_file(
+                artifact.remote_file_id, target, expected_size=artifact.size
+            )
+            os.chmod(target, 0o440)
+            artifact.local_path = str(target)
+            artifact.downloaded_at = timestamp
+            artifact.status = DOWNLOADED
+            artifact.save()
+            downloaded.append(str(artifact.remote_file_id))
+        current = None
+
+        local = dict(already)
+        local.update({artifact.kind: artifact for artifact in artifacts})
+        report = _arrival_check(dataset, local)
+        if report["result"] != "PASS":
+            mark_error(
+                dataset,
+                "Omics outputs failed the arrival check: "
+                + ", ".join(report["failed"]),
+                timestamp,
+            )
+            return {"downloaded": downloaded, "error": dataset.omics_error_message}
+
+        completed = _complete_or_wait_cleanup(
+            dataset, client, list(already.values()) + artifacts, timestamp
+        )
+        return {"downloaded": downloaded, "cleanup_pending": not completed}
+    except Exception as exc:
+        # Technical detail only: the dataset stays FETCHING (user sees
+        # RUNNING) and the poller retries after the back-off.
+        message = f"Omics result retrieval failed: {exc}"
+        log.error("Dataset {}: {}", dataset_uuid, message)
+        if current is not None:
+            current.status = ERROR
+            current.save()
+        dataset.omics_error_message = message
+        dataset.omics_status_update = timestamp
+        dataset.save()
+        return {"downloaded": [], "error": message}
+
+
+# Early ACK; the poller recovers lost downloads from persisted FETCHING (#86).
+@CeleryExt.task(idempotent=False, autoretry_for=(ConnectionResetError,))
+def omics_fetch_results(self: Task[[str], None], dataset_uuid: str) -> None:
+    if not omics_enabled():
+        log.warning("OMICS_ENABLE is off, Omics fetch for {} not executed", dataset_uuid)
+        return
+    fetch_results(neo4j.get_instance(), client_from_env(), dataset_uuid)

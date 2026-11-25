@@ -82,6 +82,17 @@ suite in `tests/base`. The RAPyDo runtime and its dependencies are still loaded
 to build the application and provide the test harness. Without `--folder`, the
 runner executes both `tests/custom` and `tests/base`.
 
+The NIG tests are split into subfolders, selectable with `--folder`:
+
+| Folder | Content | Needs |
+|--------|---------|-------|
+| `custom/unit` | fakes/monkeypatch, no app or Neo4j | nothing (also runs with plain `python3 -m pytest nig/tests/unit`) |
+| `custom/integration` | Flask client, real Neo4j | the running stack |
+| `custom/live` | real Omics (`test_omics_live_contract.py` read-only, `test_omics_live_e2e.py` uploads/runs a task) | `OMICS_TEST_*` variables passed with `docker exec -e`; skipped otherwise |
+
+The live tests never run without credentials; the E2E additionally requires
+`OMICS_TEST_E2E=1` and `OMICS_TEST_FASTQ_DIR`. See their module docstrings.
+
 The test environment also requires `AUTH_LOGIN_BAN_TIME=10`; otherwise deliberate
 failed-login tests can block the default administrator for the normal 12-hour
 period and cause cascading failures. For an interrupted test run, recover with

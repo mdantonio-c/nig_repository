@@ -1,9 +1,8 @@
 import gzip
-import re
 from pathlib import Path
 from typing import Any, Tuple
 
-from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint
+from nig.endpoints import FILE_NOT_FOUND, NIGEndpoint, verify_not_omics_locked
 from restapi import decorators
 from restapi.connectors import neo4j
 from restapi.decorators import ChunkUpload
@@ -13,6 +12,8 @@ from restapi.rest.definition import Response
 from restapi.services.authentication import User
 from restapi.services.uploader import Uploader
 from restapi.utilities.logs import log
+
+from nig.services.fastq import FASTQ_FILENAME_PATTERN
 
 
 class FileOutput(Schema):
@@ -129,6 +130,7 @@ class SingleFile(NIGEndpoint):
         responses={
             200: "File successfully deleted",
             404: "This file cannot be found or you are not authorized to access",
+            409: "The dataset is being analysed",
         },
     )
     @decorators.database_transaction
@@ -143,6 +145,7 @@ class SingleFile(NIGEndpoint):
         self.verifyDatasetAccess(dataset, user=user, error_type="File")
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, user=user, error_type="File")
+        verify_not_omics_locked(dataset)
         path = self.getPath(user=user, file=file)
 
         file.delete()
@@ -167,6 +170,7 @@ class FileUpload(Uploader, NIGEndpoint):
             200: "File uploaded succesfully",
             400: "The uploaded file has an invalid content",
             404: "File not found",
+            409: "The dataset is being analysed",
             500: "Fail in uploading file",
         },
     )
@@ -180,6 +184,8 @@ class FileUpload(Uploader, NIGEndpoint):
 
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, user=user, error_type="Dataset")
+        # an upload initialised before the Omics claim must not change the inputs
+        verify_not_omics_locked(dataset)
 
         path = self.getPath(user=user, dataset=dataset)
         completed, response = self.chunk_upload(Path(path), filename)
@@ -236,7 +242,7 @@ class FileUpload(Uploader, NIGEndpoint):
         responses={
             201: "Upload initialized",
             400: "File extension not allowed",
-            409: "File already exists",
+            409: "File already exists or the dataset is being analysed",
         },
     )
     @decorators.database_transaction
@@ -251,12 +257,12 @@ class FileUpload(Uploader, NIGEndpoint):
 
         study = dataset.parent_study.single()
         self.verifyStudyAccess(study, user=user, error_type="Dataset")
+        verify_not_omics_locked(dataset)
 
         path = self.getPath(user=user, dataset=dataset)
 
         # check if the filename is correct
-        name_pattern = r"([a-zA-Z0-9_-]+)_(R[12]).fastq.gz"
-        if not re.match(name_pattern, name):
+        if not FASTQ_FILENAME_PATTERN.match(name):
             raise BadRequest(
                 "Filename does not follow the correct naming convention: "
                 "SampleName_R1/R2.fastq.gz"
@@ -270,7 +276,7 @@ class FileUpload(Uploader, NIGEndpoint):
         for f in path.iterdir():
             # check if the pattern is respected
             fname = f.name
-            if re.match(name_pattern, fname):
+            if FASTQ_FILENAME_PATTERN.match(fname):
                 files_already_uploaded.append(fname)
         # check if max allowed files for dataset is respected
         if len(files_already_uploaded) == 2:
@@ -278,8 +284,8 @@ class FileUpload(Uploader, NIGEndpoint):
                 f"Dataset {dataset.name} contains too many fastq files: max allowed files are 2 per dataset"
             )
         elif len(files_already_uploaded) == 1 and not testing:
-            uploaded_match = re.match(name_pattern, files_already_uploaded[0])
-            to_upload_match = re.match(name_pattern, name)
+            uploaded_match = FASTQ_FILENAME_PATTERN.match(files_already_uploaded[0])
+            to_upload_match = FASTQ_FILENAME_PATTERN.match(name)
             # check if the names of the two samples corresponds
             if to_upload_match.group(1) != uploaded_match.group(1):
                 raise BadRequest(

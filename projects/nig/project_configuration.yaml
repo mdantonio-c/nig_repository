@@ -22,6 +22,36 @@ variables:
     CRONTAB_ENABLE: 1
     DATA_PATH: /data
 
+    # Omics/Parabricks remains inert until the controlled real-environment
+    # validation is complete. Credentials are runtime secrets, never here.
+    OMICS_ENABLE: 0
+    # genome joint analysis stays off until validated on real Omics gVCFs
+    # (Step 7.5): with 0 only the exome joint is sent
+    JOINT_GENOME_ENABLE: 0
+    OMICS_API_URL: https://omics.cineca.it/api/v1/
+    OMICS_REFERENCE_VERSION: hg38
+    OMICS_PIPELINE: nig/germline
+    OMICS_EXPECTED_QUOTA_BYTES: 1099511627776
+    # Omics refuses /upload/start once usage/quota >= this ratio
+    OMICS_EXPECTED_UPLOAD_LIMIT: 0.8
+    OMICS_QUOTA_SAFETY_MARGIN_PCT: 5
+    OMICS_MAX_CONCURRENT_BATCHES: 1
+    OMICS_UPLOAD_WORKERS: 4
+    OMICS_POLL_INTERVAL_MINUTES: 15
+    OMICS_BATCH_STALE_HOURS: 48
+    OMICS_ORPHAN_TTL_HOURS: 72
+    OMICS_REQUEST_TIMEOUT: 60
+    OMICS_CLEANUP_DELETE: 0
+    # daily report-only reconciliation: files land in OMICS_REPORT_DIR (host:
+    # data/logs/omics/cleanup/), only the newest OMICS_REPORT_KEEP are kept
+    OMICS_REPORT_DIR: /logs/omics/cleanup
+    OMICS_REPORT_KEEP: 15
+    # result retrieval recovery: back-off between fetch attempts and limit
+    OMICS_FETCH_RETRY_MINUTES: 60
+    OMICS_FETCH_MAX_ATTEMPTS: 5
+    # hard cap for a single downloaded output (500 GB)
+    OMICS_MAX_DOWNLOAD_BYTES: 500000000000
+
     BACKEND_BUILD_MODE: backend-legacy39
     PYTHON_PATH: /usr/local/lib/python3.9/dist-packages
     FRONTEND_FRAMEWORK: angular

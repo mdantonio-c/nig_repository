@@ -6,6 +6,7 @@ from neomodel import (
     FloatProperty,
     IntegerProperty,
     JSONProperty,
+    One,
     RelationshipFrom,
     RelationshipTo,
     StringProperty,
@@ -59,6 +60,17 @@ class Dataset(TimestampedNode):
     error_message = StringProperty()
     joint_analysis = BooleanProperty()
 
+    # Omics/Parabricks tracking. these are plain properties on the existing Dataset node, not
+    # a parallel store. Never exposed directly to end users (see endpoints).
+    omics_task_id = StringProperty(index=True)
+    omics_pipeline = StringProperty()
+    omics_status = StringProperty()
+    omics_submitted_at = DateTimeProperty()
+    omics_status_update = DateTimeProperty()
+    omics_error_message = StringProperty()
+    omics_output_prefix = StringProperty()
+    omics_fetch_attempts = IntegerProperty()
+
     ownership = RelationshipTo(
         "restapi.connectors.neo4j.models.User", "IS_OWNED_BY", cardinality=ZeroOrMore
     )
@@ -73,6 +85,12 @@ class Dataset(TimestampedNode):
         "Job", "ANALYZED_BY", cardinality=ZeroOrMore, model=JobRelation
     )
     joint_analysis_job = RelationshipTo("Job", "ANALYZED_BY", cardinality=ZeroOrMore)
+    omics_batch = RelationshipTo(
+        "OmicsBatch", "SENT_TO_OMICS", cardinality=ZeroOrMore, model=JobRelation
+    )
+    omics_artifacts = RelationshipFrom(
+        "OmicsArtifact", "OUTPUT_OF", cardinality=ZeroOrMore
+    )
 
 
 class Job(TimestampedNode):
@@ -83,7 +101,56 @@ class Job(TimestampedNode):
 
 
 class JointAnalysisJob(Job):
+    # optional: unset on jobs created before the per-type separation
+    study_type = StringProperty()
+    reference_id = StringProperty()
     datasets = RelationshipFrom("Dataset", "ANALYZED_BY", cardinality=ZeroOrMore)
+
+
+class OmicsArtifact(TimestampedNode):
+    """An Omics/Parabricks output file (gVCF, TBI, BAM or BAI) for a Dataset.
+
+    Tracked separately from ``File`` because these ids come from Omics'
+    ``/files/proc/{task_id}`` response, not from a NIG-owned upload.
+    """
+
+    remote_file_id = StringProperty(required=True, unique_index=True)
+    name = StringProperty(required=True)
+    extension = StringProperty()
+    size = IntegerProperty()
+    kind = StringProperty()  # GVCF | TBI | BAM | BAI
+    status = StringProperty()  # DISCOVERED | DOWNLOADING | DOWNLOADED | DELETED | ERROR
+    local_path = StringProperty()
+    downloaded_at = DateTimeProperty()
+
+    dataset = RelationshipTo("Dataset", "OUTPUT_OF", cardinality=One)
+
+
+class OmicsBatch(TimestampedNode):
+    """A batch of datasets submitted together to Omics, governed by quota."""
+
+    uuid = StringProperty(required=True, unique_index=True)
+    status = StringProperty()  # PLANNED | RUNNING | COMPLETED | PARTIAL | ERROR
+    planned_bytes = IntegerProperty()
+    uploaded_bytes = IntegerProperty()
+    # last stale alert sent, so the dispatcher does not repeat it every run
+    stale_notified_at = DateTimeProperty()
+
+    datasets = RelationshipFrom(
+        "Dataset", "SENT_TO_OMICS", cardinality=ZeroOrMore, model=JobRelation
+    )
+
+
+class OmicsDispatcherLock(StructuredNode):  # type: ignore
+    """Singleton node write-locked by each Omics dispatcher claim.
+
+    Serialises concurrent ``init_omics_pipeline.py`` runs, so two runs cannot
+    claim the same datasets or reserve the same quota twice.
+    """
+
+    name = StringProperty(required=True, unique_index=True)
+    locked_at = DateTimeProperty()
+    holder = StringProperty()
 
 
 class VariantRelation(StructuredRel):  # type: ignore
@@ -134,6 +201,15 @@ class File(IdentifiedNode):
     status = StringProperty()
     task_id = StringProperty()
     metadata = JSONProperty()
+
+    # Omics tracking: identifies the remote upload of this exact
+    # file, so a resumed/aborted upload session can be reconciled. Do not
+    # reuse the legacy `task_id` property above, which has an unrelated,
+    # never-populated meaning in the existing NIG codebase.
+    omics_file_id = StringProperty(index=True)
+    omics_upload_id = StringProperty()
+    omics_uploaded_at = DateTimeProperty()
+    omics_status = StringProperty()  # PENDING | UPLOADING | UPLOADED | DELETED | ERROR
 
     dataset = RelationshipFrom("Dataset", "CONTAINS", cardinality=ZeroOrMore)
 

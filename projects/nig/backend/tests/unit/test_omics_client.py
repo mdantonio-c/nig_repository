@@ -1,0 +1,568 @@
+"""Unit tests for :mod:`nig.services.omics.client`.
+
+A fake ``requests``-like session (only ``.post()`` and ``.request()``) is
+injected into :class:`OmicsClient`, so these tests never touch the network
+and do not depend on the ``responses``/``requests_mock`` packages (not
+available in this environment).
+"""
+
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import pytest
+
+from nig.services.omics.client import OmicsClient
+from nig.services.omics.errors import (
+    OmicsAuthError,
+    OmicsQuotaExceeded,
+    OmicsRequestError,
+)
+
+
+class FakeResponse:
+    def __init__(
+        self,
+        status_code: int = 200,
+        payload: Optional[Dict[str, Any]] = None,
+        content_chunks: Optional[List[bytes]] = None,
+    ) -> None:
+        self.status_code = status_code
+        self.ok = 200 <= status_code < 300
+        self._payload = payload or {}
+        self._content_chunks = content_chunks or []
+        # Mimics requests.Response.content: empty for a 204/no-body response,
+        # non-empty whenever a JSON payload was provided.
+        self.content = b"{}" if payload else b""
+
+    def json(self) -> Dict[str, Any]:
+        return self._payload
+
+    def iter_content(self, chunk_size: int = 1):
+        yield from self._content_chunks
+
+
+class FakeSession:
+    def __init__(self) -> None:
+        self.post_queue: List[FakeResponse] = []
+        self.request_queue: List[FakeResponse] = []
+        self.calls: List[Any] = []
+
+    def post(self, url: str, json: Any = None, timeout: Any = None) -> FakeResponse:
+        self.calls.append(("POST-auth", url, json))
+        return self.post_queue.pop(0)
+
+    def request(
+        self, method: str, url: str, headers=None, timeout=None, verify=None, **kwargs
+    ) -> FakeResponse:
+        self.calls.append((method, url, headers, kwargs))
+        return self.request_queue.pop(0)
+
+
+def _client(session: FakeSession) -> OmicsClient:
+    return OmicsClient(
+        base_url="https://omics.dev.cineca.it/api/v1/",
+        username="nig-service",
+        password="s3cr3t",
+        timeout=10,
+        session=session,
+    )
+
+
+def _logged_in_session() -> FakeSession:
+    session = FakeSession()
+    session.post_queue.append(
+        FakeResponse(200, {"access_token": "AT1", "refresh_token": "RT1"})
+    )
+    return session
+
+
+def test_authenticate_performs_login() -> None:
+    session = _logged_in_session()
+    client = _client(session)
+
+    client.authenticate()
+
+    assert session.calls[0][0] == "POST-auth"
+
+
+def test_request_refreshes_token_on_401_and_retries_successfully() -> None:
+    session = _logged_in_session()
+    session.post_queue.append(
+        FakeResponse(200, {"access_token": "AT2", "refresh_token": "RT2"})
+    )
+    session.request_queue.append(FakeResponse(401))
+    session.request_queue.append(
+        FakeResponse(200, {"usage": 1, "quota": 100, "limit": 0.01})
+    )
+
+    client = _client(session)
+    usage = client.get_storage_usage()
+
+    assert usage.usage == 1
+    # two `.request` calls: first got 401, second (after refresh) succeeded
+    request_calls = [c for c in session.calls if c[0] != "POST-auth"]
+    assert len(request_calls) == 2
+    # the retried call carries the refreshed token
+    assert request_calls[1][2]["Authorization"] == "Bearer AT2"
+
+
+def test_quota_exceeded_403_with_matching_detail_raises_omics_quota_exceeded() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(403, {"detail": "Storage limit reached"})
+    )
+    client = _client(session)
+
+    with pytest.raises(OmicsQuotaExceeded):
+        client.get_storage_usage()
+
+
+def test_quota_exceeded_403_in_mmf_message_shape_raises_omics_quota_exceeded() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            403,
+            {"message": "Storage limit reached", "code": "FORBIDDEN", "request_id": "r"},
+        )
+    )
+    client = _client(session)
+
+    with pytest.raises(OmicsQuotaExceeded):
+        client.get_storage_usage()
+
+
+def test_422_mmf_error_body_carries_message_and_field_errors() -> None:
+    secret_id = "gAAAAABmZ0123456789abcdefXYZ::deadbeefcafebabe"
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            422,
+            {
+                "message": "A completed, nonempty FASTQ upload is required",
+                "code": "VALIDATION_ERROR",
+                "request_id": "r",
+                "errors": [{"field": "output_gvcf", "message": f"bad {secret_id}"}],
+            },
+        )
+    )
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError) as exc_info:
+        client.submit_nig_germline(["a" * 10], output_gvcf="out.g.vcf.gz")
+
+    message = str(exc_info.value)
+    assert "A completed, nonempty FASTQ upload is required" in message
+    assert "output_gvcf: bad" in message
+    assert secret_id not in message
+
+
+def test_403_without_quota_detail_raises_omics_request_error() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(403, {"detail": "Forbidden"}))
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError):
+        client.get_storage_usage()
+
+
+def test_persistent_401_raises_omics_auth_error() -> None:
+    session = _logged_in_session()
+    session.post_queue.append(
+        FakeResponse(200, {"access_token": "AT2", "refresh_token": "RT2"})
+    )
+    session.request_queue.append(FakeResponse(401))
+    session.request_queue.append(FakeResponse(401))
+    client = _client(session)
+
+    with pytest.raises(OmicsAuthError):
+        client.get_storage_usage()
+
+
+def test_other_error_status_raises_omics_request_error() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(500))
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError):
+        client.get_storage_usage()
+
+
+def test_422_error_message_carries_sanitized_validation_detail() -> None:
+    secret_id = "gAAAAABmZ0123456789abcdefXYZ::deadbeefcafebabe"
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            422,
+            {
+                "detail": [
+                    {
+                        "loc": ["body", "input_files", 0],
+                        "msg": f"File {secret_id} not found",
+                        "type": "value_error",
+                        "input": secret_id,
+                    }
+                ]
+            },
+        )
+    )
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError) as exc_info:
+        client.submit_nig_germline(["a" * 10], output_gvcf="out.g.vcf.gz")
+
+    message = str(exc_info.value)
+    assert exc_info.value.status_code == 422
+    assert "body.input_files.0: File" in message
+    assert "not found" in message
+    assert secret_id not in message
+    assert "deadbeefcafebabe" not in message
+
+
+def test_5xx_error_message_does_not_include_server_detail() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(500, {"detail": "stack trace"}))
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError) as exc_info:
+        client.get_storage_usage()
+
+    assert "stack trace" not in str(exc_info.value)
+
+
+def test_get_storage_usage_maps_fields() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(200, {"usage": 10, "quota": 1000, "limit": 0.01, "can_upload": True})
+    )
+    client = _client(session)
+
+    usage = client.get_storage_usage()
+
+    assert (usage.usage, usage.quota, usage.limit, usage.can_upload) == (
+        10,
+        1000,
+        0.01,
+        True,
+    )
+
+
+def test_list_uploaded_files_unwraps_the_files_object() -> None:
+    # FileListResponse from the Omics OpenAPI spec, confirmed live on dev2
+    session = _logged_in_session()
+    response = FakeResponse(200)
+    response._payload = {"files": [{"file_id": "f1"}]}
+    response.content = b'{"files": [{"file_id": "f1"}]}'
+    session.request_queue.append(response)
+    client = _client(session)
+
+    files = client.list_uploaded_files()
+
+    assert files == [{"file_id": "f1"}]
+
+
+@pytest.mark.parametrize("payload", [[{"file_id": "f1"}], {"items": []}, {"files": None}])
+def test_list_uploaded_files_rejects_unexpected_payloads(payload: Any) -> None:
+    # never mistake an unknown shape for an empty listing
+    session = _logged_in_session()
+    response = FakeResponse(200)
+    response._payload = payload
+    response.content = b"x"
+    session.request_queue.append(response)
+    client = _client(session)
+
+    with pytest.raises(OmicsRequestError):
+        client.list_uploaded_files()
+
+
+def test_list_uploaded_files_returns_empty_list_on_204_no_content() -> None:
+    # Confirmed against the real Omics dev2 environment: an account with no
+    # uploaded files gets a 204 with an empty body, not 200 + [].
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(204))
+    client = _client(session)
+
+    files = client.list_uploaded_files()
+
+    assert files == []
+
+
+@pytest.mark.parametrize("input_files", [[], ["a", "b", "c"]])
+def test_submit_nig_germline_rejects_invalid_input_count(
+    input_files: List[str],
+) -> None:
+    session = _logged_in_session()
+    client = _client(session)
+
+    with pytest.raises(ValueError):
+        client.submit_nig_germline(input_files, output_gvcf="sample.g.vcf.gz")
+
+
+@pytest.mark.parametrize("input_files", [["r1"], ["r1", "r2"]])
+def test_submit_nig_germline_accepts_one_or_two_inputs(
+    input_files: List[str],
+) -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(200, {"task_id": "t1", "status": "Received"})
+    )
+    client = _client(session)
+
+    result = client.submit_nig_germline(input_files, output_gvcf="sample.g.vcf.gz")
+
+    assert result == {"task_id": "t1", "status": "Received"}
+    _, url, _, kwargs = [c for c in session.calls if c[0] != "POST-auth"][0]
+    assert url.endswith("/tools/nig/germline")
+    assert kwargs["json"]["output_gvcf"] == "sample.g.vcf.gz"
+    assert "output_vcf" not in kwargs["json"]
+    assert kwargs["json"]["reference"] == "hg38"
+    assert kwargs["json"]["input_files"] == input_files
+
+
+def test_get_task_returns_task_info() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            200,
+            {
+                "task_id": "t1",
+                "status": "Processing",
+                "start": "2026-09-22T00:00:00Z",
+            },
+        )
+    )
+    client = _client(session)
+
+    task = client.get_task("t1")
+
+    assert task.task_id == "t1"
+    assert task.status == "Processing"
+
+
+def test_get_task_files_flattens_nested_wrapper_and_tags_kind() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            200,
+            {
+                "files": {
+                    "gvcf": {"file_id": "f1", "user_filename": "s.g.vcf.gz"},
+                    "tbi": {"file_id": "f2", "user_filename": "s.g.vcf.gz.tbi"},
+                }
+            },
+        )
+    )
+    client = _client(session)
+
+    files = client.get_task_files("t1")
+
+    kinds = {f["_kind"] for f in files}
+    assert kinds == {"gvcf", "tbi"}
+    assert any(f["file_id"] == "f1" for f in files)
+
+
+def test_get_task_files_ignores_unknown_shapes_without_crashing() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(200, {"files": {"bam": {"file_id": "f3"}, "weird": "unexpected"}})
+    )
+    client = _client(session)
+
+    files = client.get_task_files("t1")
+
+    assert [f["file_id"] for f in files] == ["f3"]
+
+
+def test_delete_file_returns_true_on_success() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(200))
+    client = _client(session)
+
+    assert client.delete_file("f1") is True
+
+
+def test_delete_file_treats_404_as_already_deleted() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(404))
+
+    assert _client(session).delete_file("f1") is True
+
+
+def test_delete_file_propagates_other_errors() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(403))
+
+    with pytest.raises(OmicsRequestError):
+        _client(session).delete_file("f1")
+
+
+def test_download_file_streams_to_part_then_renames(tmp_path: Path) -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(200, content_chunks=[b"abc", b"def"])
+    )
+    client = _client(session)
+    destination = tmp_path.joinpath("sample.g.vcf.gz")
+
+    result = client.download_file("f1", destination)
+
+    assert result == destination
+    assert destination.read_bytes() == b"abcdef"
+    assert not destination.with_name(destination.name + ".part").exists()
+
+
+def test_download_file_rejects_wrong_size_and_removes_partial_file(tmp_path: Path) -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(200, content_chunks=[b"abc"]))
+    client = _client(session)
+    destination = tmp_path.joinpath("sample.g.vcf.gz")
+
+    with pytest.raises(OmicsRequestError):
+        client.download_file("f1", destination, expected_size=4)
+
+    assert not destination.exists()
+    assert not destination.with_name(destination.name + ".part").exists()
+
+
+def test_get_task_files_accepts_the_documented_list_of_mappings() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            200,
+            {
+                "files": [
+                    {"gvcf": {"file_id": "f1"}, "tbi": {"file_id": "f2"}},
+                    {"bam": [{"file_id": "f3"}], "log": {"file_id": "f4"}},
+                ]
+            },
+        )
+    )
+
+    files = _client(session).get_task_files("t1")
+
+    assert [(f["_kind"], f["file_id"]) for f in files] == [
+        ("gvcf", "f1"),
+        ("tbi", "f2"),
+        ("bam", "f3"),
+        ("log", "f4"),
+    ]
+
+
+def test_get_task_files_keeps_flat_entries_and_skips_garbage() -> None:
+    session = _logged_in_session()
+    session.request_queue.append(
+        FakeResponse(
+            200,
+            {"files": [{"file_id": "f1", "_kind": "gvcf"}, "garbage", 3, {"bam": 7}]},
+        )
+    )
+
+    files = _client(session).get_task_files("t1")
+
+    assert files == [{"file_id": "f1", "_kind": "gvcf"}]
+
+
+@pytest.mark.parametrize("payload", [{"files": "nope"}, {"files": None}, {}])
+def test_get_task_files_tolerates_unexpected_payloads(payload: Dict[str, Any]) -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(200, payload or {"other": 1}))
+
+    assert _client(session).get_task_files("t1") == []
+
+
+class BrokenStream(FakeResponse):
+    def __init__(self) -> None:
+        super().__init__(200)
+        self.closed = False
+
+    def iter_content(self, chunk_size: int = 1):
+        yield b"abc"
+        raise ConnectionResetError("peer reset")
+
+    def close(self) -> None:
+        self.closed = True
+
+
+@pytest.fixture
+def plenty_of_disk(monkeypatch: Any) -> None:
+    usage = type("Usage", (), {"free": 10**15})()
+    monkeypatch.setattr("shutil.disk_usage", lambda path: usage)
+
+
+def test_mid_stream_error_removes_part_and_closes_response(
+    tmp_path: Path, plenty_of_disk: None
+) -> None:
+    session = _logged_in_session()
+    response = BrokenStream()
+    session.request_queue.append(response)
+    destination = tmp_path.joinpath("sample.bam")
+
+    with pytest.raises(ConnectionResetError):
+        _client(session).download_file("f1", destination, expected_size=6)
+
+    assert not destination.exists()
+    assert not destination.with_name("sample.bam.part").exists()
+    assert response.closed
+
+
+def test_stream_longer_than_expected_is_aborted(
+    tmp_path: Path, plenty_of_disk: None
+) -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(200, content_chunks=[b"abc", b"def"]))
+    destination = tmp_path.joinpath("sample.bam")
+
+    with pytest.raises(OmicsRequestError, match="larger than expected"):
+        _client(session).download_file("f1", destination, expected_size=4)
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_download_limit_applies_without_declared_size(tmp_path: Path) -> None:
+    session = _logged_in_session()
+    session.request_queue.append(FakeResponse(200, content_chunks=[b"abc", b"def"]))
+    client = OmicsClient(
+        base_url="https://omics.dev.cineca.it/api/v1/",
+        username="nig-service",
+        password="s3cr3t",
+        timeout=10,
+        session=session,
+        max_download_bytes=5,
+    )
+
+    with pytest.raises(OmicsRequestError):
+        client.download_file("f1", tmp_path.joinpath("sample.bam"))
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_declared_size_over_the_limit_is_refused_before_download(tmp_path: Path) -> None:
+    session = _logged_in_session()
+    client = OmicsClient(
+        base_url="https://omics.dev.cineca.it/api/v1/",
+        username="nig-service",
+        password="s3cr3t",
+        timeout=10,
+        session=session,
+        max_download_bytes=5,
+    )
+
+    with pytest.raises(OmicsRequestError, match="size limit"):
+        client.download_file("f1", tmp_path.joinpath("sample.bam"), expected_size=6)
+
+    assert [c for c in session.calls if c[0] == "GET"] == []
+
+
+def test_insufficient_disk_space_is_refused_before_download(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    session = _logged_in_session()
+    usage = type("Usage", (), {"free": 100})()
+    monkeypatch.setattr("shutil.disk_usage", lambda path: usage)
+
+    with pytest.raises(OmicsRequestError, match="disk space"):
+        _client(session).download_file(
+            "f1", tmp_path.joinpath("sample.bam"), expected_size=6
+        )
+
+    assert [c for c in session.calls if c[0] == "GET"] == []
+    assert list(tmp_path.iterdir()) == []
