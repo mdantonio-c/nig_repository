@@ -323,7 +323,8 @@ def fetch_results(
         return {"downloaded": [], "error": message}
 
 
-@CeleryExt.task(idempotent=True, autoretry_for=(ConnectionResetError,))
+# Early ACK; the poller recovers lost downloads from persisted FETCHING (#86).
+@CeleryExt.task(idempotent=False, autoretry_for=(ConnectionResetError,))
 def omics_fetch_results(self: Task[[str], None], dataset_uuid: str) -> None:
     if not omics_enabled():
         log.warning("OMICS_ENABLE is off, Omics fetch for {} not executed", dataset_uuid)

@@ -31,7 +31,8 @@ from snakemake import snakemake
 SNAKEMAKE_DIR = Path("/snakemake")
 
 
-@CeleryExt.task(idempotent=True, autoretry_for=(ConnectionResetError,))
+# Early ACK: a joint update can exceed Redis' visibility timeout (#86).
+@CeleryExt.task(idempotent=False, autoretry_for=(ConnectionResetError,))
 def launch_joint_analysis(
     self: Task[[List[str], str, bool, Optional[str]], None],
     dataset_list: List[str],
@@ -42,6 +43,12 @@ def launch_joint_analysis(
     task_id = self.request.id
     log.info("Start {} joint analysis task [{}:{}]", study_type, task_id, self.name)
     graph = neo4j.get_instance()
+
+    # Fail closed on redelivery/retry after job creation. Do not rerun an
+    # update on the same workspace, even when historical duplicates exist.
+    if graph.JointAnalysisJob.nodes.filter(uuid=task_id).all():
+        log.warning("Joint job {} already exists; inspect it before a new task", task_id)
+        return None
 
     # validate the whole cohort before creating anything (fail closed)
     if study_type is None:

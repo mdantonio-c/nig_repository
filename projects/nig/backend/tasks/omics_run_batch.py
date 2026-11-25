@@ -433,7 +433,8 @@ def run_batch(
     return report
 
 
-@CeleryExt.task(idempotent=True, autoretry_for=(ConnectionResetError,))
+# Early ACK: large FASTQ uploads can exceed Redis' visibility timeout (#86).
+@CeleryExt.task(idempotent=False, autoretry_for=(ConnectionResetError,))
 def omics_run_batch(
     self: Task[[str, List[str]], None], batch_uuid: str, dataset_uuids: List[str]
 ) -> None:

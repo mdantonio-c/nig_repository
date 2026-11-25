@@ -23,7 +23,8 @@ from restapi.utilities.logs import log
 from snakemake import snakemake
 
 
-@CeleryExt.task(idempotent=True, autoretry_for=(ConnectionResetError,))
+# Early ACK: local exome runs exceed Redis' one-hour visibility timeout (#86).
+@CeleryExt.task(idempotent=False, autoretry_for=(ConnectionResetError,))
 def launch_pipeline(
     self: Task[[List[str], str, bool], None],
     dataset_list: List[str],

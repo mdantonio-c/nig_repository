@@ -63,6 +63,9 @@ class Graph:
             self.jobs.append(job)
             return job
 
+        joint_job.nodes = SimpleNamespace(
+            filter=lambda uuid: SimpleNamespace(all=lambda: [j for j in self.jobs if j.uuid == uuid])
+        )
         self.JointAnalysisJob = joint_job
 
 
@@ -266,3 +269,34 @@ def test_workspace_of_another_reference_is_refused(
         env.run(["g1"], "genome")
     assert not env.graph.jobs and not env.calls
     assert not (env.data / "jobs").exists()
+
+
+@pytest.mark.parametrize("existing_count", [1, 2])
+def test_existing_job_blocks_redelivery_before_any_side_effect(
+    tmp_path: Path, monkeypatch: Any, existing_count: int
+) -> None:
+    env = Env(tmp_path, monkeypatch, [], genome=True)
+    for _ in range(existing_count):
+        env.graph.JointAnalysisJob(uuid="task-1").save()
+    monkeypatch.setattr(task, "load_joint_settings", lambda *a: pytest.fail("settings read on redelivery"))
+
+    # Missing dataset: the duplicate guard must run before even cohort lookup.
+    env.run(["missing"], "genome")
+
+    assert len(env.graph.jobs) == existing_count
+    assert not env.calls and not env.data.exists()
+
+
+def test_second_delivery_does_not_rerun_a_successful_joint(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    g1 = genome_dataset(tmp_path, "g1")
+    env = Env(tmp_path, monkeypatch, [g1], genome=True)
+    env.run(["g1"], "genome")
+    manifest = env.data / "jobs/joint/genome/task-1/joint.csv"
+    before = manifest.read_bytes()
+
+    env.run(["g1"], "genome")
+
+    assert len(env.graph.jobs) == len(env.calls) == len(g1.job.connected) == 1
+    assert manifest.read_bytes() == before
