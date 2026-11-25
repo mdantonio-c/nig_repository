@@ -19,6 +19,7 @@ shared framework code.
 ## Workflows
 
 - [Application workflows](workflows/workflows.md) — studies, uploads, pipelines, initialization, and asynchronous jobs.
+- [Omics arrival reference check](workflows/omics-arrival-reference-check.md) — BAM `@PG`, configuration and fail-closed bundle provenance.
 
 ## Security and operations
 

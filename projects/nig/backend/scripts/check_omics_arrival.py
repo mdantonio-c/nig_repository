@@ -8,6 +8,8 @@ that it can be imported by the genome joint analysis without conversion:
 * gVCF ``##contig`` and BAM ``@SQ`` identical (name, length, order) to the
   bundle ``.dict``; records only on known contigs, in ``.dict`` order;
 * single sample ``SM = <sample>_<dataset_uuid>`` in gVCF and BAM read groups;
+* BAM ``@PG`` of ``pbrun fq2bam``: reference, three known-sites and intervals
+    inside the expected versioned Omics bundle (root from genome settings);
 * ``<NON_REF>`` declared and present as last ALT of every scanned record;
 * ``.tbi`` index present and not older than the gVCF;
 * allele-specific (AS_*) annotations, needed by ``-G AS_StandardAnnotation``
@@ -28,12 +30,13 @@ import argparse
 import gzip
 import json
 import re
+import shlex
 import struct
 import subprocess
 import sys
 import tempfile
 from dataclasses import asdict, dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import yaml
@@ -229,6 +232,78 @@ def check_bam(bam: Path, sequences: List[Sequence], sample: str) -> List[Check]:
     return checks + [ok("bam_index", False, f"{bam}.bai not found")]
 
 
+def check_fq2bam_pg(text: str, reference_id: str, reference_root: str) -> List[Check]:
+    """Validate only fq2bam resource paths, never execute or report its full CL.
+
+    These are paths on Omics, not local paths: use POSIX lexical containment,
+    reject traversal, and do not resolve them against the NIG filesystem.
+    """
+    root = PurePosixPath(reference_root)
+    if (
+        not root.is_absolute()
+        or any(p in (".", "..") for p in reference_root.split("/"))
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", reference_id)
+    ):
+        return [ok("bam_pg_config", False, "invalid Omics reference root or reference_id")]
+    bundle = root / reference_id / "bundle"
+    programs = []
+    for line in text.splitlines():
+        if not line.startswith("@PG\t"):
+            continue
+        tags = dict(t.split(":", 1) for t in line.split("\t")[1:] if ":" in t)
+        if tags.get("PN") == "pbrun fq2bam" or tags.get("ID") == "pbrun fq2bam":
+            programs.append(tags)
+    checks = [ok("bam_pg_fq2bam", len(programs) == 1, f"{len(programs)} fq2bam @PG entries, expected 1")]
+    if len(programs) != 1:
+        return checks
+    try:
+        tokens = shlex.split(programs[0].get("CL", ""))
+    except ValueError:
+        return checks + [ok("bam_pg_command", False, "malformed fq2bam CL")]
+    if len(tokens) < 2 or PurePosixPath(tokens[0]).name != "pbrun" or tokens[1] != "fq2bam":
+        return checks + [ok("bam_pg_command", False, "missing pbrun fq2bam command")]
+
+    paths: Dict[str, List[str]] = {"--ref": [], "--knownSites": [], "--interval-file": []}
+    for i, token in enumerate(tokens[2:], start=2):
+        option, sep, value = token.partition("=")
+        if option not in paths:
+            continue
+        if not sep:
+            value = tokens[i + 1] if i + 1 < len(tokens) and not tokens[i + 1].startswith("-") else ""
+        paths[option].append(value)
+
+    def inside_bundle(value: str) -> bool:
+        path = PurePosixPath(value)
+        return (
+            path.is_absolute()
+            and not any(p in (".", "..") for p in value.split("/"))
+            and bundle in path.parents
+        )
+
+    for option, name, count in (
+        ("--ref", "bam_pg_ref", 1),
+        ("--knownSites", "bam_pg_known_sites", 3),
+        ("--interval-file", "bam_pg_intervals", 1),
+    ):
+        found = paths[option]
+        valid = len(found) == count and len(set(found)) == count and all(inside_bundle(p) for p in found)
+        checks.append(ok(name, valid, f"{option}: {json.dumps(found)}; expected {count} distinct path(s) inside {bundle}/"))
+    return checks
+
+
+def check_bam_pg(
+    bam: Path, reference_id: str, reference_root: str, samtools: str = "samtools"
+) -> List[Check]:
+    """Read only the header, without adding samtools' own @PG to the output."""
+    proc = subprocess.run(
+        [samtools, "view", "--no-PG", "-H", str(bam)],
+        capture_output=True, text=True, timeout=60,
+    )
+    if proc.returncode:
+        return [ok("bam_pg_read", False, f"samtools header read failed (rc={proc.returncode})")]
+    return check_fq2bam_pg(proc.stdout, reference_id, reference_root)
+
+
 def check_logs(logs: Iterable[Path], known_sites: List[str]) -> List[Check]:
     text = "\n".join(Path(p).read_text(errors="replace") for p in logs)
     missing = [k for k in known_sites if k not in text]
@@ -266,6 +341,10 @@ def build_report(args: argparse.Namespace) -> Dict[str, object]:
     checks += check_gvcf(gvcf, sequences, sample, args.max_records)
     if args.bam:
         checks += check_bam(Path(args.bam), sequences, sample)
+        checks += check_bam_pg(
+            Path(args.bam), settings["reference_id"],
+            args.omics_reference_root or settings.get("omics_reference_root", ""), args.samtools,
+        )
     if args.bqsr_log:
         checks += check_logs([Path(p) for p in args.bqsr_log], KNOWN_SITES)
     if args.genomicsdb_interval:
@@ -289,6 +368,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--dataset-uuid", help="check the gVCF name/SM suffix")
     parser.add_argument("--expected-sample", help="override SM (default: gVCF name)")
     parser.add_argument("--bam", help="Omics BAM (index .bam.bai or .bai beside it)")
+    parser.add_argument("--omics-reference-root", help="override genome omics_reference_root from joint.yaml")
+    parser.add_argument("--samtools", default="samtools", help="samtools executable for BAM @PG")
     parser.add_argument("--bqsr-log", action="append", help="BQSR log/command line, repeatable")
     parser.add_argument("--genomicsdb-interval", help="run GenomicsDBImport on this interval")
     parser.add_argument("--max-records", type=int, default=0, help="0 = scan all records")

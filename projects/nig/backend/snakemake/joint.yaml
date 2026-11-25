@@ -28,6 +28,9 @@ exome:
   allow_unmarked_workspace: true
 genome:
   reference_id: "nig-grch38p14-dbsnp157-chr-v1"
+  # Omics worker mapping nig_hg38; arrival check validates BAM @PG resources
+  # below <omics_reference_root>/<reference_id>/bundle/. Override per environment.
+  omics_reference_root: "/static/references/nig_hg38"
   fasta: "/resources/reference-bundles/nig-grch38p14-dbsnp157-chr-v1/bundle/Homo_sapiens_GRCh38.p14_nig_chr.fasta"
   intervals: "/resources/reference-bundles/nig-grch38p14-dbsnp157-chr-v1/bundle/wgs_calling_regions.grch38p14_nig_chr.interval_list"
   workspace: "/data/output/joint/genome/gatk_db"
