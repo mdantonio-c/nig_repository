@@ -15,11 +15,15 @@ Algorithm:
   ``oversized`` so the caller can flag it, instead of blocking the queue;
 * a dataset that does not fit in the remaining space is ``deferred``: it keeps
   its status and will be considered again by the next run.
+* a dataset above ``max_fastq_bytes`` is ``fastq_oversized`` regardless of
+    quota: the cap protects per-sample scratch and takes precedence over quota.
 """
 
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Iterable, List, Optional, Tuple
+
+DEFAULT_MAX_FASTQ_BYTES = 15_000_000_000
 
 
 @dataclass(frozen=True)
@@ -38,6 +42,7 @@ class BatchPlan:
     selected: List[str] = field(default_factory=list)
     deferred: List[str] = field(default_factory=list)
     oversized: List[str] = field(default_factory=list)
+    fastq_oversized: List[str] = field(default_factory=list)
 
 
 def effective_quota(remote_quota: Optional[int], expected_quota: int) -> int:
@@ -74,7 +79,14 @@ def plan_batch(
     quota_bytes: int,
     used_bytes: int,
     safety_margin_pct: float,
+    max_fastq_bytes: int = DEFAULT_MAX_FASTQ_BYTES,
 ) -> BatchPlan:
+    if (
+        isinstance(max_fastq_bytes, bool)
+        or not isinstance(max_fastq_bytes, int)
+        or max_fastq_bytes <= 0
+    ):
+        raise ValueError("OMICS_MAX_FASTQ_BYTES must be a positive integer")
     if quota_bytes <= 0:
         raise ValueError("quota_bytes must be positive")
     if used_bytes < 0:
@@ -92,7 +104,9 @@ def plan_batch(
     plan = BatchPlan(capacity_bytes=capacity, usable_bytes=usable)
 
     for candidate in sorted(candidates, key=_fifo_key):
-        if candidate.size_bytes > capacity:
+        if candidate.size_bytes > max_fastq_bytes:
+            plan.fastq_oversized.append(candidate.uuid)
+        elif candidate.size_bytes > capacity:
             plan.oversized.append(candidate.uuid)
         elif plan.planned_bytes + candidate.size_bytes > usable:
             plan.deferred.append(candidate.uuid)

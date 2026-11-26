@@ -6,8 +6,8 @@ Selects genome datasets in ``UPLOAD COMPLETED``, reads the authoritative
 remote quota from ``GET /storage/objects/usage`` and plans a batch that fits
 (``services/omics/planner.py``). Then, unless ``--dry-run`` is given:
 
-1. datasets larger than the whole quota are flagged ``ERROR`` and the NIG
-   admin is notified;
+1. datasets larger than the per-sample FASTQ cap or whole quota are flagged
+    ``ERROR`` and the NIG admin is notified;
 2. the selected datasets are claimed atomically (see ``CLAIM_QUERY``) and
    linked to a new ``OmicsBatch`` in ``PLANNED`` status;
 3. the ``omics_run_batch`` Celery task is sent for that batch.
@@ -37,11 +37,16 @@ from nig.services.omics import OmicsClient
 from nig.services.omics.batch_state import ACTIVE_DATASET_STATUSES, batch_outcome
 from nig.services.omics.planner import (
     DatasetCandidate,
+    DEFAULT_MAX_FASTQ_BYTES,
     effective_quota,
     plan_batch,
     upload_ceiling,
 )
-from nig.services.omics.settings import USER_DATASET_TOO_LARGE
+from nig.services.omics.settings import (
+    USER_DATASET_TOO_LARGE,
+    fastq_limit_error,
+    max_fastq_bytes_from_env,
+)
 from restapi.connectors import celery, neo4j
 from restapi.connectors.smtp.notifications import send_notification
 from restapi.env import Env
@@ -164,6 +169,7 @@ class DispatcherSettings:
     safety_margin_pct: int
     max_concurrent_batches: int
     batch_stale_hours: int
+    max_fastq_bytes: int = DEFAULT_MAX_FASTQ_BYTES
 
     @classmethod
     def from_env(cls) -> "DispatcherSettings":
@@ -182,6 +188,7 @@ class DispatcherSettings:
             safety_margin_pct=Env.get_int("OMICS_QUOTA_SAFETY_MARGIN_PCT", 5),
             max_concurrent_batches=Env.get_int("OMICS_MAX_CONCURRENT_BATCHES", 1),
             batch_stale_hours=Env.get_int("OMICS_BATCH_STALE_HOURS", 48),
+            max_fastq_bytes=max_fastq_bytes_from_env(),
         )
 
 
@@ -323,7 +330,9 @@ def release_batch(graph: Any, batch_uuid: str, reason: str, now: datetime) -> Li
     )
 
 
-def reject_oversized(graph: Any, dataset_uuids: List[str], now: datetime) -> List[str]:
+def reject_oversized(
+    graph: Any, dataset_uuids: List[str], now: datetime, message: str = OVERSIZED_ERROR
+) -> List[str]:
     if not dataset_uuids:
         return []
     return _locked_rows(
@@ -333,12 +342,14 @@ def reject_oversized(graph: Any, dataset_uuids: List[str], now: datetime) -> Lis
         now=now.timestamp(),
         dataset_uuids=dataset_uuids,
         ready_status=READY_STATUS,
-        message=OVERSIZED_ERROR,
+        message=message,
         user_message=USER_DATASET_TOO_LARGE,
     )
 
 
-def notify_oversized(graph: Any, dataset_uuid: str) -> None:
+def notify_oversized(
+    graph: Any, dataset_uuid: str, message: str = OVERSIZED_ERROR
+) -> None:
     dataset = graph.Dataset.nodes.get_or_none(uuid=dataset_uuid)
     if dataset is None:
         return
@@ -352,7 +363,7 @@ def notify_oversized(graph: Any, dataset_uuid: str) -> None:
             "dataset_name": dataset.name,
             "study_id": study.uuid if study else "N/A",
             "study_name": study.name if study else "N/A",
-            "error_message": OVERSIZED_ERROR,
+            "error_message": message,
             "output_path": "N/A",
             "job_path": "N/A",
         },
@@ -405,6 +416,7 @@ def run(
         "generated_at": now.isoformat(),
         "batch": None,
         "skipped_reason": None,
+        "max_fastq_bytes": settings.max_fastq_bytes,
     }
 
     # Close batches whose datasets are all closed (or deleted): no later task
@@ -472,7 +484,11 @@ def run(
     quota = effective_quota(usage.quota, settings.expected_quota_bytes)
     ceiling = upload_ceiling(quota, usage.limit, settings.expected_upload_limit)
     plan = plan_batch(
-        candidates, ceiling, usage.usage + reserved, settings.safety_margin_pct
+        candidates,
+        ceiling,
+        usage.usage + reserved,
+        settings.safety_margin_pct,
+        max_fastq_bytes=settings.max_fastq_bytes,
     )
     report["upload_ceiling_bytes"] = ceiling
     report["reserved_bytes"] = reserved
@@ -489,6 +505,20 @@ def run(
         except Exception as exc:  # notification must not stop dispatching
             log.error("Notification for dataset {} failed: {}", dataset_uuid, exc)
     report["rejected_datasets"] = rejected
+
+    fastq_rejected = []
+    candidate_sizes = {candidate.uuid: candidate.size_bytes for candidate in candidates}
+    for dataset_uuid in plan.fastq_oversized:
+        detail = fastq_limit_error(candidate_sizes[dataset_uuid], settings.max_fastq_bytes)
+        rejected_ids = reject_oversized(graph, [dataset_uuid], now, message=detail)
+        fastq_rejected.extend(rejected_ids)
+        for rejected_uuid in rejected_ids:
+            log.error("Dataset {}: {}", rejected_uuid, detail)
+            try:
+                notify_oversized(graph, rejected_uuid, message=detail)
+            except Exception as exc:
+                log.error("Notification for dataset {} failed: {}", rejected_uuid, exc)
+    report["fastq_rejected_datasets"] = fastq_rejected
 
     if not plan.selected:
         report["skipped_reason"] = "no dataset fits the available quota"

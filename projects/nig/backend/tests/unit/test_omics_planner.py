@@ -1,11 +1,13 @@
 """Unit tests for the pure Omics batch planner."""
 
 from datetime import datetime, timedelta
+from typing import Any
 
 import pytest
 import pytz
 from nig.services.omics.planner import (
     BatchPlan,
+    DEFAULT_MAX_FASTQ_BYTES,
     DatasetCandidate,
     effective_quota,
     plan_batch,
@@ -186,3 +188,51 @@ def test_upload_ceiling_falls_back_to_expected_limit(remote: float) -> None:
 def test_upload_ceiling_rejects_invalid_expected_limit(expected: float) -> None:
     with pytest.raises(ValueError):
         upload_ceiling(1000, None, expected)
+
+
+def test_fastq_cap_is_inclusive_and_does_not_block_smaller_datasets() -> None:
+    plan = plan_batch(
+        [
+            DatasetCandidate("over", 101, at(0)),
+            DatasetCandidate("exact", 100, at(1)),
+            DatasetCandidate("below", 99, at(2)),
+        ],
+        QUOTA, 0, MARGIN, max_fastq_bytes=100,
+    )
+    assert plan.fastq_oversized == ["over"]
+    assert plan.selected == ["exact", "below"]
+    assert plan.planned_bytes == 199
+    assert plan.oversized == plan.deferred == []
+
+
+def test_fastq_and_quota_limits_are_independent() -> None:
+    plan = plan_batch(
+        [DatasetCandidate("cap", 901), DatasetCandidate("quota", 851)],
+        900, 0, 10, max_fastq_bytes=900,
+    )
+    assert plan.fastq_oversized == ["cap"]
+    assert plan.oversized == ["quota"]
+
+
+def test_fastq_cap_is_applied_even_when_quota_is_saturated() -> None:
+    plan = plan_batch(
+        [DatasetCandidate("cap", 101), DatasetCandidate("later", 100)],
+        QUOTA, QUOTA, MARGIN, max_fastq_bytes=100,
+    )
+    assert plan.fastq_oversized == ["cap"]
+    assert plan.deferred == ["later"]
+
+
+def test_default_fastq_cap_is_15_decimal_gb() -> None:
+    assert DEFAULT_MAX_FASTQ_BYTES == 15_000_000_000
+    plan = plan_batch(
+        [DatasetCandidate("cap", DEFAULT_MAX_FASTQ_BYTES + 1)],
+        1_000_000_000_000, 0, MARGIN,
+    )
+    assert plan.fastq_oversized == ["cap"]
+
+
+@pytest.mark.parametrize("limit", [0, -1, True, 1.5, None])
+def test_invalid_fastq_cap_is_rejected(limit: Any) -> None:
+    with pytest.raises(ValueError, match="OMICS_MAX_FASTQ_BYTES"):
+        plan_batch([], QUOTA, 0, MARGIN, max_fastq_bytes=limit)
