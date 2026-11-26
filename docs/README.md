@@ -20,6 +20,7 @@ shared framework code.
 
 - [Application workflows](workflows/workflows.md) — studies, uploads, pipelines, initialization, and asynchronous jobs.
 - [Omics arrival reference check](workflows/omics-arrival-reference-check.md) — BAM `@PG`, configuration and fail-closed bundle provenance.
+- [Omics FASTQ size limit](workflows/omics-fastq-limit.md) — per-sample cap, environment overrides and pre-upload checks.
 - [Celery long-task recovery](workflows/celery-task-recovery.md) — early acknowledgement, crash checkpoints and guarded operational recovery.
 
 ## Security and operations

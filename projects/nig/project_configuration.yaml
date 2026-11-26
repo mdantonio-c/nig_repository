@@ -36,6 +36,9 @@ variables:
     OMICS_EXPECTED_UPLOAD_LIMIT: 0.8
     OMICS_QUOTA_SAFETY_MARGIN_PCT: 5
     OMICS_MAX_CONCURRENT_BATCHES: 1
+    # Sum of compressed R1 + R2 bytes per genome dataset (15 decimal GB).
+    # Positive limit; override per environment after sizing Omics scratch.
+    OMICS_MAX_FASTQ_BYTES: 15000000000
     OMICS_UPLOAD_WORKERS: 4
     OMICS_POLL_INTERVAL_MINUTES: 15
     OMICS_BATCH_STALE_HOURS: 48

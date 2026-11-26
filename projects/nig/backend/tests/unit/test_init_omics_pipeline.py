@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pytz
+import pytest
 from nig.scripts import init_omics_pipeline as dispatcher
 from nig.services.omics.models import StorageUsage
 
@@ -166,9 +167,66 @@ def settings(**overrides: Any) -> dispatcher.DispatcherSettings:
         safety_margin_pct=5,
         max_concurrent_batches=1,
         batch_stale_hours=48,
+        # Existing tests exercise quota separately from the per-sample cap.
+        max_fastq_bytes=1000 * GB,
     )
     values.update(overrides)
     return dispatcher.DispatcherSettings(**values)
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_fastq_cap_sums_paired_files_and_claims_only_valid_datasets(
+    monkeypatch: Any, dry_run: bool
+) -> None:
+    too_big = FakeDataset("too-big", sizes=[8 * GB, 8 * GB])
+    exact = FakeDataset("exact", sizes=[7 * GB, 8 * GB])
+    small = FakeDataset("small", sizes=[GB])
+    graph = ReadOnlyGraph([too_big, exact, small]) if dry_run else FakeGraph(
+        [too_big, exact, small]
+    )
+    sender = Sender()
+    notifications: List[Any] = []
+    monkeypatch.setattr(
+        dispatcher, "notify_oversized",
+        lambda graph, uuid, message: notifications.append((uuid, message)),
+    )
+
+    report = dispatcher.run(
+        graph, FakeClient(), settings(max_fastq_bytes=15 * GB),
+        dry_run=dry_run, now=NOW, send_task=sender,
+    )
+
+    assert report["max_fastq_bytes"] == 15 * GB
+    assert report["plan"]["fastq_oversized"] == ["too-big"]
+    assert report["plan"]["oversized"] == []
+    assert set(report["plan"]["selected"]) == {"exact", "small"}
+    if dry_run:
+        assert sender.calls == notifications == []
+        assert too_big.status == "UPLOAD COMPLETED"
+    else:
+        assert report["fastq_rejected_datasets"] == ["too-big"]
+        assert report["rejected_datasets"] == []
+        rejected = graph.called(dispatcher.REJECT_QUERY)[0]
+        assert rejected["user_message"] == dispatcher.USER_DATASET_TOO_LARGE
+        assert "16000000000" in rejected["message"]
+        assert "15000000000" in rejected["message"]
+        assert notifications == [("too-big", rejected["message"])]
+        claimed = graph.called(dispatcher.CLAIM_QUERY)[0]
+        assert set(claimed["dataset_uuids"]) == {"exact", "small"}
+        assert set(sender.calls[0][1]) == {"exact", "small"}
+
+
+def test_only_fastq_oversized_datasets_never_create_a_batch(monkeypatch: Any) -> None:
+    graph = FakeGraph([FakeDataset("large", sizes=[16 * GB])])
+    sender = Sender()
+    monkeypatch.setattr(dispatcher, "notify_oversized", lambda *args, **kwargs: None)
+    report = dispatcher.run(
+        graph, FakeClient(), settings(max_fastq_bytes=15 * GB),
+        dry_run=False, now=NOW, send_task=sender,
+    )
+    assert report["fastq_rejected_datasets"] == ["large"]
+    assert graph.called(dispatcher.CLAIM_QUERY) == []
+    assert sender.calls == []
 
 
 class Sender:

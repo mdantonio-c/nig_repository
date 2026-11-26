@@ -24,7 +24,10 @@ from nig.services.omics.batch_state import finalize_batch
 from nig.services.omics.client import _obscure
 from nig.services.omics.settings import (
     USER_ANALYSIS_ERROR,
+    USER_DATASET_TOO_LARGE,
     client_from_env,
+    fastq_limit_error,
+    max_fastq_bytes_from_env,
     omics_enabled,
 )
 from restapi.connectors import neo4j
@@ -45,6 +48,10 @@ OMICS_REFERENCE = "hg38"
 
 class FastqValidationError(ValueError):
     """The persisted FASTQ metadata or input files cannot form one sample."""
+
+
+class FastqSizeLimitError(ValueError):
+    """The local compressed FASTQ files exceed this environment's limit."""
 
 
 def _dataset_input_path(dataset: Any) -> Path:
@@ -247,6 +254,7 @@ def _run_dataset(
     pending_uuids: Sequence[str],
     report: Dict[str, List[str]],
     timestamp: datetime,
+    max_fastq_bytes: int,
 ) -> bool:
     """Upload and submit one dataset; return True when the batch must stop."""
     uploaded: List[Tuple[Any, str]] = []
@@ -254,6 +262,9 @@ def _run_dataset(
     task_id: Optional[str] = None
     try:
         sample, fastqs = dataset_fastqs(dataset)
+        size_bytes = sum(path.stat().st_size for _, path in fastqs)
+        if size_bytes > max_fastq_bytes:
+            raise FastqSizeLimitError(fastq_limit_error(size_bytes, max_fastq_bytes))
         new_bytes = 0
         for file_node, path in fastqs:
             if file_node.omics_file_id and file_node.omics_status == "UPLOADED":
@@ -329,6 +340,11 @@ def _run_dataset(
         batch.planned_bytes = _batch_uploaded_bytes(batch)
         batch.save()
         return True
+    except FastqSizeLimitError as exc:
+        # No upload/submit (or DELETE) was attempted. Keep previous remote
+        # checkpoints for reconciliation if the limit changed after queueing.
+        _mark_error(dataset, batch, USER_DATASET_TOO_LARGE, str(exc), timestamp)
+        report["failed"].append(str(dataset.uuid))
     except FastqValidationError as exc:
         # Validation messages only describe the user's own FASTQ names.
         _mark_error(dataset, batch, str(exc), str(exc), timestamp)
@@ -363,6 +379,7 @@ def run_batch(
     therefore re-delivery of the same Celery message cannot submit a known
     task a second time.
     """
+    max_fastq_bytes = max_fastq_bytes_from_env()
     timestamp = _now(now)
     report: Dict[str, List[str]] = {
         "submitted": [],
@@ -415,6 +432,7 @@ def run_batch(
                 dataset_uuids[index + 1 :],
                 report,
                 timestamp,
+                max_fastq_bytes,
             )
         except Exception as exc:
             # Recording the outcome failed (e.g. graph unavailable): whatever

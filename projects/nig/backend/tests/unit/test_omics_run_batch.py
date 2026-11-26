@@ -192,6 +192,104 @@ def test_successful_paired_batch_uploads_and_submits() -> None:
     assert client.submits[0][0] == ["r1", "r2"]
 
 
+@pytest.mark.parametrize(
+    "paired,limit,rejected",
+    [(False, 4, True), (False, 5, False), (False, 6, False),
+     (True, 9, True), (True, 10, False), (True, 11, False)],
+)
+def test_local_fastq_cap_is_checked_before_upload(
+    monkeypatch: Any, paired: bool, limit: int, rejected: bool
+) -> None:
+    monkeypatch.setattr(task, "max_fastq_bytes_from_env", lambda: limit)
+    files = [File("sample_R1.fastq.gz", size=1)]
+    if paired:
+        files.append(File("sample_R2.fastq.gz", size=1))
+    # Fixture writes 5 bytes per file: persisted sizes deliberately understate it.
+    dataset = Dataset("d1", files)
+    batch = Batch("batch-1")
+    client = Client()
+    notifications: List[str] = []
+    monkeypatch.setattr(
+        task, "_notify_dataset_error", lambda dataset, error: notifications.append(error)
+    )
+
+    report = task.run_batch(Graph(batch, [dataset]), client, batch.uuid, [dataset.uuid], NOW)
+
+    if rejected:
+        assert report["failed"] == ["d1"]
+        assert dataset.status == dataset.omics_status == "ERROR"
+        assert dataset.error_message == task.USER_DATASET_TOO_LARGE
+        assert "OMICS_MAX_FASTQ_BYTES" in dataset.omics_error_message
+        assert notifications == [dataset.omics_error_message]
+        assert dataset._relation.status == "ERROR"
+        assert client.uploaded == client.submits == client.deleted == []
+        assert all(file.saves == 0 for file in files)
+        assert batch.status == "ERROR"
+    else:
+        assert report["submitted"] == ["d1"]
+        assert len(client.uploaded) == len(files)
+
+
+def test_oversized_batch_member_does_not_block_valid_member(monkeypatch: Any) -> None:
+    monkeypatch.setattr(task, "max_fastq_bytes_from_env", lambda: 5)
+    large = Dataset("large", [File("large_R1.fastq.gz"), File("large_R2.fastq.gz")])
+    small = Dataset("small", [File("small_R1.fastq.gz")])
+    batch = Batch("batch-1")
+    client = Client()
+    report = task.run_batch(
+        Graph(batch, [large, small]), client, batch.uuid, [large.uuid, small.uuid], NOW
+    )
+    assert report["failed"] == ["large"]
+    assert report["submitted"] == ["small"]
+    assert [path.name for path in client.uploaded] == ["small_R1.fastq.gz"]
+    assert len(client.submits) == 1
+
+
+def test_lowered_fastq_cap_preserves_previous_upload_checkpoints(monkeypatch: Any) -> None:
+    monkeypatch.setattr(task, "max_fastq_bytes_from_env", lambda: 4)
+    file = File("sample_R1.fastq.gz")
+    file.omics_file_id = "previous-upload"
+    file.omics_status = "UPLOADED"
+    dataset = Dataset("d1", [file])
+    batch = Batch("batch-1")
+    client = Client()
+    report = task.run_batch(Graph(batch, [dataset]), client, batch.uuid, [dataset.uuid], NOW)
+    assert report["failed"] == ["d1"]
+    assert file.omics_file_id == "previous-upload"
+    assert file.omics_status == "UPLOADED"
+    assert client.uploaded == client.submits == client.deleted == []
+
+
+@pytest.mark.parametrize("status", ["RUNNING", "SUBMITTING", "SUBMIT_UNKNOWN"])
+def test_fastq_cap_does_not_resubmit_known_or_uncertain_tasks(
+    monkeypatch: Any, status: str
+) -> None:
+    monkeypatch.setattr(task, "max_fastq_bytes_from_env", lambda: 1)
+    dataset = Dataset("d1", [File("sample_R1.fastq.gz")])
+    dataset.omics_status = status
+    if status == "RUNNING":
+        dataset.omics_task_id = "known-task"
+    batch = Batch("batch-1")
+    client = Client()
+    task.run_batch(Graph(batch, [dataset]), client, batch.uuid, [dataset.uuid], NOW)
+    assert client.uploaded == client.submits == client.deleted == []
+    assert dataset.omics_status == (
+        "SUBMIT_UNKNOWN" if status == "SUBMITTING" else status
+    )
+
+
+def test_invalid_fastq_config_leaves_batch_and_graph_unchanged(monkeypatch: Any) -> None:
+    monkeypatch.setattr(task.Env, "get", lambda key, default: "invalid")
+    dataset = Dataset("d1", [File("sample_R1.fastq.gz")])
+    batch = Batch("batch-1")
+    client = Client()
+    with pytest.raises(ValueError, match="OMICS_MAX_FASTQ_BYTES"):
+        task.run_batch(Graph(batch, [dataset]), client, batch.uuid, [dataset.uuid], NOW)
+    assert batch.status == "PLANNED" and batch.saves == 0
+    assert dataset.saves == 0
+    assert client.uploaded == client.submits == client.deleted == []
+
+
 def test_paired_fastqs_are_ordered_r1_then_r2() -> None:
     dataset = Dataset("d1", [File("sample_R2.fastq.gz"), File("sample_R1.fastq.gz")])
     batch = Batch("batch-1")
